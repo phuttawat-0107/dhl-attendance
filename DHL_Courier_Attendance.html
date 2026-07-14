@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>DHL eCommerce — Courier Attendance</title>
+<style>
+:root{--y:#FFCC00;--r:#D40511;--k:#1a1a1a;--g:#2e7d32;--bg:#ffffff;--muted:#777;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Segoe UI','Noto Sans Thai',Tahoma,sans-serif;background:#f6f6f6;color:var(--k);padding-bottom:70px;}
+.topbar{position:sticky;top:0;z-index:50;background:var(--bg);box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.ybar{height:8px;background:var(--y);}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:22px;}
+.depot-logo{font-size:32px;font-weight:900;font-style:italic;letter-spacing:2px;color:var(--k);line-height:1;}
+.logo .ec{color:var(--k);font-weight:600;font-size:16px;}
+.hd .meta{text-align:right;font-size:12px;color:var(--muted);}
+.hd .meta b{display:block;font-size:15px;color:var(--k);}
+.view{display:none;padding:14px;max-width:640px;margin:0 auto;}
+.view.active{display:block;}
+.card{background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.07);padding:14px;margin-bottom:12px;border-left:5px solid var(--y);}
+.card.red{border-left-color:var(--r);}
+h2{font-size:17px;margin-bottom:10px;}
+.small{font-size:12px;color:var(--muted);}
+.bigclock{text-align:center;padding:4px 0;}
+.bigclock .t{font-size:56px;font-weight:800;letter-spacing:2px;line-height:1;font-variant-numeric:tabular-nums;}
+.bigclock .m{font-size:14px;font-weight:700;margin-top:6px;color:var(--muted);}
+#clockCard.c-ok{border-left-color:var(--g);}
+#clockCard.c-warn{border-left-color:var(--y);background:#fff8dc;}
+#clockCard.c-warn .t{color:#b58900;}
+#clockCard.c-warn .m{color:#b58900;}
+#clockCard.c-late{border-left-color:var(--r);background:#fff2f2;animation:pulse 1s infinite;}
+#clockCard.c-late .t{color:var(--r);}
+#clockCard.c-late .m{color:var(--r);}
+@keyframes pulse{0%,100%{box-shadow:0 1px 6px rgba(212,5,17,.15);}50%{box-shadow:0 0 20px rgba(212,5,17,.5);}}
+.progress-wrap{background:#eee;border-radius:99px;height:12px;overflow:hidden;margin-top:8px;}
+.progress-bar{height:100%;background:var(--y);border-radius:99px;transition:width .3s;}
+input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:15px;margin-bottom:8px;background:#fff;}
+.btn{display:inline-block;border:none;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer;min-height:48px;}
+.btn-y{background:var(--y);color:var(--k);}
+.btn-r{background:var(--r);color:#fff;}
+.btn-o{background:#fff;color:var(--k);border:2px solid #ddd;}
+.btn-block{width:100%;}
+.row-c{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.row-c .info{flex:1;min-width:0;}
+.row-c .nm{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.row-c .sub{font-size:12px;color:var(--muted);}
+.chip{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;white-space:nowrap;}
+.chip.ontime{background:#e7f3e9;color:var(--g);}
+.chip.late{background:#fde8e9;color:var(--r);}
+.chip.pending{background:#f0f0f0;color:#888;}
+.badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;margin-left:5px;vertical-align:middle;}
+.badge.watch{background:var(--y);color:var(--k);}
+.badge.risk{background:var(--r);color:#fff;}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;}
+.kpi{background:#fff;border-radius:14px;padding:12px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:5px solid var(--y);}
+.kpi.red{border-left-color:var(--r);}
+.kpi.green{border-left-color:var(--g);}
+.kpi .v{font-size:26px;font-weight:800;}
+.kpi .l{font-size:12px;color:var(--muted);}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;box-shadow:0 -2px 10px rgba(0,0,0,.1);z-index:50;}
+.nav button{flex:1;border:none;background:none;padding:10px 4px 12px;font-size:11px;color:#888;cursor:pointer;}
+.nav button .ic{display:block;font-size:20px;margin-bottom:2px;}
+.nav button.on{color:var(--r);font-weight:700;}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:100;display:none;flex-direction:column;}
+.overlay.show{display:flex;}
+#camVideo{flex:1;width:100%;object-fit:cover;}
+.cam-top{position:absolute;top:0;left:0;right:0;padding:14px;background:linear-gradient(rgba(0,0,0,.6),transparent);color:#fff;display:flex;justify-content:space-between;align-items:center;}
+.cam-bottom{position:absolute;bottom:0;left:0;right:0;padding:20px;display:flex;justify-content:center;align-items:center;gap:40px;background:linear-gradient(transparent,rgba(0,0,0,.6));}
+.shutter{width:72px;height:72px;border-radius:50%;background:var(--y);border:5px solid #fff;cursor:pointer;}
+.cam-x,.cam-flip{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:18px;cursor:pointer;}
+#setupOverlay{position:fixed;inset:0;background:#fff;z-index:200;display:none;padding:24px;overflow:auto;}
+#setupOverlay.show{display:block;}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:90;display:none;align-items:flex-end;justify-content:center;}
+.modal.show{display:flex;}
+.modal .sheet{background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:640px;max-height:88vh;overflow:auto;padding:16px;}
+canvas.chart{width:100%;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
+.flash{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--k);color:#fff;padding:12px 20px;border-radius:99px;z-index:300;font-size:14px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.3);}
+.photo-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;background:#eee;}
+.hint{background:#fff8dc;border:1px solid var(--y);border-radius:10px;padding:10px;font-size:12px;margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="ybar"></div>
+  <div class="hd">
+    <div class="logo"><span class="dhl-logo-slot"></span></div>
+    <div class="meta"><b id="hdDepot">—</b><span id="hdClock">--:--:--</span></div>
+  </div>
+</div>
+
+<!-- ============ CHECK-IN ============ -->
+<div class="view active" id="view-checkin">
+  <div class="card" id="clockCard">
+    <div class="bigclock">
+      <div class="t" id="bigTime">--:--:--</div>
+      <div class="m" id="bigMsg">เวลาเข้างาน 07:00 น.</div>
+    </div>
+  </div>
+  <div class="card" style="padding:10px 14px;">
+    <div class="small" style="margin-bottom:6px;font-weight:700;">โหมดลงเวลา</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-y btn-block" id="modeCam" onclick="setMode('cam')">📷 ถ่ายทันที</button>
+      <button class="btn btn-o btn-block" id="modeQuick" onclick="setMode('quick')">⚡ ลงเวลาด่วน</button>
+    </div>
+    <div class="small" id="modeHint" style="margin-top:6px;"></div>
+  </div>
+  <div class="card">
+    <h2>เช็คอินเข้างานวันนี้ <span class="small" id="ciDate"></span></h2>
+    <div class="small">Staff เป็นผู้ถ่ายภาพและบันทึกเวลา</div>
+    <div class="progress-wrap"><div class="progress-bar" id="ciProg" style="width:0%"></div></div>
+    <div class="small" id="ciProgTxt" style="margin-top:5px;">เช็คอินแล้ว 0/0</div>
+  </div>
+  <input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor">
+  <div id="ciList"></div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div class="view" id="view-dash">
+  <div id="dashBody"></div>
+  <button class="btn btn-r btn-block" onclick="openReport(todayKey())">📄 สร้างรายงานวันนี้ (Export ภาพ)</button>
+</div>
+
+<!-- ============ HISTORY ============ -->
+<div class="view" id="view-hist">
+  <div class="card"><h2>ประวัติรายวัน</h2><div class="small">แตะวันที่เพื่อดู/ดาวน์โหลดรายงานย้อนหลัง</div></div>
+  <div id="histList"></div>
+</div>
+
+<!-- ============ MANAGE ============ -->
+<div class="view" id="view-manage">
+  <div class="card">
+    <h2>เพิ่มพนักงาน Courier</h2>
+    <input id="fCode" placeholder="รหัสพนักงาน เช่น PHI001">
+    <input id="fName" placeholder="ชื่อ-นามสกุล">
+    <input id="fVendor" placeholder="ชื่อ Vendor">
+    <select id="fType"><option value="2W">2W (มอเตอร์ไซค์)</option><option value="4W">4W (รถยนต์)</option></select>
+    <button class="btn btn-y btn-block" onclick="addCourier()">+ เพิ่มพนักงาน</button>
+  </div>
+  <div class="card"><h2>รายชื่อพนักงาน (<span id="mCount">0</span>)</h2><div id="mList"></div></div>
+  <div class="card red">
+    <h2>ตั้งค่า</h2>
+    <label class="small">สาขา (Depot)</label>
+    <select id="sDepot"><option>PHI</option><option>BPE</option><option>PWT</option><option>PKS</option><option>DST</option><option>BPL</option><option>PWN</option></select>
+    <label class="small">ชื่อ Staff ผู้บันทึก</label>
+    <input id="sStaff" placeholder="ชื่อ Staff">
+    <button class="btn btn-o btn-block" onclick="saveSettings()">บันทึกตั้งค่า</button>
+    <div style="height:10px"></div>
+    <button class="btn btn-o btn-block" onclick="backupJSON()">⬇ สำรองข้อมูล (JSON)</button>
+    <div class="small" style="margin-top:8px;">ข้อมูลเก็บในเครื่องนี้เท่านั้น ห้ามล้างข้อมูลเบราว์เซอร์ • ภาพถ่ายเก็บย้อนหลัง 60 วัน</div>
+  </div>
+</div>
+
+<!-- bottom nav -->
+<div class="nav">
+  <button class="on" data-v="checkin" onclick="nav('checkin')"><span class="ic">✅</span>เช็คอิน</button>
+  <button data-v="dash" onclick="nav('dash')"><span class="ic">📊</span>Dashboard</button>
+  <button data-v="hist" onclick="nav('hist')"><span class="ic">🗓</span>ประวัติ</button>
+  <button data-v="manage" onclick="nav('manage')"><span class="ic">👥</span>จัดการ</button>
+</div>
+
+<!-- camera -->
+<div class="overlay" id="camOverlay">
+  <video id="camVideo" autoplay playsinline muted></video>
+  <div class="cam-top">
+    <div><b id="camName">—</b><div class="small" style="color:#ddd" id="camSub"></div></div>
+    <button class="cam-x" onclick="closeCamera()">✕</button>
+  </div>
+  <div class="cam-bottom">
+    <button class="cam-flip" onclick="flipCamera()">🔄</button>
+    <button class="shutter" onclick="capture()"></button>
+    <button class="cam-flip" id="uniBtn" onclick="toggleUniform()" style="width:auto;padding:0 14px;border-radius:22px;font-size:14px;font-weight:700;">👕 ✓</button>
+  </div>
+</div>
+
+<!-- report modal -->
+<div class="modal" id="repModal">
+  <div class="sheet">
+    <h2 id="repTitle">รายงาน</h2>
+    <div id="repCanvasWrap" style="margin:10px 0;"></div>
+    <button class="btn btn-r btn-block" id="repDl">⬇ ดาวน์โหลดรายงาน (PNG)</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-o btn-block" onclick="document.getElementById('repModal').classList.remove('show')">ปิด</button>
+    <div style="height:12px"></div>
+  </div>
+</div>
+
+<!-- first-run setup -->
+<div id="setupOverlay">
+  <div class="ybar" style="border-radius:99px;margin-bottom:16px;"></div>
+  <div class="logo" style="margin-bottom:6px;"><span class="dhl-logo-slot"></span></div>
+  <h2 style="margin-bottom:4px;">ตั้งค่าครั้งแรก</h2>
+  <div class="small" style="margin-bottom:16px;">Courier Attendance System</div>
+  <label class="small">เลือกสาขาของคุณ</label>
+  <select id="setDepot"><option>PHI</option><option>BPE</option><option>PWT</option><option>PKS</option><option>DST</option><option>BPL</option><option>PWN</option></select>
+  <label class="small">ชื่อ Staff ผู้บันทึก</label>
+  <input id="setStaff" placeholder="เช่น สมชาย ใจดี">
+  <button class="btn btn-y btn-block" onclick="finishSetup()">เริ่มใช้งาน</button>
+</div>
+
+<div class="flash" id="flash"></div>
+
+<script>
+'use strict';
+/* ================= CONFIG ================= */
+const CUTOFF_SHOWN = 7*3600;            // 07:00 — แสดงบน UI
+const CUTOFF_GRACE = 7*3600 + 10*60;    // internal grace (ห้ามแสดงบน UI)
+const PHOTO_RETENTION_DAYS = 60;
+const RISK_WINDOW_DAYS = 7;
+
+/* โลโก้หัวแอป/รายงาน = รหัส Depot ตัวใหญ่ ดำ เอียง */
+
+/* ================= STORAGE ================= */
+let db = null;
+let couriers = JSON.parse(localStorage.getItem('dhl_couriers')||'[]');
+let settings = JSON.parse(localStorage.getItem('dhl_settings')||'null');
+function saveCouriers(){ localStorage.setItem('dhl_couriers', JSON.stringify(couriers)); }
+function persistSettings(){ localStorage.setItem('dhl_settings', JSON.stringify(settings)); }
+
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open('dhl_attendance',1);
+    r.onupgradeneeded = e=>{
+      const d = e.target.result;
+      const s = d.createObjectStore('checkins',{keyPath:'id',autoIncrement:true});
+      s.createIndex('date','date',{unique:false});
+      s.createIndex('cd',['courierId','date'],{unique:true});
+    };
+    r.onsuccess = e=>{ db=e.target.result; res(); };
+    r.onerror = ()=>rej(r.error);
+  });
+}
+function tx(mode){ return db.transaction('checkins',mode).objectStore('checkins'); }
+function getByDate(date){
+  return new Promise((res,rej)=>{
+    const q = tx('readonly').index('date').getAll(date);
+    q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error);
+  });
+}
+function putCheckin(rec){
+  return new Promise((res,rej)=>{
+    const q = tx('readwrite').put(rec);
+    q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error);
+  });
+}
+function delCheckin(id){
+  return new Promise((res,rej)=>{
+    const q = tx('readwrite').delete(id);
+    q.onsuccess=()=>res(); q.onerror=()=>rej(q.error);
+  });
+}
+function getAllDates(){
+  return new Promise((res,rej)=>{
+    const dates = new Set();
+    const q = tx('readonly').index('date').openKeyCursor();
+    q.onsuccess = ()=>{ const c=q.result; if(c){ dates.add(c.key); c.continue(); } else res([...dates].sort().reverse()); };
+    q.onerror=()=>rej(q.error);
+  });
+}
+async function purgeOldPhotos(){
+  const cutoff = dateKey(addDays(new Date(), -PHOTO_RETENTION_DAYS));
+  await new Promise((res)=>{
+    const q = tx('readwrite').openCursor();
+    q.onsuccess = ()=>{ const c=q.result;
+      if(c){ const v=c.value; if(v.date < cutoff && v.photo){ v.photo=null; c.update(v);} c.continue(); }
+      else res();
+    };
+    q.onerror = ()=>res();
+  });
+}
+
+/* ================= UTILS ================= */
+function pad(n){ return String(n).padStart(2,'0'); }
+function dateKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function todayKey(){ return dateKey(new Date()); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function thDate(key){
+  const [y,m,dd] = key.split('-').map(Number);
+  const mo=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return dd+' '+mo[m-1]+' '+(y+543);
+}
+function fmtTime(ts){ const d=new Date(ts); return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function flash(msg){
+  const f=document.getElementById('flash'); f.textContent=msg; f.style.display='block';
+  clearTimeout(f._t); f._t=setTimeout(()=>f.style.display='none',2200);
+}
+function calcStatus(d){
+  const s = d.getHours()*3600 + d.getMinutes()*60 + d.getSeconds();
+  if(s <= CUTOFF_GRACE) return { status:'ontime', buffer: s > CUTOFF_SHOWN };
+  return { status:'late', buffer:false };
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ================= RISK ================= */
+async function riskMap(endKey){
+  const map = {};
+  const end = new Date(endKey+'T00:00:00');
+  for(let i=0;i<RISK_WINDOW_DAYS;i++){
+    const d = addDays(end,-i);
+    if(d.getDay()===0) continue; // ไม่นับวันอาทิตย์
+    const recs = await getByDate(dateKey(d));
+    recs.forEach(r=>{ if(r.status==='late') map[r.courierId]=(map[r.courierId]||0)+1; });
+  }
+  return map;
+}
+function riskLevel(n){ if(n>=3) return 'risk'; if(n>=2) return 'watch'; return null; }
+
+/* ================= NAV ================= */
+function nav(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  if(v==='checkin') renderCheckin();
+  if(v==='dash') renderDash();
+  if(v==='hist') renderHist();
+  if(v==='manage') renderManage();
+}
+
+/* ================= CHECK-IN VIEW ================= */
+let todayRecs = [];
+async function renderCheckin(){
+  document.getElementById('ciDate').textContent = thDate(todayKey());
+  todayRecs = await getByDate(todayKey());
+  const risk = await riskMap(todayKey());
+  const byC = {}; todayRecs.forEach(r=>byC[r.courierId]=r);
+  const act = couriers.filter(c=>c.active);
+  const done = act.filter(c=>byC[c.id]).length;
+  document.getElementById('ciProg').style.width = act.length? (done/act.length*100)+'%':'0%';
+  const noPhoto = todayRecs.filter(r=>!r.photo).length;
+  document.getElementById('ciProgTxt').textContent = 'เช็คอินแล้ว '+done+'/'+act.length+' คน'+(noPhoto? ' • 📷 รอถ่ายภาพ '+noPhoto+' คน':'');
+  const q = (document.getElementById('ciSearch').value||'').toLowerCase();
+  const list = document.getElementById('ciList');
+  if(!act.length){
+    list.innerHTML = '<div class="hint">ยังไม่มีรายชื่อพนักงาน — ไปที่แท็บ <b>จัดการ</b> เพื่อเพิ่มรายชื่อสาขาของคุณก่อน</div>';
+    return;
+  }
+  list.innerHTML = act
+    .filter(c=>!q || (c.name+c.code+c.vendor).toLowerCase().includes(q))
+    .sort((a,b)=> (byC[a.id]?1:0)-(byC[b.id]?1:0) || a.code.localeCompare(b.code))
+    .map(c=>{
+      const r = byC[c.id];
+      const rl = riskLevel(risk[c.id]||0);
+      const badge = rl ? '<span class="badge '+rl+'">'+(rl==='risk'?'RISK':'WATCH')+'</span>' : '';
+      let right;
+      if(r){
+        const chip = r.status==='ontime'
+          ? '<span class="chip ontime">✔ '+fmtTime(r.ts)+'</span>'
+          : '<span class="chip late">✖ '+fmtTime(r.ts)+' Late</span>';
+        const photoBit = r.photo
+          ? '<img class="photo-thumb" src="'+r.photo+'">'
+          : '<button class="btn btn-r" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="openCamera('+c.id+','+r.id+')">📷 ถ่ายภาพ</button>';
+        const uniBit = r.uniform===false
+          ? ' <button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;color:var(--r);border-color:var(--r);" onclick="toggleUniformRec('+r.id+')">👕✖</button>'
+          : ' <button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;color:var(--g);" onclick="toggleUniformRec('+r.id+')">👕✓</button>';
+        right = photoBit + chip + uniBit +
+          ' <button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="redo('+r.id+')">↺</button>';
+      } else {
+        right = ciMode==='quick'
+          ? '<button class="btn btn-y" style="min-height:44px;" onclick="quickLog('+c.id+')">⚡ ลงเวลา</button>'
+          : '<button class="btn btn-y" style="min-height:44px;" onclick="openCamera('+c.id+')">📷 เช็คอิน</button>';
+      }
+      return '<div class="row-c"><div class="info"><div class="nm">'+escapeHtml(c.name)+badge+'</div>'+
+             '<div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor)+'</div></div>'+right+'</div>';
+    }).join('');
+}
+document.getElementById('ciSearch').addEventListener('input',()=>renderCheckin());
+async function redo(id){
+  if(confirm('ลบการเช็คอินนี้เพื่อบันทึกใหม่?')){ await delCheckin(id); renderCheckin(); }
+}
+
+/* ================= MODE (ตัวเลือกการลงเวลา) ================= */
+let ciMode = localStorage.getItem('dhl_mode') || 'cam';
+function setMode(m){ ciMode=m; localStorage.setItem('dhl_mode',m); applyMode(); renderCheckin(); }
+function applyMode(){
+  const c=document.getElementById('modeCam'), q=document.getElementById('modeQuick'), h=document.getElementById('modeHint');
+  if(!c) return;
+  c.className = 'btn btn-block '+(ciMode==='cam'?'btn-y':'btn-o');
+  q.className = 'btn btn-block '+(ciMode==='quick'?'btn-y':'btn-o');
+  h.textContent = ciMode==='cam'
+    ? 'ถ่ายภาพแล้วบันทึกเวลาทันที (มาตรฐาน)'
+    : 'กดลงเวลาก่อน (เวลาล็อกทันที) แล้วตามถ่ายภาพหลังพ้นช่วงเร่งด่วน — ระบบจะเตือนรายการที่ยังไม่มีภาพ';
+}
+async function quickLog(courierId){
+  const c = couriers.find(x=>x.id===courierId);
+  const now = new Date();
+  const st = calcStatus(now);
+  const rec = { courierId, date:todayKey(), ts:now.getTime(), status:st.status, buffer:st.buffer,
+                photo:null, uniform:true, manualEdit:false, staff:settings.staff };
+  try{ await putCheckin(rec); }
+  catch(e){ flash('คนนี้เช็คอินแล้ววันนี้'); return; }
+  flash('⚡ '+c.name+' — '+fmtTime(now.getTime())+' '+(st.status==='ontime'?'✔ Ontime':'✖ Late')+' (รอถ่ายภาพ)');
+  renderCheckin();
+}
+
+/* ================= CAMERA ================= */
+let camStream=null, camCourier=null, camFacing='environment', camAttach=null, camUniform=true;
+function refreshUniBtn(){
+  const b=document.getElementById('uniBtn'); if(!b) return;
+  b.textContent = camUniform? '👕 ✓' : '👕 ✖';
+  b.style.background = camUniform? 'rgba(46,125,50,.85)' : 'rgba(212,5,17,.9)';
+}
+function toggleUniform(){ camUniform=!camUniform; refreshUniBtn(); }
+async function toggleUniformRec(id){
+  const r = todayRecs.find(x=>x.id===id); if(!r) return;
+  r.uniform = (r.uniform===false) ? true : false;
+  await putCheckin(r); renderCheckin();
+}
+async function openCamera(courierId, attachId){
+  camCourier = couriers.find(c=>c.id===courierId);
+  camAttach = attachId ? (todayRecs.find(r=>r.id===attachId)||null) : null;
+  camUniform = camAttach ? (camAttach.uniform!==false) : true;
+  refreshUniBtn();
+  document.getElementById('camName').textContent = camCourier.name;
+  document.getElementById('camSub').textContent = camCourier.code+' • '+camCourier.vendor;
+  document.getElementById('camOverlay').classList.add('show');
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:camFacing}, audio:false});
+    document.getElementById('camVideo').srcObject = camStream;
+  }catch(e){
+    closeCamera();
+    alert('เปิดกล้องไม่ได้: '+e.message+'\n\n• ต้องอนุญาตสิทธิ์กล้อง\n• ต้องเปิดผ่าน https หรือ localhost\n• ระบบไม่รองรับการอัพโหลดภาพจากอัลบั้ม');
+  }
+}
+function closeCamera(){
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+  camAttach = null;
+  document.getElementById('camOverlay').classList.remove('show');
+}
+async function flipCamera(){
+  camFacing = camFacing==='environment' ? 'user' : 'environment';
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); }
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:camFacing}, audio:false});
+    document.getElementById('camVideo').srcObject = camStream;
+  }catch(e){ alert('สลับกล้องไม่ได้: '+e.message); }
+}
+async function capture(){
+  if(!camStream || !camCourier) return;
+  const v = document.getElementById('camVideo');
+  if(!v.videoWidth){ return; }
+  const now = new Date();                       // เวลาบันทึก = วินาทีที่ถ่าย
+  const max = 640, sc = Math.min(1, max/Math.max(v.videoWidth,v.videoHeight));
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(v.videoWidth*sc); cv.height = Math.round(v.videoHeight*sc);
+  cv.getContext('2d').drawImage(v,0,0,cv.width,cv.height);
+  const photo = cv.toDataURL('image/jpeg',0.7);
+  if(camAttach){                                // โหมดถ่ายภาพย้อนหลัง: เวลาเดิม ไม่เปลี่ยน
+    const rec0 = camAttach; camAttach = null;
+    rec0.photo = photo; rec0.uniform = camUniform;
+    try{ await putCheckin(rec0); }catch(e){}
+    closeCamera();
+    flash('📷 บันทึกภาพ '+camCourier.name+' แล้ว — เวลาเดิม '+fmtTime(rec0.ts));
+    renderCheckin();
+    return;
+  }
+  const st = calcStatus(now);
+  const rec = { courierId:camCourier.id, date:todayKey(), ts:now.getTime(),
+                status:st.status, buffer:st.buffer, photo:photo, uniform:camUniform,
+                manualEdit:false, staff:settings.staff };
+  try{ await putCheckin(rec); }
+  catch(e){ closeCamera(); flash('คนนี้เช็คอินแล้ววันนี้'); renderCheckin(); return; }
+  closeCamera();
+  flash(camCourier.name+' — '+fmtTime(now.getTime())+' '+(st.status==='ontime'?'✔ Ontime':'✖ Late'));
+  renderCheckin();
+}
+
+/* ================= DASHBOARD ================= */
+async function dayStats(key){
+  const recs = await getByDate(key);
+  const act = couriers.filter(c=>c.active);
+  const ontime = recs.filter(r=>r.status==='ontime').length;
+  const late = recs.filter(r=>r.status==='late').length;
+  const total = Math.max(act.length, recs.length);
+  const absent = Math.max(0, total - recs.length);
+  const pc = n => total? Math.round(n/total*1000)/10 : 0;
+  return { key, recs, total, ontime, late, absent, ontimePct:pc(ontime), latePct:pc(late) };
+}
+async function renderDash(){
+  const s = await dayStats(todayKey());
+  const risk = await riskMap(todayKey());
+  const riskRows = couriers.filter(c=>c.active && riskLevel(risk[c.id]||0))
+    .sort((a,b)=>(risk[b.id]||0)-(risk[a.id]||0));
+  const noPhoto = s.recs.filter(r=>!r.photo).length;
+  const noUni = s.recs.filter(r=>r.uniform===false).length;
+  let html = '<div class="card"><h2>Dashboard — '+thDate(s.key)+'</h2>'+
+    '<div class="small">'+escapeHtml(settings.depot)+' Depot • Staff: '+escapeHtml(settings.staff)+
+    (noPhoto? ' • <span style="color:var(--r);font-weight:700;">📷 รอถ่ายภาพ '+noPhoto+' รายการ</span>':'')+
+    (noUni? ' • <span style="color:var(--r);font-weight:700;">👕 ไม่ใส่ยูนิฟอร์ม '+noUni+' คน</span>':'')+
+    '</div></div>';
+  html += '<div class="kpis">'+
+    '<div class="kpi"><div class="v">'+s.total+'</div><div class="l">Total Couriers</div></div>'+
+    '<div class="kpi green"><div class="v" style="color:var(--g)">'+s.ontime+'</div><div class="l">Ontime ('+s.ontimePct+'%)</div></div>'+
+    '<div class="kpi red"><div class="v" style="color:var(--r)">'+s.late+'</div><div class="l">Late ('+s.latePct+'%)</div></div>'+
+    '<div class="kpi"><div class="v" style="color:#888">'+s.absent+'</div><div class="l">ยังไม่เช็คอิน</div></div></div>';
+  html += '<div class="card"><h2>Ontime vs Late</h2><canvas class="chart" id="donut" width="600" height="300"></canvas></div>';
+  html += '<div class="card"><h2>Ontime % — 7 วันล่าสุด</h2><canvas class="chart" id="trend" width="600" height="260"></canvas></div>';
+  html += '<div class="card red"><h2>⚠ Risk Alert (สายใน '+RISK_WINDOW_DAYS+' วันล่าสุด)</h2>';
+  if(riskRows.length){
+    html += riskRows.map(c=>{
+      const n = risk[c.id]||0, rl = riskLevel(n);
+      return '<div class="row-c" style="box-shadow:none;border:1px solid #eee;">'+
+        '<div class="info"><div class="nm">'+escapeHtml(c.name)+'<span class="badge '+rl+'">'+(rl==='risk'?'RISK':'WATCH')+'</span></div>'+
+        '<div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.vendor)+'</div></div>'+
+        '<span class="chip late">สาย '+n+' ครั้ง</span></div>';
+    }).join('');
+  } else html += '<div class="small">ไม่มีพนักงานเสี่ยง 👍</div>';
+  html += '</div>';
+  document.getElementById('dashBody').innerHTML = html;
+  drawDonut(document.getElementById('donut'), s);
+  const tr = [];
+  let d = new Date(todayKey()+'T00:00:00');
+  while(tr.length<7){ if(d.getDay()!==0){ tr.unshift(await dayStats(dateKey(d))); } d = addDays(d,-1); }
+  drawTrend(document.getElementById('trend'), tr);
+}
+function drawDonut(cv, s){
+  const ctx = cv.getContext('2d'); ctx.clearRect(0,0,cv.width,cv.height);
+  const cx=170, cy=150, R=110, r=64;
+  const parts = [ {v:s.ontime,c:'#2e7d32',l:'Ontime'}, {v:s.late,c:'#D40511',l:'Late'}, {v:s.absent,c:'#cccccc',l:'ยังไม่เช็คอิน'} ];
+  const tot = parts.reduce((a,p)=>a+p.v,0);
+  let a = -Math.PI/2;
+  parts.forEach(p=>{
+    if(!p.v) return;
+    const ang = tot? p.v/tot*Math.PI*2 : 0;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,a,a+ang); ctx.closePath();
+    ctx.fillStyle=p.c; ctx.fill(); a+=ang;
+  });
+  if(!tot){ ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.fillStyle='#eee'; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.fillStyle='#1a1a1a'; ctx.textAlign='center';
+  ctx.font='800 34px Segoe UI'; ctx.fillText(s.ontimePct+'%', cx, cy+4);
+  ctx.font='12px Segoe UI'; ctx.fillStyle='#777'; ctx.fillText('Ontime', cx, cy+24);
+  ctx.textAlign='left'; let ly=90;
+  parts.forEach(p=>{
+    ctx.fillStyle=p.c; ctx.fillRect(340,ly-11,14,14);
+    ctx.fillStyle='#1a1a1a'; ctx.font='15px Segoe UI';
+    ctx.fillText(p.l+'  '+p.v+' คน', 362, ly+2); ly+=34;
+  });
+}
+function drawTrend(cv, days){
+  const ctx = cv.getContext('2d'); ctx.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height, padL=40, padB=36, padT=16;
+  const bw = (W-padL-20)/days.length;
+  ctx.strokeStyle='#eee';
+  [0,25,50,75,100].forEach(g=>{
+    const y = padT+(H-padT-padB)*(1-g/100);
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-10,y); ctx.stroke();
+    ctx.fillStyle='#999'; ctx.font='10px Segoe UI'; ctx.textAlign='right'; ctx.fillText(g+'%', padL-5, y+3);
+  });
+  days.forEach((d,i)=>{
+    const x = padL + i*bw + bw*0.15, w = bw*0.7;
+    const hasData = d.recs.length>0;
+    const v = hasData? d.ontimePct : 0;
+    const h = (H-padT-padB)*v/100;
+    ctx.fillStyle = !hasData? '#eeeeee' : (v>=95? '#2e7d32' : v>=80? '#FFCC00' : '#D40511');
+    ctx.fillRect(x, H-padB-h, w, Math.max(h,2));
+    ctx.fillStyle='#666'; ctx.font='10px Segoe UI'; ctx.textAlign='center';
+    ctx.fillText(d.key.slice(5).replace('-','/'), x+w/2, H-padB+14);
+    if(hasData){ ctx.fillStyle='#1a1a1a'; ctx.font='700 11px Segoe UI'; ctx.fillText(v+'%', x+w/2, H-padB-h-5); }
+  });
+}
+
+/* ================= HISTORY ================= */
+async function renderHist(){
+  const dates = await getAllDates();
+  const el = document.getElementById('histList');
+  if(!dates.length){ el.innerHTML='<div class="hint">ยังไม่มีข้อมูลเช็คอิน</div>'; return; }
+  const rows = [];
+  for(const k of dates){
+    const s = await dayStats(k);
+    rows.push('<div class="row-c"><div class="info"><div class="nm">'+thDate(k)+'</div>'+
+      '<div class="sub">Ontime '+s.ontime+' ('+s.ontimePct+'%) • Late '+s.late+' ('+s.latePct+'%)</div></div>'+
+      '<button class="btn btn-y" style="min-height:40px;padding:8px 12px;" onclick="openReport(\''+k+'\')">📄 รายงาน</button></div>');
+  }
+  el.innerHTML = rows.join('');
+}
+
+/* ================= MANAGE ================= */
+function addCourier(){
+  const code = document.getElementById('fCode').value.trim();
+  const name = document.getElementById('fName').value.trim();
+  const vendor = document.getElementById('fVendor').value.trim();
+  const type = document.getElementById('fType').value;
+  if(!code||!name){ flash('กรอกรหัสและชื่อให้ครบ'); return; }
+  if(couriers.some(c=>c.code.toLowerCase()===code.toLowerCase())){ flash('รหัสนี้มีอยู่แล้ว'); return; }
+  const id = couriers.length? Math.max(...couriers.map(c=>c.id))+1 : 1;
+  couriers.push({id, code, name, vendor:vendor||'-', type, active:true});
+  saveCouriers();
+  document.getElementById('fCode').value=''; document.getElementById('fName').value=''; document.getElementById('fVendor').value='';
+  flash('เพิ่ม '+name+' แล้ว'); renderManage();
+}
+function toggleActive(id){
+  const c = couriers.find(x=>x.id===id); c.active=!c.active; saveCouriers(); renderManage();
+}
+function editCourier(id){
+  const c = couriers.find(x=>x.id===id);
+  const name = prompt('ชื่อ-นามสกุล', c.name); if(name===null) return;
+  const vendor = prompt('Vendor', c.vendor); if(vendor===null) return;
+  const type = prompt('Type (2W/4W)', c.type||'2W'); if(type===null) return;
+  c.name=name.trim()||c.name; c.vendor=vendor.trim()||c.vendor;
+  c.type=(type.trim().toUpperCase()==='4W')?'4W':'2W'; saveCouriers(); renderManage();
+}
+function renderManage(){
+  document.getElementById('mCount').textContent = couriers.length;
+  document.getElementById('sDepot').value = settings.depot;
+  document.getElementById('sStaff').value = settings.staff;
+  document.getElementById('mList').innerHTML = couriers.length? couriers.map(c=>
+    '<div class="row-c" style="box-shadow:none;border:1px solid #eee;opacity:'+(c.active?1:.45)+'">'+
+    '<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.vendor)+'</div></div>'+
+    '<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="editCourier('+c.id+')">แก้ไข</button>'+
+    '<button class="btn '+(c.active?'btn-o':'btn-y')+'" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="toggleActive('+c.id+')">'+(c.active?'พัก':'ใช้งาน')+'</button></div>'
+  ).join('') : '<div class="small">ยังไม่มีรายชื่อ</div>';
+}
+function saveSettings(){
+  settings.depot = document.getElementById('sDepot').value;
+  settings.staff = document.getElementById('sStaff').value.trim()||settings.staff;
+  persistSettings(); applyHeader(); flash('บันทึกตั้งค่าแล้ว');
+}
+async function backupJSON(){
+  const all = await new Promise((res,rej)=>{ const q=tx('readonly').getAll(); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
+  const data = { settings, couriers, checkins: all.map(r=>({...r, photo: undefined})) };
+  const blob = new Blob([JSON.stringify(data)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = settings.depot+'_attendance_backup_'+todayKey()+'.json';
+  a.click();
+}
+
+/* ================= REPORT (Export PNG หน้าเดียว) ================= */
+async function openReport(key){
+  flash('กำลังสร้างรายงาน...');
+  const cv = await drawReport(key);
+  const wrap = document.getElementById('repCanvasWrap');
+  wrap.innerHTML=''; cv.style.width='100%'; cv.style.borderRadius='10px'; cv.style.border='1px solid #eee';
+  wrap.appendChild(cv);
+  document.getElementById('repTitle').textContent = 'รายงาน '+thDate(key)+' — '+settings.depot;
+  document.getElementById('repDl').onclick = ()=>{
+    const a = document.createElement('a');
+    a.href = cv.toDataURL('image/png');
+    a.download = settings.depot+'_Attendance_'+key+'.png';
+    a.click();
+  };
+  document.getElementById('repModal').classList.add('show');
+}
+function loadImg(src){
+  return new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src; });
+}
+async function drawReport(key){
+  const s = await dayStats(key);
+  const risk = await riskMap(key);
+  const riskRows = couriers.filter(c=>c.active && riskLevel(risk[c.id]||0)).sort((a,b)=>(risk[b.id]||0)-(risk[a.id]||0));
+  const cMap = {}; couriers.forEach(c=>cMap[c.id]=c);
+  const recs = s.recs.slice().sort((a,b)=>a.ts-b.ts);
+  const imgs = await Promise.all(recs.map(r=>r.photo? loadImg(r.photo) : Promise.resolve(null)));
+
+  const W=1080, P=40, COLS=5, CELL=(W-P*2-(COLS-1)*16)/COLS, CELLH=CELL+56;
+  const photoRows = Math.ceil(recs.length/COLS);
+  const riskH = riskRows.length? 60+riskRows.length*34 : 70;
+  const gridH = recs.length? 60+photoRows*(CELLH+16) : 60;
+  const H = 210 + 150 + 420 + riskH + gridH + 80;
+  const cv = document.createElement('canvas'); cv.width=W; cv.height=H;
+  const x = cv.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,W,H);
+
+  /* header */
+  x.fillStyle='#FFCC00'; x.fillRect(0,0,W,16);
+  x.fillStyle='#1a1a1a'; x.font='italic 900 68px Segoe UI'; x.textAlign='left';
+  x.fillText(settings.depot, P, 92);
+  x.font='700 30px Segoe UI'; x.textAlign='right';
+  x.fillText('Courier Attendance Report', W-P, 66);
+  x.font='22px Segoe UI'; x.fillStyle='#555';
+  x.fillText(thDate(key), W-P, 100);
+  x.strokeStyle='#eee'; x.beginPath(); x.moveTo(P,130); x.lineTo(W-P,130); x.stroke();
+
+  /* KPI cards */
+  const kY=160, kW=(W-P*2-3*16)/4;
+  const kpis=[
+    {l:'Total', v:s.total, c:'#1a1a1a'},
+    {l:'Ontime', v:s.ontime+'  ('+s.ontimePct+'%)', c:'#2e7d32'},
+    {l:'Late', v:s.late+'  ('+s.latePct+'%)', c:'#D40511'},
+    {l:'No Check-in', v:s.absent, c:'#888888'}
+  ];
+  x.textAlign='left';
+  kpis.forEach((k,i)=>{
+    const kx=P+i*(kW+16);
+    x.fillStyle='#fafafa'; roundRect(x,kx,kY,kW,110,14); x.fill();
+    x.fillStyle=k.c; x.fillRect(kx,kY,8,110);
+    x.font='800 38px Segoe UI'; x.fillText(String(k.v), kx+24, kY+58);
+    x.font='20px Segoe UI'; x.fillStyle='#777'; x.fillText(k.l, kx+24, kY+92);
+  });
+
+  /* charts */
+  const chY=kY+140;
+  x.fillStyle='#1a1a1a'; x.font='700 26px Segoe UI'; x.fillText('Ontime vs Late', P, chY+30);
+  const dcv=document.createElement('canvas'); dcv.width=600; dcv.height=300;
+  drawDonut(dcv, s); x.drawImage(dcv, P, chY+50, 480, 240);
+  x.fillText('Ontime % — 7 Days', W/2+20, chY+30);
+  const tdays=[]; let dd=new Date(key+'T00:00:00');
+  while(tdays.length<7){ if(dd.getDay()!==0){ tdays.unshift(await dayStats(dateKey(dd))); } dd=addDays(dd,-1); }
+  const tcv=document.createElement('canvas'); tcv.width=600; tcv.height=280;
+  drawTrend(tcv, tdays); x.drawImage(tcv, W/2+20, chY+50, 480, 224);
+
+  /* risk */
+  let ry = chY+330;
+  x.fillStyle='#D40511'; x.font='700 26px Segoe UI'; x.fillText('⚠ Risk Alert — Late in last '+RISK_WINDOW_DAYS+' days', P, ry);
+  ry+=14;
+  if(riskRows.length){
+    riskRows.forEach(c=>{
+      ry+=34;
+      const n=risk[c.id]||0, rl=riskLevel(n);
+      x.fillStyle = rl==='risk'? '#D40511':'#c79b00';
+      x.font='700 22px Segoe UI';
+      x.fillText((rl==='risk'?'● RISK  ':'● WATCH  ')+c.code+'  '+c.name+'  ('+c.vendor+')  — สาย '+n+' ครั้ง', P+10, ry);
+    });
+    ry+=26;
+  } else { ry+=36; x.fillStyle='#2e7d32'; x.font='22px Segoe UI'; x.fillText('ไม่มีพนักงานเสี่ยง', P+10, ry); ry+=20; }
+
+  /* photo grid */
+  const noUniR = recs.filter(r=>r.uniform===false).length;
+  x.fillStyle='#1a1a1a'; x.font='700 26px Segoe UI';
+  x.fillText('Check-in Photos ('+recs.length+')'+(noUniR? '    •    No Uniform: '+noUniR:''), P, ry+30);
+  let gy=ry+50;
+  recs.forEach((r,i)=>{
+    const col=i%COLS, row=Math.floor(i/COLS);
+    const gx=P+col*(CELL+16), yy=gy+row*(CELLH+16);
+    x.fillStyle='#f2f2f2'; roundRect(x,gx,yy,CELL,CELL,10); x.fill();
+    const im=imgs[i];
+    if(im){
+      x.save(); roundRect(x,gx,yy,CELL,CELL,10); x.clip();
+      const sc=Math.max(CELL/im.width, CELL/im.height);
+      x.drawImage(im, gx+(CELL-im.width*sc)/2, yy+(CELL-im.height*sc)/2, im.width*sc, im.height*sc);
+      x.restore();
+    } else { x.fillStyle='#bbb'; x.font='14px Segoe UI'; x.textAlign='center'; x.fillText('no photo', gx+CELL/2, yy+CELL/2); x.textAlign='left'; }
+    const c=cMap[r.courierId]||{code:'?',name:'?'};
+    x.fillStyle = r.status==='ontime'? '#2e7d32':'#D40511';
+    x.fillRect(gx, yy+CELL+6, 8, 40);
+    x.fillStyle='#1a1a1a'; x.font='700 16px Segoe UI';
+    x.fillText(trunc(x, c.name, CELL-20), gx+14, yy+CELL+22);
+    x.font='14px Segoe UI'; x.fillStyle = r.status==='ontime'? '#2e7d32':'#D40511';
+    x.fillText(c.code+' • '+fmtTime(r.ts)+(r.status==='late'?' LATE':' OK'), gx+14, yy+CELL+42);
+    if(r.uniform===false){
+      x.fillStyle='#D40511'; x.font='700 14px Segoe UI'; x.textAlign='right';
+      x.fillText('👕✖', gx+CELL-8, yy+20); x.textAlign='left';
+    }
+  });
+
+  /* footer */
+  x.fillStyle='#999'; x.font='16px Segoe UI'; x.textAlign='center';
+  x.fillText('Generated by '+settings.staff+' — '+settings.depot+' Attendance System • '+new Date().toLocaleString('th-TH'), W/2, H-30);
+  x.fillStyle='#FFCC00'; x.fillRect(0,H-12,W,12);
+  return cv;
+}
+function roundRect(x,px,py,w,h,r){
+  x.beginPath();
+  x.moveTo(px+r,py); x.arcTo(px+w,py,px+w,py+h,r); x.arcTo(px+w,py+h,px,py+h,r);
+  x.arcTo(px,py+h,px,py,r); x.arcTo(px,py,px+w,py,r); x.closePath();
+}
+function trunc(x, str, maxW){
+  if(x.measureText(str).width<=maxW) return str;
+  while(str.length>1 && x.measureText(str+'…').width>maxW) str=str.slice(0,-1);
+  return str+'…';
+}
+
+/* ================= CLOCKS ================= */
+function updateClocks(){
+  const d = new Date();
+  const t = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  document.getElementById('hdClock').textContent = t;
+  const bt = document.getElementById('bigTime'), bm = document.getElementById('bigMsg'), bc = document.getElementById('clockCard');
+  if(!bt) return;
+  bt.textContent = t;
+  const s = d.getHours()*3600 + d.getMinutes()*60 + d.getSeconds();
+  bc.classList.remove('c-ok','c-warn','c-late');
+  if(s < CUTOFF_SHOWN - 600){
+    bc.classList.add('c-ok');
+    bm.textContent = 'เวลาเข้างาน 07:00 น.';
+  } else if(s < CUTOFF_SHOWN){
+    const r = CUTOFF_SHOWN - s;
+    bc.classList.add('c-warn');
+    bm.textContent = '⏳ เหลืออีก '+Math.floor(r/60)+':'+pad(r%60)+' นาที ก่อน 07:00 — เร่งเช็คอิน!';
+  } else if(s < 10*3600){
+    const o = Math.floor((s - CUTOFF_SHOWN)/60);
+    bc.classList.add('c-late');
+    bm.textContent = '🚨 เลยเวลาเข้างานแล้ว +'+o+' นาที';
+  } else {
+    bm.textContent = 'เวลาเข้างาน 07:00 น.';
+  }
+}
+setInterval(updateClocks, 1000);
+
+/* ================= SETUP / INIT ================= */
+function renderLogo(){
+  const t = settings? settings.depot : 'DHL';
+  document.querySelectorAll('.dhl-logo-slot').forEach(el=>{ el.innerHTML = '<span class="depot-logo">'+escapeHtml(t)+'</span>'; });
+}
+function applyHeader(){ document.getElementById('hdDepot').textContent = 'Courier Attendance'; renderLogo(); }
+function finishSetup(){
+  const staff = document.getElementById('setStaff').value.trim();
+  if(!staff){ alert('กรุณากรอกชื่อ Staff'); return; }
+  settings = { depot: document.getElementById('setDepot').value, staff };
+  persistSettings();
+  document.getElementById('setupOverlay').classList.remove('show');
+  applyHeader(); renderCheckin();
+}
+
+(async function init(){
+  renderLogo();
+  applyMode();
+  updateClocks();
+  await openDB();
+  await purgeOldPhotos();
+  if(!settings){ document.getElementById('setupOverlay').classList.add('show'); }
+  else { applyHeader(); renderCheckin(); }
+})();
+</script>
+</body>
+</html>

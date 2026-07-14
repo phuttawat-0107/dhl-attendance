@@ -397,6 +397,17 @@ async function quickLog(courierId){
 
 /* ================= CAMERA ================= */
 let camStream=null, camCourier=null, camFacing='environment', camAttach=null, camUniform=true;
+function camErrorMsg(e){
+  if(e.name==='NotAllowedError'||e.name==='PermissionDeniedError')
+    return 'สิทธิ์กล้องถูกปฏิเสธ (เคยกด Block ไว้)\n\nวิธีแก้:\n1. กดไอคอนแม่กุญแจ 🔒 หรือ 🎥 ข้างแถบ URL\n2. ตั้ง Camera = Allow (อนุญาต)\n3. รีเฟรชหน้าแล้วลองใหม่';
+  if(e.name==='NotFoundError'||e.name==='DevicesNotFoundError')
+    return 'ไม่พบกล้องในเครื่องนี้\n\n• คอมพิวเตอร์ต้องมี webcam ต่ออยู่\n• แนะนำใช้มือถือแทน';
+  if(e.name==='NotReadableError'||e.name==='TrackStartError')
+    return 'กล้องถูกใช้งานโดยแอปอื่นอยู่ (Zoom / Teams / LINE / กล้องถ่ายรูป)\n\nปิดแอปนั้นแล้วลองใหม่';
+  if(location.protocol==='http:' && location.hostname!=='localhost' && location.hostname!=='127.0.0.1')
+    return 'ต้องเปิดผ่านลิงก์ https เท่านั้น กล้องถึงจะทำงาน';
+  return 'เปิดกล้องไม่ได้: '+e.name+' — '+e.message;
+}
 function refreshUniBtn(){
   const b=document.getElementById('uniBtn'); if(!b) return;
   b.textContent = camUniform? '👕 ✓' : '👕 ✖';
@@ -420,8 +431,13 @@ async function openCamera(courierId, attachId){
     camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:camFacing}, audio:false});
     document.getElementById('camVideo').srcObject = camStream;
   }catch(e){
+    try{ // fallback: ขอกล้องตัวไหนก็ได้ (สำคัญกับ webcam คอม)
+      camStream = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
+      document.getElementById('camVideo').srcObject = camStream;
+      return;
+    }catch(e2){ e = e2; }
     closeCamera();
-    alert('เปิดกล้องไม่ได้: '+e.message+'\n\n• ต้องอนุญาตสิทธิ์กล้อง\n• ต้องเปิดผ่าน https หรือ localhost\n• ระบบไม่รองรับการอัพโหลดภาพจากอัลบั้ม');
+    alert(camErrorMsg(e));
   }
 }
 function closeCamera(){
@@ -435,7 +451,11 @@ async function flipCamera(){
   try{
     camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:camFacing}, audio:false});
     document.getElementById('camVideo').srcObject = camStream;
-  }catch(e){ alert('สลับกล้องไม่ได้: '+e.message); }
+  }catch(e){
+    try{ camStream = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
+         document.getElementById('camVideo').srcObject = camStream; }
+    catch(e2){ alert(camErrorMsg(e2)); }
+  }
 }
 async function capture(){
   if(!camStream || !camCourier) return;

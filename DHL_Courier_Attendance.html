@@ -150,6 +150,10 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
     <button class="btn btn-o btn-block" onclick="saveSettings()">บันทึกตั้งค่า</button>
     <div style="height:10px"></div>
     <button class="btn btn-o btn-block" onclick="backupJSON()">⬇ สำรองข้อมูล (JSON)</button>
+    <div style="height:10px"></div>
+    <button class="btn btn-o btn-block" style="color:var(--r);border-color:var(--r);" onclick="clearCheckins()">🗑 ล้างประวัติเช็คอินทั้งหมด (เก็บรายชื่อไว้)</button>
+    <div style="height:10px"></div>
+    <button class="btn btn-r btn-block" onclick="resetAll()">⚠ Reset ระบบทั้งหมด</button>
     <div class="small" style="margin-top:8px;">ข้อมูลเก็บในเครื่องนี้เท่านั้น ห้ามล้างข้อมูลเบราว์เซอร์ • ภาพถ่ายเก็บย้อนหลัง 60 วัน</div>
   </div>
 </div>
@@ -655,6 +659,23 @@ function saveSettings(){
   settings.depot = document.getElementById('sDepot').value;
   settings.staff = document.getElementById('sStaff').value.trim()||settings.staff;
   persistSettings(); applyHeader(); flash('บันทึกตั้งค่าแล้ว');
+}
+async function clearCheckins(){
+  if(!confirm('ลบประวัติเช็คอิน + ภาพถ่ายทั้งหมดทุกวัน?\n(รายชื่อพนักงานและการตั้งค่ายังอยู่)')) return;
+  await new Promise((res,rej)=>{ const q=tx('readwrite').clear(); q.onsuccess=()=>res(); q.onerror=()=>rej(q.error); });
+  flash('🗑 ล้างประวัติเช็คอินแล้ว');
+  renderCheckin(); nav('checkin');
+}
+function resetAll(){
+  const t = prompt('⚠ จะลบทุกอย่าง: รายชื่อ + ประวัติ + ภาพ + ตั้งค่า\nพิมพ์คำว่า RESET เพื่อยืนยัน');
+  if(t===null) return;
+  if(t.trim().toUpperCase()!=='RESET'){ flash('ยกเลิก — ต้องพิมพ์ RESET'); return; }
+  localStorage.removeItem('dhl_couriers');
+  localStorage.removeItem('dhl_settings');
+  localStorage.removeItem('dhl_mode');
+  if(db) db.close();
+  const req = indexedDB.deleteDatabase('dhl_attendance');
+  req.onsuccess = req.onerror = req.onblocked = ()=>location.reload();
 }
 async function backupJSON(){
   const all = await new Promise((res,rej)=>{ const q=tx('readonly').getAll(); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });

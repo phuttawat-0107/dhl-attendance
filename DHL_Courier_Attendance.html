@@ -150,11 +150,15 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
     <button class="btn btn-o btn-block" onclick="saveSettings()">บันทึกตั้งค่า</button>
     <div style="height:10px"></div>
     <button class="btn btn-o btn-block" onclick="backupJSON()">⬇ สำรองข้อมูล (JSON)</button>
-    <div style="height:10px"></div>
-    <button class="btn btn-o btn-block" style="color:var(--r);border-color:var(--r);" onclick="clearCheckins()">🗑 ล้างประวัติเช็คอินทั้งหมด (เก็บรายชื่อไว้)</button>
-    <div style="height:10px"></div>
-    <button class="btn btn-r btn-block" onclick="resetAll()">⚠ Reset ระบบทั้งหมด</button>
     <div class="small" style="margin-top:8px;">ข้อมูลเก็บในเครื่องนี้เท่านั้น ห้ามล้างข้อมูลเบราว์เซอร์ • ภาพถ่ายเก็บย้อนหลัง 60 วัน</div>
+    <div id="adminZone" style="display:none;">
+      <div style="height:14px"></div>
+      <div class="small" style="font-weight:700;color:var(--r);">🔓 เมนูผู้ดูแล (Admin)</div>
+      <div style="height:6px"></div>
+      <button class="btn btn-o btn-block" style="color:var(--r);border-color:var(--r);" onclick="clearCheckins()">🗑 ล้างประวัติเช็คอินทั้งหมด (เก็บรายชื่อไว้)</button>
+      <div style="height:10px"></div>
+      <button class="btn btn-r btn-block" onclick="resetAll()">⚠ Reset ระบบทั้งหมด</button>
+    </div>
   </div>
 </div>
 
@@ -866,8 +870,21 @@ function finishSetup(){
   applyHeader(); renderCheckin();
 }
 
+/* เมนูลับ: แตะโลโก้ Depot 7 ครั้งติดกัน */
+let admTaps=0, admT=null;
+function admTap(){
+  admTaps++; clearTimeout(admT); admT=setTimeout(()=>{admTaps=0;},2500);
+  if(admTaps>=7){
+    admTaps=0;
+    document.getElementById('adminZone').style.display='block';
+    flash('🔓 เปิดเมนูผู้ดูแลแล้ว — ล่างสุดของแท็บ จัดการ');
+    nav('manage');
+  }
+}
+
 (async function init(){
   renderLogo();
+  document.querySelector('.topbar .logo').addEventListener('click', admTap);
   applyMode();
   updateClocks();
   await openDB();

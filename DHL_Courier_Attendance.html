@@ -346,9 +346,10 @@ async function renderCheckin(){
       const badge = rl ? '<span class="badge '+rl+'">'+(rl==='risk'?'RISK':'WATCH')+'</span>' : '';
       let right;
       if(r){
+        const star = r.manualEdit? '*' : '';
         const chip = r.status==='ontime'
-          ? '<span class="chip ontime">✔ '+fmtTime(r.ts)+'</span>'
-          : '<span class="chip late">✖ '+fmtTime(r.ts)+' Late</span>';
+          ? '<span class="chip ontime">✔ '+fmtTime(r.ts)+star+'</span>'
+          : '<span class="chip late">✖ '+fmtTime(r.ts)+star+' Late</span>';
         const photoBit = r.photo
           ? '<img class="photo-thumb" src="'+r.photo+'">'
           : '<button class="btn btn-r" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="openCamera('+c.id+','+r.id+')">📷 ถ่ายภาพ</button>';
@@ -356,6 +357,7 @@ async function renderCheckin(){
           ? ' <button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;color:var(--r);border-color:var(--r);" onclick="toggleUniformRec('+r.id+')">👕✖</button>'
           : ' <button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;color:var(--g);" onclick="toggleUniformRec('+r.id+')">👕✓</button>';
         right = photoBit + chip + uniBit +
+          ' <button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;" onclick="editTime('+r.id+')">🕐</button>'+
           ' <button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="redo('+r.id+')">↺</button>';
       } else {
         right = ciMode==='quick'
@@ -369,6 +371,21 @@ async function renderCheckin(){
 document.getElementById('ciSearch').addEventListener('input',()=>renderCheckin());
 async function redo(id){
   if(confirm('ลบการเช็คอินนี้เพื่อบันทึกใหม่?')){ await delCheckin(id); renderCheckin(); }
+}
+async function editTime(id){
+  const r = todayRecs.find(x=>x.id===id); if(!r) return;
+  const t = prompt('แก้ไขเวลาเข้างาน (HH:MM เช่น 06:55)\n⚠ รายการที่แก้จะติดเครื่องหมาย * ในรายงาน', fmtTime(r.ts));
+  if(t===null) return;
+  const m = t.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if(!m){ flash('รูปแบบไม่ถูกต้อง ใช้ HH:MM'); return; }
+  const hh=+m[1], mm=+m[2];
+  if(hh>23||mm>59){ flash('เวลาไม่ถูกต้อง'); return; }
+  const d = new Date(r.ts); d.setHours(hh,mm,0,0);
+  const st = calcStatus(d);
+  r.ts=d.getTime(); r.status=st.status; r.buffer=st.buffer; r.manualEdit=true;
+  await putCheckin(r);
+  flash('🕐 แก้เวลาเป็น '+fmtTime(r.ts)+' ('+(st.status==='ontime'?'✔ Ontime':'✖ Late')+') *');
+  renderCheckin();
 }
 
 /* ================= MODE (ตัวเลือกการลงเวลา) ================= */
@@ -509,6 +526,7 @@ async function renderDash(){
     '<div class="small">'+escapeHtml(settings.depot)+' Depot • Staff: '+escapeHtml(settings.staff)+
     (noPhoto? ' • <span style="color:var(--r);font-weight:700;">📷 รอถ่ายภาพ '+noPhoto+' รายการ</span>':'')+
     (noUni? ' • <span style="color:var(--r);font-weight:700;">👕 ไม่ใส่ยูนิฟอร์ม '+noUni+' คน</span>':'')+
+    (s.recs.filter(r=>r.manualEdit).length? ' • <span style="color:#b58900;font-weight:700;">🕐 แก้เวลา '+s.recs.filter(r=>r.manualEdit).length+' รายการ</span>':'')+
     '</div></div>';
   html += '<div class="kpis">'+
     '<div class="kpi"><div class="v">'+s.total+'</div><div class="l">Total Couriers</div></div>'+
@@ -739,8 +757,10 @@ async function drawReport(key){
 
   /* photo grid */
   const noUniR = recs.filter(r=>r.uniform===false).length;
+  const editedR = recs.filter(r=>r.manualEdit).length;
   x.fillStyle='#1a1a1a'; x.font='700 26px Segoe UI';
-  x.fillText('Check-in Photos ('+recs.length+')'+(noUniR? '    •    No Uniform: '+noUniR:''), P, ry+30);
+  x.fillText('Check-in Photos ('+recs.length+')'+(noUniR? '    •    No Uniform: '+noUniR:'')
+    +(editedR? '    •    * Time edited: '+editedR:''), P, ry+30);
   let gy=ry+50;
   recs.forEach((r,i)=>{
     const col=i%COLS, row=Math.floor(i/COLS);
@@ -759,7 +779,7 @@ async function drawReport(key){
     x.fillStyle='#1a1a1a'; x.font='700 16px Segoe UI';
     x.fillText(trunc(x, c.name, CELL-20), gx+14, yy+CELL+22);
     x.font='14px Segoe UI'; x.fillStyle = r.status==='ontime'? '#2e7d32':'#D40511';
-    x.fillText(c.code+' • '+fmtTime(r.ts)+(r.status==='late'?' LATE':' OK'), gx+14, yy+CELL+42);
+    x.fillText(c.code+' • '+fmtTime(r.ts)+(r.manualEdit?'*':'')+(r.status==='late'?' LATE':' OK'), gx+14, yy+CELL+42);
     if(r.uniform===false){
       x.fillStyle='#D40511'; x.font='700 14px Segoe UI'; x.textAlign='right';
       x.fillText('👕✖', gx+CELL-8, yy+20); x.textAlign='left';

@@ -7,8 +7,8 @@
 <style>
 :root{--y:#FFCC00;--r:#D40511;--k:#1a1a1a;--g:#2e7d32;--bg:#ffffff;--muted:#777;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{font-family:'Segoe UI','Noto Sans Thai',Tahoma,sans-serif;background:#f6f6f6;color:var(--k);padding-bottom:70px;}
-.topbar{position:sticky;top:0;z-index:50;background:var(--bg);box-shadow:0 2px 8px rgba(0,0,0,.08);}
+body{font-family:'Segoe UI','Noto Sans Thai',Tahoma,sans-serif;background:linear-gradient(180deg,#f7f8fa,#edeff4);min-height:100vh;color:var(--k);padding-bottom:92px;-webkit-font-smoothing:antialiased;}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 2px 12px rgba(0,0,0,.06);}
 .ybar{height:8px;background:var(--y);}
 .hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;}
 .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:22px;}
@@ -18,7 +18,7 @@ body{font-family:'Segoe UI','Noto Sans Thai',Tahoma,sans-serif;background:#f6f6f
 .hd .meta b{display:block;font-size:15px;color:var(--k);}
 .view{display:none;padding:14px;max-width:640px;margin:0 auto;}
 .view.active{display:block;}
-.card{background:#fff;border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.07);padding:14px;margin-bottom:12px;border-left:5px solid var(--y);}
+.card{background:#fff;border-radius:18px;border:1px solid #f0f0f2;box-shadow:0 2px 14px rgba(0,0,0,.05);padding:14px;margin-bottom:12px;border-left:5px solid var(--y);animation:fadeUp .25s ease;}
 .card.red{border-left-color:var(--r);}
 h2{font-size:17px;margin-bottom:10px;}
 .small{font-size:12px;color:var(--muted);}
@@ -33,15 +33,19 @@ h2{font-size:17px;margin-bottom:10px;}
 #clockCard.c-late .t{color:var(--r);}
 #clockCard.c-late .m{color:var(--r);}
 @keyframes pulse{0%,100%{box-shadow:0 1px 6px rgba(212,5,17,.15);}50%{box-shadow:0 0 20px rgba(212,5,17,.5);}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+@keyframes slideUp{from{transform:translateY(50px);opacity:.4;}to{transform:none;opacity:1;}}
 .progress-wrap{background:#eee;border-radius:99px;height:12px;overflow:hidden;margin-top:8px;}
-.progress-bar{height:100%;background:var(--y);border-radius:99px;transition:width .3s;}
-input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:15px;margin-bottom:8px;background:#fff;}
-.btn{display:inline-block;border:none;border-radius:10px;padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer;min-height:48px;}
-.btn-y{background:var(--y);color:var(--k);}
-.btn-r{background:var(--r);color:#fff;}
-.btn-o{background:#fff;color:var(--k);border:2px solid #ddd;}
+.progress-bar{height:100%;background:linear-gradient(90deg,#ffd83d,#ffb700);border-radius:99px;transition:width .35s ease;}
+input,select{width:100%;padding:12px;border:1.5px solid #e3e5e9;border-radius:12px;font-size:15px;margin-bottom:8px;background:#fff;transition:border-color .15s, box-shadow .15s;}
+input:focus,select:focus{outline:none;border-color:var(--y);box-shadow:0 0 0 3px rgba(255,204,0,.25);}
+.btn{display:inline-block;border:none;border-radius:12px;padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer;min-height:48px;transition:transform .1s ease, box-shadow .2s ease;}
+.btn:active{transform:scale(.96);}
+.btn-y{background:linear-gradient(135deg,#ffd83d,#FFCC00);color:var(--k);box-shadow:0 3px 10px rgba(255,204,0,.35);}
+.btn-r{background:linear-gradient(135deg,#e6212e,#D40511);color:#fff;box-shadow:0 3px 10px rgba(212,5,17,.3);}
+.btn-o{background:#fff;color:var(--k);border:2px solid #e3e5e9;}
 .btn-block{width:100%;}
-.row-c{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.row-c{display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;border:1px solid #f0f0f2;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 8px rgba(0,0,0,.04);animation:fadeUp .2s ease;}
 .row-c .info{flex:1;min-width:0;}
 .row-c .nm{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .row-c .sub{font-size:12px;color:var(--muted);}
@@ -53,15 +57,15 @@ input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;fo
 .badge.watch{background:var(--y);color:var(--k);}
 .badge.risk{background:var(--r);color:#fff;}
 .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;}
-.kpi{background:#fff;border-radius:14px;padding:12px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:5px solid var(--y);}
+.kpi{background:#fff;border-radius:16px;border:1px solid #f0f0f2;padding:12px;box-shadow:0 2px 10px rgba(0,0,0,.05);border-left:5px solid var(--y);}
 .kpi.red{border-left-color:var(--r);}
 .kpi.green{border-left-color:var(--g);}
 .kpi .v{font-size:26px;font-weight:800;}
 .kpi .l{font-size:12px;color:var(--muted);}
-.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;box-shadow:0 -2px 10px rgba(0,0,0,.1);z-index:50;}
-.nav button{flex:1;border:none;background:none;padding:10px 4px 12px;font-size:11px;color:#888;cursor:pointer;}
+.nav{position:fixed;bottom:10px;left:10px;right:10px;max-width:620px;margin:0 auto;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;box-shadow:0 8px 28px rgba(0,0,0,.16);z-index:50;border-radius:22px;padding:5px;}
+.nav button{flex:1;border:none;background:none;padding:8px 4px 9px;font-size:11px;color:#8a8a8a;cursor:pointer;border-radius:17px;transition:background .15s,color .15s;}
 .nav button .ic{display:block;font-size:20px;margin-bottom:2px;}
-.nav button.on{color:var(--r);font-weight:700;}
+.nav button.on{color:var(--k);font-weight:800;background:linear-gradient(135deg,#ffd83d,#FFCC00);}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:100;display:none;flex-direction:column;}
 .overlay.show{display:flex;}
 #camVideo{flex:1;width:100%;object-fit:cover;}
@@ -73,13 +77,13 @@ input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;fo
 #setupOverlay.show{display:block;}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:90;display:none;align-items:flex-end;justify-content:center;}
 .modal.show{display:flex;}
-.modal .sheet{background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:640px;max-height:88vh;overflow:auto;padding:16px;}
+.modal .sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:640px;max-height:88vh;overflow:auto;padding:18px;animation:slideUp .25s ease;}
 canvas.chart{width:100%;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
 .flash{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--k);color:#fff;padding:12px 20px;border-radius:99px;z-index:300;font-size:14px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.3);}
-.photo-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;background:#eee;}
-.hint{background:#fff8dc;border:1px solid var(--y);border-radius:10px;padding:10px;font-size:12px;margin-bottom:10px;}
+.photo-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#eee;}
+.hint{background:#fff8dc;border:1px solid var(--y);border-radius:12px;padding:10px;font-size:12px;margin-bottom:10px;}
 </style>
 </head>
 <body>
@@ -196,6 +200,26 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
   </div>
 </div>
 
+<!-- edit courier modal -->
+<div class="modal" id="editModal">
+  <div class="sheet">
+    <h2>✏️ แก้ไขข้อมูลพนักงาน</h2>
+    <label class="small">รหัสพนักงาน</label>
+    <input id="eCode">
+    <label class="small">ชื่อ-นามสกุล</label>
+    <input id="eName">
+    <label class="small">Vendor</label>
+    <input id="eVendor">
+    <label class="small">Type</label>
+    <select id="eType"><option value="2W">2W (มอเตอร์ไซค์)</option><option value="4W">4W (รถยนต์)</option></select>
+    <div style="height:6px"></div>
+    <button class="btn btn-y btn-block" onclick="saveEdit()">💾 บันทึกการแก้ไข</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-o btn-block" onclick="document.getElementById('editModal').classList.remove('show')">ยกเลิก</button>
+    <div style="height:12px"></div>
+  </div>
+</div>
+
 <!-- first-run setup -->
 <div id="setupOverlay">
   <div class="ybar" style="border-radius:99px;margin-bottom:16px;"></div>
@@ -218,8 +242,6 @@ const CUTOFF_SHOWN = 7*3600;            // 07:00 — แสดงบน UI
 const CUTOFF_GRACE = 7*3600 + 10*60;    // internal grace (ห้ามแสดงบน UI)
 const PHOTO_RETENTION_DAYS = 60;
 const RISK_WINDOW_DAYS = 7;
-
-/* โลโก้หัวแอป/รายงาน = รหัส Depot ตัวใหญ่ ดำ เอียง */
 
 /* ================= STORAGE ================= */
 let db = null;
@@ -640,13 +662,29 @@ function addCourier(){
 function toggleActive(id){
   const c = couriers.find(x=>x.id===id); c.active=!c.active; saveCouriers(); renderManage();
 }
+let editId=null;
 function editCourier(id){
-  const c = couriers.find(x=>x.id===id);
-  const name = prompt('ชื่อ-นามสกุล', c.name); if(name===null) return;
-  const vendor = prompt('Vendor', c.vendor); if(vendor===null) return;
-  const type = prompt('Type (2W/4W)', c.type||'2W'); if(type===null) return;
-  c.name=name.trim()||c.name; c.vendor=vendor.trim()||c.vendor;
-  c.type=(type.trim().toUpperCase()==='4W')?'4W':'2W'; saveCouriers(); renderManage();
+  const c = couriers.find(x=>x.id===id); if(!c) return;
+  editId = id;
+  document.getElementById('eCode').value = c.code;
+  document.getElementById('eName').value = c.name;
+  document.getElementById('eVendor').value = c.vendor==='-'?'':c.vendor;
+  document.getElementById('eType').value = c.type||'2W';
+  document.getElementById('editModal').classList.add('show');
+}
+function saveEdit(){
+  const c = couriers.find(x=>x.id===editId); if(!c) return;
+  const code = document.getElementById('eCode').value.trim();
+  const name = document.getElementById('eName').value.trim();
+  if(!code||!name){ flash('กรอกรหัสและชื่อให้ครบ'); return; }
+  if(couriers.some(x=>x.id!==editId && x.code.toLowerCase()===code.toLowerCase())){ flash('รหัสนี้ซ้ำกับพนักงานคนอื่น'); return; }
+  c.code = code; c.name = name;
+  c.vendor = document.getElementById('eVendor').value.trim()||'-';
+  c.type = document.getElementById('eType').value;
+  saveCouriers();
+  document.getElementById('editModal').classList.remove('show');
+  flash('💾 บันทึกการแก้ไขแล้ว');
+  renderManage();
 }
 function renderManage(){
   document.getElementById('mCount').textContent = couriers.length;
@@ -654,8 +692,8 @@ function renderManage(){
   document.getElementById('sStaff').value = settings.staff;
   document.getElementById('mList').innerHTML = couriers.length? couriers.map(c=>
     '<div class="row-c" style="box-shadow:none;border:1px solid #eee;opacity:'+(c.active?1:.45)+'">'+
-    '<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.vendor)+'</div></div>'+
-    '<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="editCourier('+c.id+')">แก้ไข</button>'+
+    '<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor)+'</div></div>'+
+    '<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="editCourier('+c.id+')">✏️ แก้ไข</button>'+
     '<button class="btn '+(c.active?'btn-o':'btn-y')+'" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="toggleActive('+c.id+')">'+(c.active?'พัก':'ใช้งาน')+'</button></div>'
   ).join('') : '<div class="small">ยังไม่มีรายชื่อ</div>';
 }

@@ -224,6 +224,52 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
   </div>
 </div>
 
+<!-- pph help modal -->
+<div class="modal" id="pphHelpModal">
+  <div class="sheet">
+    <h2>❓ วิธีคำนวณ PPH (ตัวเลขสมมุติ เข้าใจง่าย)</h2>
+    <div class="card" style="border-left-color:var(--k);margin-top:10px;">
+      <h2>หลักคิด</h2>
+      <div style="font-size:15px;line-height:1.7;">
+        <b>PPH = จำนวนพัสดุ ÷ Man-hours</b><br>
+        <b>Man-hours = จำนวนคน × ชั่วโมงที่ใช้</b><br>
+        <span class="small">ยิ่ง PPH สูง = ทีมทำงานเร็ว • พัสดุ = งานใหม่ + งานเก่า รวมกัน</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>1️⃣ Sort time — เป้า ≥ 49</h2>
+      <div style="font-size:14px;line-height:1.8;">
+        สมมุติ: พัสดุ <b>1,000 ชิ้น</b> (ใหม่ 800 + เก่า 200)<br>
+        คนช่วยคัดแยก <b>10 คน</b> (Staff 1 + Sorter 3 + Courier 6)<br>
+        📥 รถ Inbound เข้า <b>06:00</b><br>
+        🔎 ทุกคนเริ่มสแกนงานตัวแรก เฉลี่ย <b>08:00</b> → ใช้เวลา <b>2 ชม.</b><br>
+        Man-hours = 10 คน × 2 ชม. = <b>20</b><br>
+        PPH Sort = 1,000 ÷ 20 = <b style="color:var(--g);font-size:18px;">50</b> ✅ ผ่านเป้า 49
+      </div>
+    </div>
+    <div class="card">
+      <h2>2️⃣ Route prep — เป้า ≥ 165</h2>
+      <div style="font-size:14px;line-height:1.8;">
+        สมมุติ: พัสดุ <b>1,000 ชิ้น</b> เท่าเดิม<br>
+        Courier <b>12 คน</b> (ไม่นับ Staff/Sorter)<br>
+        แต่ละคนใช้เวลาจัดรถ FS → DEP คนละ <b>30 นาที</b><br>
+        Man-hours = 12 คน × 0.5 ชม. = <b>6</b><br>
+        PPH Route = 1,000 ÷ 6 = <b style="color:var(--g);font-size:18px;">166.7</b> ✅ ผ่านเป้า 165
+      </div>
+    </div>
+    <div class="card red">
+      <h2>⭐ จุดที่ต้องจำ</h2>
+      <div style="font-size:14px;line-height:1.8;">
+        • Sort time นับคน<b>ทุกกลุ่ม</b> (Staff+Sorter+Courier) — จบเมื่อ <b>FS ครบทุกคน</b> ระบบใช้เวลาเฉลี่ย<br>
+        • Route prep นับ<b>เฉพาะ Courier</b> — เวลาของใครของมัน ระบบรวมให้เอง<br>
+        • PPH ต่ำ ≠ คนขี้เกียจเสมอไป — เช็คว่ารถเข้าช้า/ของมาไม่ตรงเวลาหรือไม่
+      </div>
+    </div>
+    <button class="btn btn-y btn-block" onclick="document.getElementById('pphHelpModal').classList.remove('show')">เข้าใจแล้ว</button>
+    <div style="height:12px"></div>
+  </div>
+</div>
+
 <!-- first-run setup -->
 <div id="setupOverlay">
   <div class="ybar" style="border-radius:99px;margin-bottom:16px;"></div>
@@ -457,24 +503,29 @@ let pphRec = null;
 function pphTx(m){ return db.transaction('pph',m).objectStore('pph'); }
 function getPPH(date){ return new Promise((res,rej)=>{ const q=pphTx('readonly').get(date); q.onsuccess=()=>res(q.result||null); q.onerror=()=>rej(q.error); }); }
 function putPPH(rec){ return new Promise((res,rej)=>{ const q=pphTx('readwrite').put(rec); q.onsuccess=()=>res(); q.onerror=()=>rej(q.error); }); }
-function pphCalc(p){
+function pphCalc(p, expectedN){
   const totalP = (+p.pNew||0)+(+p.pOld||0);
   const people = (+p.staffN||0)+(+p.sorterN||0)+(+p.courierN||0);
+  const rps = Object.values(p.rp||{});
+  const fsList = rps.filter(x=>x.fs).map(x=>x.fs);
+  const fsDone = fsList.length;
+  const fsReady = (expectedN>0) && (fsDone >= expectedN);   // ต้องกด FS ครบทุกคนก่อน
+  const avgFsAll = fsList.length? fsList.reduce((a,b)=>a+b,0)/fsList.length : null;
   let sort=null;
-  if(p.inboundTs && p.firstScanTs && p.firstScanTs>p.inboundTs && people>0){
-    const hrs=(p.firstScanTs-p.inboundTs)/3600000;
+  if(p.inboundTs && fsReady && avgFsAll && avgFsAll>p.inboundTs && people>0){
+    const hrs=(avgFsAll-p.inboundTs)/3600000;               // Inbound → Avg First Scan
     const mh=people*hrs;
-    sort={hrs, mh, pph: mh>0? totalP/mh : 0};
+    sort={hrs, mh, pph: mh>0? totalP/mh : 0, avgFs:avgFsAll};
   }
   let route=null;
-  const pairs=Object.values(p.rp||{}).filter(x=>x.fs&&x.dep&&x.dep>x.fs);
+  const pairs=rps.filter(x=>x.fs&&x.dep&&x.dep>x.fs);
   if(pairs.length){
     const mh=pairs.reduce((a,x)=>a+(x.dep-x.fs),0)/3600000;
     const avgFs=pairs.reduce((a,x)=>a+x.fs,0)/pairs.length;
     const avgDep=pairs.reduce((a,x)=>a+x.dep,0)/pairs.length;
     route={n:pairs.length, mh, pph: mh>0? totalP/mh : 0, avgFs, avgDep};
   }
-  return {totalP, people, sort, route};
+  return {totalP, people, sort, route, fsDone, fsReady, avgFsAll};
 }
 function editTs(cur){
   const t = prompt('แก้ไขเวลา (HH:MM)\nพิมพ์ - เพื่อล้างเวลานี้ทิ้ง', cur? fmtTime(cur) : '');
@@ -515,10 +566,11 @@ async function renderPPH(){
                pNew:0, pOld:0, inboundTs:null, firstScanTs:null, rp:{} };
     await putPPH(pphRec);
   }
-  const C = pphCalc(pphRec);
+  const C = pphCalc(pphRec, todayRecs.length);
   const tBtn=(label,ts,fn)=>'<button class="btn '+(ts?'btn-o':'btn-y')+'" style="min-height:44px;" onclick="'+fn+'">'+(ts? label+' '+fmtTime(ts)+' ✏️' : label)+'</button>';
   let h = '<div class="card"><h2>📦 PPH — '+thDate(todayKey())+'</h2>'
-    +'<div class="small">กดปุ่มเวลา = บันทึกเวลาปัจจุบันทันที • กดซ้ำ = แก้ไขเวลา</div></div>';
+    +'<div class="small" style="margin-bottom:8px;">กดปุ่มเวลา = บันทึกเวลาปัจจุบันทันที • กดซ้ำ = แก้ไข หรือพิมพ์ - เพื่อล้าง</div>'
+    +'<button class="btn btn-o" style="min-height:40px;padding:8px 14px;font-size:13px;" onclick="document.getElementById(\'pphHelpModal\').classList.add(\'show\')">❓ วิธีคำนวณ PPH</button></div>';
   h += '<div class="card"><h2>ข้อมูลพื้นฐานวันนี้</h2>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
     +'<div><label class="small">จำนวน Staff</label><input type="number" min="0" value="'+pphRec.staffN+'" onchange="pphNum(\'staffN\',this.value)"></div>'
@@ -532,11 +584,11 @@ async function renderPPH(){
   h += '<div class="card"><h2>1️⃣ Sort time <span class="small">(Target ≥ 49)</span></h2>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
     +tBtn('📥 Inbound', pphRec.inboundTs, "pphStamp('inboundTs')")
-    +tBtn('🔎 First Scan', pphRec.firstScanTs, "pphStamp('firstScanTs')")
     +'</div>'
+    +'<div class="small" style="margin-top:8px;">จุดสิ้นสุด = <b>ค่าเฉลี่ย First Scan จาก Route prep</b> — กด FS ให้ครบทุกคนก่อน (ครบแล้ว '+C.fsDone+'/'+todayRecs.length+' คน'+((C.fsReady&&C.avgFsAll)? ' • Avg FS '+fmtTime(C.avgFsAll):'')+')</div>'
     +(C.sort
-      ? '<div style="margin-top:10px;font-size:15px;">ใช้เวลา '+(Math.round(C.sort.hrs*100)/100)+' ชม. × '+C.people+' คน = Man-hours <b>'+(Math.round(C.sort.mh*10)/10)+'</b><br>PPH Sort = <b style="font-size:26px;color:'+(sVal>=49?'var(--g)':'var(--r)')+'">'+sVal+'</b> '+(sVal>=49?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 49')+'</div>'
-      : '<div class="small" style="margin-top:10px;">จับเวลาให้ครบ 2 จุด + กรอกคน/พัสดุ ระบบจะคำนวณอัตโนมัติ</div>')
+      ? '<div style="margin-top:8px;font-size:15px;">Inbound '+fmtTime(pphRec.inboundTs)+' → Avg FS '+fmtTime(C.sort.avgFs)+' = '+(Math.round(C.sort.hrs*100)/100)+' ชม. × '+C.people+' คน = Man-hours <b>'+(Math.round(C.sort.mh*10)/10)+'</b><br>PPH Sort = <b style="font-size:26px;color:'+(sVal>=49?'var(--g)':'var(--r)')+'">'+sVal+'</b> '+(sVal>=49?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 49')+'</div>'
+      : '<div class="small" style="margin-top:6px;">'+(pphRec.inboundTs? '⏳ รอกด FS ครบทุกคนใน Route prep + กรอกคน/พัสดุ แล้วระบบคำนวณอัตโนมัติ' : 'กด 📥 Inbound เมื่อรถเข้า แล้วไปกด FS รายคนในส่วน Route prep ด้านล่าง')+'</div>')
     +'</div>';
   const chk = todayRecs.map(r=>couriers.find(c=>c.id===r.courierId)).filter(Boolean);
   const rVal = C.route? Math.round(C.route.pph*10)/10 : null;
@@ -880,7 +932,7 @@ async function drawReport(key){
   const riskH = riskRows.length? 60+riskRows.length*34 : 70;
   const gridH = recs.length? 60+photoRows*(CELLH+16) : 60;
   const pph = await getPPH(key);
-  const PC = pph? pphCalc(pph) : null;
+  const PC = pph? pphCalc(pph, recs.length) : null;
   const pphH = PC? 220 : 0;
   const H = 210 + 150 + 420 + riskH + pphH + gridH + 80;
   const cv = document.createElement('canvas'); cv.width=W; cv.height=H;
@@ -961,7 +1013,7 @@ async function drawReport(key){
     box(P, 'PPH Sort time  (Target ≥ 49)',
       PC.sort? String(Math.round(PC.sort.pph*10)/10) : '—',
       PC.sort? PC.sort.pph>=49 : null,
-      (pph.inboundTs&&pph.firstScanTs)? 'Inbound '+fmtTime(pph.inboundTs)+'  →  First scan '+fmtTime(pph.firstScanTs) : 'ยังจับเวลาไม่ครบ',
+      (pph.inboundTs&&PC.sort)? 'Inbound '+fmtTime(pph.inboundTs)+'  →  Avg First scan '+fmtTime(PC.sort.avgFs) : 'ยังจับเวลาไม่ครบ (FS '+PC.fsDone+'/'+recs.length+')',
       'Man-hours '+(PC.sort? Math.round(PC.sort.mh*10)/10 : '—')+'  •  คนรวม '+PC.people);
     box(P+bw2+16, 'PPH Route prep  (Target ≥ 165)',
       PC.route? String(Math.round(PC.route.pph*10)/10) : '—',

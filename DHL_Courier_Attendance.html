@@ -122,6 +122,9 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
   <div id="ciList"></div>
 </div>
 
+<!-- ============ PPH ============ -->
+<div class="view" id="view-pph"><div id="pphBody"></div></div>
+
 <!-- ============ DASHBOARD ============ -->
 <div class="view" id="view-dash">
   <div id="dashBody"></div>
@@ -169,6 +172,7 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
 <!-- bottom nav -->
 <div class="nav">
   <button class="on" data-v="checkin" onclick="nav('checkin')"><span class="ic">✅</span>เช็คอิน</button>
+  <button data-v="pph" onclick="nav('pph')"><span class="ic">📦</span>PPH</button>
   <button data-v="dash" onclick="nav('dash')"><span class="ic">📊</span>Dashboard</button>
   <button data-v="hist" onclick="nav('hist')"><span class="ic">🗓</span>ประวัติ</button>
   <button data-v="manage" onclick="nav('manage')"><span class="ic">👥</span>จัดการ</button>
@@ -252,12 +256,17 @@ function persistSettings(){ localStorage.setItem('dhl_settings', JSON.stringify(
 
 function openDB(){
   return new Promise((res,rej)=>{
-    const r = indexedDB.open('dhl_attendance',1);
+    const r = indexedDB.open('dhl_attendance',2);
     r.onupgradeneeded = e=>{
       const d = e.target.result;
-      const s = d.createObjectStore('checkins',{keyPath:'id',autoIncrement:true});
-      s.createIndex('date','date',{unique:false});
-      s.createIndex('cd',['courierId','date'],{unique:true});
+      if(!d.objectStoreNames.contains('checkins')){
+        const s = d.createObjectStore('checkins',{keyPath:'id',autoIncrement:true});
+        s.createIndex('date','date',{unique:false});
+        s.createIndex('cd',['courierId','date'],{unique:true});
+      }
+      if(!d.objectStoreNames.contains('pph')){
+        d.createObjectStore('pph',{keyPath:'date'});
+      }
     };
     r.onsuccess = e=>{ db=e.target.result; res(); };
     r.onerror = ()=>rej(r.error);
@@ -344,6 +353,7 @@ function nav(v){
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
   if(v==='checkin') renderCheckin();
+  if(v==='pph') renderPPH();
   if(v==='dash') renderDash();
   if(v==='hist') renderHist();
   if(v==='manage') renderManage();
@@ -440,6 +450,101 @@ async function quickLog(courierId){
   catch(e){ flash('คนนี้เช็คอินแล้ววันนี้'); return; }
   flash('⚡ '+c.name+' — '+fmtTime(now.getTime())+' '+(st.status==='ontime'?'✔ Ontime':'✖ Late')+' (รอถ่ายภาพ)');
   renderCheckin();
+}
+
+/* ================= PPH ================= */
+let pphRec = null;
+function pphTx(m){ return db.transaction('pph',m).objectStore('pph'); }
+function getPPH(date){ return new Promise((res,rej)=>{ const q=pphTx('readonly').get(date); q.onsuccess=()=>res(q.result||null); q.onerror=()=>rej(q.error); }); }
+function putPPH(rec){ return new Promise((res,rej)=>{ const q=pphTx('readwrite').put(rec); q.onsuccess=()=>res(); q.onerror=()=>rej(q.error); }); }
+function pphCalc(p){
+  const totalP = (+p.pNew||0)+(+p.pOld||0);
+  const people = (+p.staffN||0)+(+p.sorterN||0)+(+p.courierN||0);
+  let sort=null;
+  if(p.inboundTs && p.firstScanTs && p.firstScanTs>p.inboundTs && people>0){
+    const hrs=(p.firstScanTs-p.inboundTs)/3600000;
+    const mh=people*hrs;
+    sort={hrs, mh, pph: mh>0? totalP/mh : 0};
+  }
+  let route=null;
+  const pairs=Object.values(p.rp||{}).filter(x=>x.fs&&x.dep&&x.dep>x.fs);
+  if(pairs.length){
+    const mh=pairs.reduce((a,x)=>a+(x.dep-x.fs),0)/3600000;
+    const avgFs=pairs.reduce((a,x)=>a+x.fs,0)/pairs.length;
+    const avgDep=pairs.reduce((a,x)=>a+x.dep,0)/pairs.length;
+    route={n:pairs.length, mh, pph: mh>0? totalP/mh : 0, avgFs, avgDep};
+  }
+  return {totalP, people, sort, route};
+}
+function editTs(cur){
+  const t = prompt('แก้ไขเวลา (HH:MM)', cur? fmtTime(cur) : '');
+  if(t===null) return undefined;
+  const m=t.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if(!m){ flash('รูปแบบไม่ถูกต้อง ใช้ HH:MM'); return undefined; }
+  if(+m[1]>23||+m[2]>59){ flash('เวลาไม่ถูกต้อง'); return undefined; }
+  const d=new Date(); d.setHours(+m[1],+m[2],0,0); return d.getTime();
+}
+async function pphStamp(k){
+  if(!pphRec[k]) pphRec[k]=Date.now();
+  else { const v=editTs(pphRec[k]); if(v===undefined) return; pphRec[k]=v; }
+  await putPPH(pphRec); renderPPH();
+}
+async function rpStamp(cid,k){
+  pphRec.rp = pphRec.rp||{}; pphRec.rp[cid] = pphRec.rp[cid]||{};
+  if(!pphRec.rp[cid][k]) pphRec.rp[cid][k]=Date.now();
+  else { const v=editTs(pphRec.rp[cid][k]); if(v===undefined) return; pphRec.rp[cid][k]=v; }
+  await putPPH(pphRec); renderPPH();
+}
+async function pphNum(k,v){ pphRec[k]=Math.max(0,parseInt(v)||0); await putPPH(pphRec); renderPPH(); }
+async function pphSyncCourier(){ pphRec.courierN = todayRecs.length; await putPPH(pphRec); renderPPH(); }
+async function renderPPH(){
+  todayRecs = await getByDate(todayKey());
+  pphRec = await getPPH(todayKey());
+  if(!pphRec){
+    pphRec = { date:todayKey(), staffN:1, sorterN:0, courierN:todayRecs.length,
+               pNew:0, pOld:0, inboundTs:null, firstScanTs:null, rp:{} };
+    await putPPH(pphRec);
+  }
+  const C = pphCalc(pphRec);
+  const tBtn=(label,ts,fn)=>'<button class="btn '+(ts?'btn-o':'btn-y')+'" style="min-height:44px;" onclick="'+fn+'">'+(ts? label+' '+fmtTime(ts)+' ✏️' : label)+'</button>';
+  let h = '<div class="card"><h2>📦 PPH — '+thDate(todayKey())+'</h2>'
+    +'<div class="small">กดปุ่มเวลา = บันทึกเวลาปัจจุบันทันที • กดซ้ำ = แก้ไขเวลา</div></div>';
+  h += '<div class="card"><h2>ข้อมูลพื้นฐานวันนี้</h2>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    +'<div><label class="small">จำนวน Staff</label><input type="number" min="0" value="'+pphRec.staffN+'" onchange="pphNum(\'staffN\',this.value)"></div>'
+    +'<div><label class="small">จำนวน Sorter</label><input type="number" min="0" value="'+pphRec.sorterN+'" onchange="pphNum(\'sorterN\',this.value)"></div>'
+    +'<div><label class="small">Courier (เช็คอินแล้ว '+todayRecs.length+' คน)</label><input type="number" min="0" value="'+pphRec.courierN+'" onchange="pphNum(\'courierN\',this.value)"></div>'
+    +'<div style="display:flex;align-items:flex-end;padding-bottom:8px;"><button class="btn btn-o btn-block" style="min-height:44px;" onclick="pphSyncCourier()">↻ ดึงจากเช็คอิน</button></div>'
+    +'<div><label class="small">พัสดุงานใหม่ (pcs)</label><input type="number" min="0" value="'+pphRec.pNew+'" onchange="pphNum(\'pNew\',this.value)"></div>'
+    +'<div><label class="small">งานเก่า (pcs)</label><input type="number" min="0" value="'+pphRec.pOld+'" onchange="pphNum(\'pOld\',this.value)"></div>'
+    +'</div><div class="small" style="margin-top:4px;">รวมพัสดุ <b>'+C.totalP+'</b> ชิ้น • คนทำ Sort รวม <b>'+C.people+'</b> คน (Staff+Sorter+Courier)</div></div>';
+  const sVal = C.sort? Math.round(C.sort.pph*10)/10 : null;
+  h += '<div class="card"><h2>1️⃣ Sort time <span class="small">(Target ≥ 49)</span></h2>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    +tBtn('📥 Inbound', pphRec.inboundTs, "pphStamp('inboundTs')")
+    +tBtn('🔎 First Scan', pphRec.firstScanTs, "pphStamp('firstScanTs')")
+    +'</div>'
+    +(C.sort
+      ? '<div style="margin-top:10px;font-size:15px;">ใช้เวลา '+(Math.round(C.sort.hrs*100)/100)+' ชม. × '+C.people+' คน = Man-hours <b>'+(Math.round(C.sort.mh*10)/10)+'</b><br>PPH Sort = <b style="font-size:26px;color:'+(sVal>=49?'var(--g)':'var(--r)')+'">'+sVal+'</b> '+(sVal>=49?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 49')+'</div>'
+      : '<div class="small" style="margin-top:10px;">จับเวลาให้ครบ 2 จุด + กรอกคน/พัสดุ ระบบจะคำนวณอัตโนมัติ</div>')
+    +'</div>';
+  const chk = todayRecs.map(r=>couriers.find(c=>c.id===r.courierId)).filter(Boolean);
+  const rVal = C.route? Math.round(C.route.pph*10)/10 : null;
+  h += '<div class="card"><h2>2️⃣ Route prep <span class="small">(Target ≥ 165 • นับเฉพาะ Courier)</span></h2>';
+  if(!chk.length) h += '<div class="hint">ยังไม่มี Courier เช็คอินวันนี้ — ทำ Time Attendance ก่อน</div>';
+  else h += chk.map(c=>{
+    const q = (pphRec.rp||{})[c.id]||{};
+    return '<div class="row-c" style="box-shadow:none;border:1px solid #eee;">'
+      +'<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+'</div></div>'
+      +'<button class="btn '+(q.fs?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;" onclick="rpStamp('+c.id+',\'fs\')">'+(q.fs? 'FS '+fmtTime(q.fs) : 'FS')+'</button>'
+      +'<button class="btn '+(q.dep?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;" onclick="rpStamp('+c.id+',\'dep\')">'+(q.dep? 'DEP '+fmtTime(q.dep) : 'DEP')+'</button>'
+      +'</div>';
+  }).join('');
+  h += (C.route
+    ? '<div style="margin-top:8px;font-size:15px;">ครบ '+C.route.n+' คน • เฉลี่ย FS '+fmtTime(C.route.avgFs)+' → DEP '+fmtTime(C.route.avgDep)+'<br>Man-hours รวม <b>'+(Math.round(C.route.mh*10)/10)+'</b> ชม. → PPH Route prep = <b style="font-size:26px;color:'+(rVal>=165?'var(--g)':'var(--r)')+'">'+rVal+'</b> '+(rVal>=165?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 165')+'</div>'
+    : '<div class="small" style="margin-top:8px;">กด FS (First Scan) และ DEP (Departure) รายคน — คำนวณจากคนที่มีครบทั้งคู่</div>');
+  h += '</div>';
+  document.getElementById('pphBody').innerHTML = h;
 }
 
 /* ================= CAMERA ================= */
@@ -703,9 +808,10 @@ function saveSettings(){
   persistSettings(); applyHeader(); flash('บันทึกตั้งค่าแล้ว');
 }
 async function clearCheckins(){
-  if(!confirm('ลบประวัติเช็คอิน + ภาพถ่ายทั้งหมดทุกวัน?\n(รายชื่อพนักงานและการตั้งค่ายังอยู่)')) return;
+  if(!confirm('ลบประวัติเช็คอิน + ภาพถ่าย + ข้อมูล PPH ทั้งหมดทุกวัน?\n(รายชื่อพนักงานและการตั้งค่ายังอยู่)')) return;
   await new Promise((res,rej)=>{ const q=tx('readwrite').clear(); q.onsuccess=()=>res(); q.onerror=()=>rej(q.error); });
-  flash('🗑 ล้างประวัติเช็คอินแล้ว');
+  await new Promise((res)=>{ const q=pphTx('readwrite').clear(); q.onsuccess=()=>res(); q.onerror=()=>res(); });
+  flash('🗑 ล้างประวัติแล้ว');
   renderCheckin(); nav('checkin');
 }
 function resetAll(){
@@ -721,7 +827,8 @@ function resetAll(){
 }
 async function backupJSON(){
   const all = await new Promise((res,rej)=>{ const q=tx('readonly').getAll(); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
-  const data = { settings, couriers, checkins: all.map(r=>({...r, photo: undefined})) };
+  const pphAll = await new Promise((res)=>{ const q=pphTx('readonly').getAll(); q.onsuccess=()=>res(q.result); q.onerror=()=>res([]); });
+  const data = { settings, couriers, checkins: all.map(r=>({...r, photo: undefined})), pph: pphAll };
   const blob = new Blob([JSON.stringify(data)],{type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -760,7 +867,10 @@ async function drawReport(key){
   const photoRows = Math.ceil(recs.length/COLS);
   const riskH = riskRows.length? 60+riskRows.length*34 : 70;
   const gridH = recs.length? 60+photoRows*(CELLH+16) : 60;
-  const H = 210 + 150 + 420 + riskH + gridH + 80;
+  const pph = await getPPH(key);
+  const PC = pph? pphCalc(pph) : null;
+  const pphH = PC? 220 : 0;
+  const H = 210 + 150 + 420 + riskH + pphH + gridH + 80;
   const cv = document.createElement('canvas'); cv.width=W; cv.height=H;
   const x = cv.getContext('2d');
   x.fillStyle='#fff'; x.fillRect(0,0,W,H);
@@ -817,6 +927,37 @@ async function drawReport(key){
     });
     ry+=26;
   } else { ry+=36; x.fillStyle='#2e7d32'; x.font='22px Segoe UI'; x.fillText('ไม่มีพนักงานเสี่ยง', P+10, ry); ry+=20; }
+
+  /* PPH summary */
+  if(PC){
+    x.fillStyle='#1a1a1a'; x.font='700 26px Segoe UI'; x.textAlign='left';
+    x.fillText('📦 PPH Summary', P, ry+40);
+    x.font='16px Segoe UI'; x.fillStyle='#777'; x.textAlign='right';
+    x.fillText('Parcels '+PC.totalP+' (ใหม่ '+(pph.pNew||0)+' + เก่า '+(pph.pOld||0)+')  •  Staff '+(pph.staffN||0)+' / Sorter '+(pph.sorterN||0)+' / Courier '+(pph.courierN||0), W-P, ry+40);
+    x.textAlign='left';
+    const by=ry+56, bw2=(W-P*2-16)/2, bh=130;
+    const box=(bx,title,val,ok,l1,l2)=>{
+      x.fillStyle='#fafafa'; roundRect(x,bx,by,bw2,bh,14); x.fill();
+      const col = ok===null? '#888888' : ok? '#2e7d32' : '#D40511';
+      x.fillStyle=col; x.fillRect(bx,by,8,bh);
+      x.font='700 20px Segoe UI'; x.fillStyle='#555'; x.fillText(title, bx+22, by+30);
+      x.font='800 40px Segoe UI'; x.fillStyle=col; x.fillText(val, bx+22, by+76);
+      x.font='15px Segoe UI'; x.fillStyle='#777';
+      x.fillText(l1, bx+22, by+101);
+      x.fillText(l2, bx+22, by+121);
+    };
+    box(P, 'PPH Sort time  (Target ≥ 49)',
+      PC.sort? String(Math.round(PC.sort.pph*10)/10) : '—',
+      PC.sort? PC.sort.pph>=49 : null,
+      (pph.inboundTs&&pph.firstScanTs)? 'Inbound '+fmtTime(pph.inboundTs)+'  →  First scan '+fmtTime(pph.firstScanTs) : 'ยังจับเวลาไม่ครบ',
+      'Man-hours '+(PC.sort? Math.round(PC.sort.mh*10)/10 : '—')+'  •  คนรวม '+PC.people);
+    box(P+bw2+16, 'PPH Route prep  (Target ≥ 165)',
+      PC.route? String(Math.round(PC.route.pph*10)/10) : '—',
+      PC.route? PC.route.pph>=165 : null,
+      PC.route? 'Avg FS '+fmtTime(PC.route.avgFs)+'  →  Avg Dep '+fmtTime(PC.route.avgDep)+'  •  Courier '+PC.route.n+' คน' : 'ยังจับเวลาไม่ครบ',
+      'Man-hours '+(PC.route? Math.round(PC.route.mh*10)/10 : '—')+'  •  นับเฉพาะ Courier');
+    ry = by + bh + 10;
+  }
 
   /* photo grid */
   const noUniR = recs.filter(r=>r.uniform===false).length;

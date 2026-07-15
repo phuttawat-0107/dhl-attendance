@@ -477,12 +477,22 @@ function pphCalc(p){
   return {totalP, people, sort, route};
 }
 function editTs(cur){
-  const t = prompt('แก้ไขเวลา (HH:MM)', cur? fmtTime(cur) : '');
+  const t = prompt('แก้ไขเวลา (HH:MM)\nพิมพ์ - เพื่อล้างเวลานี้ทิ้ง', cur? fmtTime(cur) : '');
   if(t===null) return undefined;
-  const m=t.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if(!m){ flash('รูปแบบไม่ถูกต้อง ใช้ HH:MM'); return undefined; }
+  const s = t.trim();
+  if(s==='-'||s==='ลบ') return null;                 // ล้างเวลา
+  const m=s.match(/^(\d{1,2}):(\d{2})$/);
+  if(!m){ flash('รูปแบบไม่ถูกต้อง ใช้ HH:MM หรือ - เพื่อล้าง'); return undefined; }
   if(+m[1]>23||+m[2]>59){ flash('เวลาไม่ถูกต้อง'); return undefined; }
   const d=new Date(); d.setHours(+m[1],+m[2],0,0); return d.getTime();
+}
+async function pphClearToday(){
+  if(!confirm('ล้างข้อมูล PPH ของวันนี้ทั้งหมด?\n(ตัวเลข + เวลาทุกจุด ทั้ง Sort และ Route prep)\nข้อมูลเช็คอินไม่เกี่ยว ไม่หาย')) return;
+  pphRec = { date:todayKey(), staffN:1, sorterN:0, courierN:todayRecs.length,
+             pNew:0, pOld:0, inboundTs:null, firstScanTs:null, rp:{} };
+  await putPPH(pphRec);
+  flash('🗑 ล้างข้อมูล PPH วันนี้แล้ว');
+  renderPPH();
 }
 async function pphStamp(k){
   if(!pphRec[k]) pphRec[k]=Date.now();
@@ -544,6 +554,8 @@ async function renderPPH(){
     ? '<div style="margin-top:8px;font-size:15px;">ครบ '+C.route.n+' คน • เฉลี่ย FS '+fmtTime(C.route.avgFs)+' → DEP '+fmtTime(C.route.avgDep)+'<br>Man-hours รวม <b>'+(Math.round(C.route.mh*10)/10)+'</b> ชม. → PPH Route prep = <b style="font-size:26px;color:'+(rVal>=165?'var(--g)':'var(--r)')+'">'+rVal+'</b> '+(rVal>=165?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 165')+'</div>'
     : '<div class="small" style="margin-top:8px;">กด FS (First Scan) และ DEP (Departure) รายคน — คำนวณจากคนที่มีครบทั้งคู่</div>');
   h += '</div>';
+  h += '<button class="btn btn-o btn-block" style="color:var(--r);border-color:var(--r);" onclick="pphClearToday()">🗑 ล้างข้อมูล PPH วันนี้ (คีย์ผิด เริ่มใหม่)</button>'
+    +'<div class="small" style="text-align:center;margin-top:6px;">แก้เวลาทีละจุด: กดปุ่มเวลานั้นซ้ำ แล้วพิมพ์เวลาใหม่ หรือพิมพ์ - เพื่อล้างเฉพาะจุด</div>';
   document.getElementById('pphBody').innerHTML = h;
 }
 

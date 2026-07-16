@@ -470,7 +470,8 @@ async function renderCheckin(){
       const r = byC[c.id];
       const rl = riskLevel(risk[c.id]||0);
       const badge = rl ? '<span class="badge '+rl+'">'+(rl==='risk'?'RISK':'WATCH')+'</span>' : '';
-      let right;
+      const infoBlock = '<div class="info"><div class="nm">'+escapeHtml(c.name)+badge+'</div>'+
+        '<div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor)+'</div></div>';
       if(r){
         const star = r.manualEdit? '*' : '';
         const chip = r.status==='ontime'
@@ -480,18 +481,22 @@ async function renderCheckin(){
           ? '<img class="photo-thumb" src="'+r.photo+'">'
           : '<button class="btn btn-r" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="openCamera('+c.id+','+r.id+')">📷 ถ่ายภาพ</button>';
         const uniBit = r.uniform===false
-          ? ' <button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;color:var(--r);border-color:var(--r);" onclick="toggleUniformRec('+r.id+')">👕✖</button>'
-          : ' <button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;color:var(--g);" onclick="toggleUniformRec('+r.id+')">👕✓</button>';
-        right = photoBit + chip + uniBit +
-          ' <button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;" onclick="editTime('+r.id+')">🕐</button>'+
-          ' <button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="redo('+r.id+')">↺</button>';
-      } else {
-        right = ciMode==='quick'
-          ? '<button class="btn btn-y" style="min-height:44px;" onclick="quickLog('+c.id+')">⚡ ลงเวลา</button>'
-          : '<button class="btn btn-y" style="min-height:44px;" onclick="openCamera('+c.id+')">📷 เช็คอิน</button>';
+          ? '<button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;color:var(--r);border-color:var(--r);" onclick="toggleUniformRec('+r.id+')">👕✖</button>'
+          : '<button class="btn btn-o" style="min-height:36px;padding:6px 8px;font-size:12px;color:var(--g);" onclick="toggleUniformRec('+r.id+')">👕✓</button>';
+        // แถวที่เช็คอินแล้ว = 2 บรรทัด กันชื่อถูกเบียด: ข้อมูล+สถานะบน / ปุ่มล่าง
+        return '<div class="row-c" style="flex-direction:column;align-items:stretch;gap:8px;">'
+          +'<div style="display:flex;align-items:center;gap:8px;">'+infoBlock
+          +'<div style="flex-shrink:0;">'+chip+'</div></div>'
+          +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+          +photoBit+uniBit
+          +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="editTime('+r.id+')">🕐 แก้เวลา</button>'
+          +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="redo('+r.id+')">↺ ใหม่</button>'
+          +'</div></div>';
       }
-      return '<div class="row-c"><div class="info"><div class="nm">'+escapeHtml(c.name)+badge+'</div>'+
-             '<div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor)+'</div></div>'+right+'</div>';
+      const right = ciMode==='quick'
+        ? '<button class="btn btn-y" style="min-height:44px;flex-shrink:0;" onclick="quickLog('+c.id+')">⚡ ลงเวลา</button>'
+        : '<button class="btn btn-y" style="min-height:44px;flex-shrink:0;" onclick="openCamera('+c.id+')">📷 เช็คอิน</button>';
+      return '<div class="row-c">'+infoBlock+right+'</div>';
     }).join('');
 }
 document.getElementById('ciSearch').addEventListener('input',()=>renderCheckin());
@@ -620,32 +625,50 @@ async function renderPPH(){
     +'<div><label class="small">พัสดุงานใหม่ (pcs)</label><input type="number" min="0" value="'+pphRec.pNew+'" onchange="pphNum(\'pNew\',this.value)"></div>'
     +'<div><label class="small">งานเก่า (pcs)</label><input type="number" min="0" value="'+pphRec.pOld+'" onchange="pphNum(\'pOld\',this.value)"></div>'
     +'</div><div class="small" style="margin-top:4px;">รวมพัสดุ <b>'+C.totalP+'</b> ชิ้น • คนทำ Sort รวม <b>'+C.people+'</b> คน (Staff+Sorter+Courier)</div></div>';
+
+  // ===== บล็อกทีละสเตป: ต้องกรอกข้อมูลพื้นฐานครบก่อน =====
+  const baseDone = (pphRec.staffN>0) && (pphRec.courierN>0) && (C.totalP>0);
+  if(!baseDone){
+    h += '<div class="card" style="border-left-color:var(--r);"><h2>🔒 ขั้นต่อไปถูกล็อก</h2>'
+      +'<div class="small">กรอก <b>ข้อมูลพื้นฐาน</b> ให้ครบก่อน (Staff ≥ 1, Courier ≥ 1, พัสดุ ใหม่+เก่า > 0) แล้ว Sort time / Route prep จะเปิดให้จับเวลา</div></div>';
+    document.getElementById('pphBody').innerHTML = h;
+    return;
+  }
+
   const sVal = C.sort? Math.round(C.sort.pph*10)/10 : null;
   h += '<div class="card"><h2>1️⃣ Sort time <span class="small">(Target ≥ 49)</span></h2>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-    +tBtn('📥 Inbound', pphRec.inboundTs, "pphStamp('inboundTs')")
+    +tBtn('📥 First Inbound', pphRec.inboundTs, "pphStamp('inboundTs')")
+    +tBtn('📦 Last Inbound', pphRec.lastInboundTs, "pphStamp('lastInboundTs')")
     +'</div>'
-    +'<div class="small" style="margin-top:8px;">จุดสิ้นสุด = <b>ค่าเฉลี่ย First Scan จาก Route prep</b> — กด FS ให้ครบทุกคนก่อน (ครบแล้ว '+C.fsDone+'/'+todayRecs.length+' คน'+((C.fsReady&&C.avgFsAll)? ' • Avg FS '+fmtTime(C.avgFsAll):'')+')</div>'
+    +'<div class="small" style="margin-top:6px;">First Inbound = จุดเริ่มคำนวณ • Last Inbound = บันทึกไว้ดูเฉยๆ ไม่ใช้คำนวณ</div>'
+    +'<div class="small" style="margin-top:6px;">จุดสิ้นสุด = <b>ค่าเฉลี่ย First Scan จาก Route prep</b> — กด FS ให้ครบทุกคนก่อน (ครบแล้ว '+C.fsDone+'/'+todayRecs.length+' คน'+((C.fsReady&&C.avgFsAll)? ' • Avg FS '+fmtTime(C.avgFsAll):'')+')</div>'
     +(C.sort
-      ? '<div style="margin-top:8px;font-size:15px;">Inbound '+fmtTime(pphRec.inboundTs)+' → Avg FS '+fmtTime(C.sort.avgFs)+' = '+(Math.round(C.sort.hrs*100)/100)+' ชม. × '+C.people+' คน = Man-hours <b>'+(Math.round(C.sort.mh*10)/10)+'</b><br>PPH Sort = <b style="font-size:26px;color:'+(sVal>=49?'var(--g)':'var(--r)')+'">'+sVal+'</b> '+(sVal>=49?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 49')+'</div>'
-      : '<div class="small" style="margin-top:6px;">'+(pphRec.inboundTs? '⏳ รอกด FS ครบทุกคนใน Route prep + กรอกคน/พัสดุ แล้วระบบคำนวณอัตโนมัติ' : 'กด 📥 Inbound เมื่อรถเข้า แล้วไปกด FS รายคนในส่วน Route prep ด้านล่าง')+'</div>')
+      ? '<div style="margin-top:8px;font-size:15px;">First Inbound '+fmtTime(pphRec.inboundTs)+' → Avg FS '+fmtTime(C.sort.avgFs)+' = '+(Math.round(C.sort.hrs*100)/100)+' ชม. × '+C.people+' คน = Man-hours <b>'+(Math.round(C.sort.mh*10)/10)+'</b><br>PPH Sort = <b style="font-size:26px;color:'+(sVal>=49?'var(--g)':'var(--r)')+'">'+sVal+'</b> '+(sVal>=49?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 49')+'</div>'
+      : '<div class="small" style="margin-top:6px;">'+(pphRec.inboundTs? '⏳ รอกด FS ครบทุกคนใน Route prep แล้วระบบคำนวณอัตโนมัติ' : 'กด 📥 First Inbound เมื่อรถเข้า แล้วไปกด FS รายคนในส่วน Route prep ด้านล่าง')+'</div>')
     +'</div>';
+
+  // Route prep ล็อกจนกว่าจะกด First Inbound (ทำตามลำดับ)
   const chk = todayRecs.map(r=>couriers.find(c=>c.id===r.courierId)).filter(Boolean);
   const rVal = C.route? Math.round(C.route.pph*10)/10 : null;
   h += '<div class="card"><h2>2️⃣ Route prep <span class="small">(Target ≥ 165 • นับเฉพาะ Courier)</span></h2>';
-  if(!chk.length) h += '<div class="hint">ยังไม่มี Courier เช็คอินวันนี้ — ทำ Time Attendance ก่อน</div>';
-  else h += chk.map(c=>{
-    const q = (pphRec.rp||{})[c.id]||{};
-    return '<div class="row-c" style="box-shadow:none;border:1px solid #eee;">'
-      +'<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+'</div></div>'
-      +'<button class="btn '+(q.fs?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;" onclick="rpStamp('+c.id+',\'fs\')">'+(q.fs? 'FS '+fmtTime(q.fs) : 'FS')+'</button>'
-      +'<button class="btn '+(q.dep?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;" onclick="rpStamp('+c.id+',\'dep\')">'+(q.dep? 'DEP '+fmtTime(q.dep) : 'DEP')+'</button>'
-      +'</div>';
-  }).join('');
-  h += (C.route
-    ? '<div style="margin-top:8px;font-size:15px;">ครบ '+C.route.n+' คน • เฉลี่ย FS '+fmtTime(C.route.avgFs)+' → DEP '+fmtTime(C.route.avgDep)+'<br>Man-hours รวม <b>'+(Math.round(C.route.mh*10)/10)+'</b> ชม. → PPH Route prep = <b style="font-size:26px;color:'+(rVal>=165?'var(--g)':'var(--r)')+'">'+rVal+'</b> '+(rVal>=165?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 165')+'</div>'
-    : '<div class="small" style="margin-top:8px;">กด FS (First Scan) และ DEP (Departure) รายคน — คำนวณจากคนที่มีครบทั้งคู่</div>');
-  h += '</div>';
+  if(!pphRec.inboundTs){
+    h += '<div class="small" style="color:var(--r);">🔒 กด 📥 First Inbound ในขั้น Sort time ก่อน</div></div>';
+  } else {
+    if(!chk.length) h += '<div class="hint">ยังไม่มี Courier เช็คอินวันนี้ — ทำ Time Attendance ก่อน</div>';
+    else h += chk.map(c=>{
+      const q = (pphRec.rp||{})[c.id]||{};
+      return '<div class="row-c" style="box-shadow:none;border:1px solid #eee;">'
+        +'<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+'</div></div>'
+        +'<button class="btn '+(q.fs?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;" onclick="rpStamp('+c.id+',\'fs\')">'+(q.fs? 'FS '+fmtTime(q.fs) : 'FS')+'</button>'
+        +'<button class="btn '+(q.dep?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;" onclick="rpStamp('+c.id+',\'dep\')">'+(q.dep? 'DEP '+fmtTime(q.dep) : 'DEP')+'</button>'
+        +'</div>';
+    }).join('');
+    h += (C.route
+      ? '<div style="margin-top:8px;font-size:15px;">ครบ '+C.route.n+' คน • เฉลี่ย FS '+fmtTime(C.route.avgFs)+' → DEP '+fmtTime(C.route.avgDep)+'<br>Man-hours รวม <b>'+(Math.round(C.route.mh*10)/10)+'</b> ชม. → PPH Route prep = <b style="font-size:26px;color:'+(rVal>=165?'var(--g)':'var(--r)')+'">'+rVal+'</b> '+(rVal>=165?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 165')+'</div>'
+      : '<div class="small" style="margin-top:8px;">กด FS (First Scan) และ DEP (Departure) รายคน — คำนวณจากคนที่มีครบทั้งคู่</div>');
+    h += '</div>';
+  }
   h += '<button class="btn btn-o btn-block" style="color:var(--r);border-color:var(--r);" onclick="pphClearToday()">🗑 ล้างข้อมูล PPH วันนี้ (คีย์ผิด เริ่มใหม่)</button>'
     +'<div class="small" style="text-align:center;margin-top:6px;">แก้เวลาทีละจุด: กดปุ่มเวลานั้นซ้ำ แล้วพิมพ์เวลาใหม่ หรือพิมพ์ - เพื่อล้างเฉพาะจุด</div>';
   document.getElementById('pphBody').innerHTML = h;
@@ -1185,7 +1208,7 @@ async function drawReport(key){
     box(P, 'PPH Sort time  (Target ≥ 49)',
       PC.sort? String(Math.round(PC.sort.pph*10)/10) : '—',
       PC.sort? PC.sort.pph>=49 : null,
-      (pph.inboundTs&&PC.sort)? 'Inbound '+fmtTime(pph.inboundTs)+'  →  Avg First scan '+fmtTime(PC.sort.avgFs) : 'ยังจับเวลาไม่ครบ (FS '+PC.fsDone+'/'+recs.length+')',
+      (pph.inboundTs&&PC.sort)? 'First Inbound '+fmtTime(pph.inboundTs)+'  →  Avg First scan '+fmtTime(PC.sort.avgFs) : 'ยังจับเวลาไม่ครบ (FS '+PC.fsDone+'/'+recs.length+')',
       'Man-hours '+(PC.sort? Math.round(PC.sort.mh*10)/10 : '—')+'  •  คนรวม '+PC.people);
     box(P+bw2+16, 'PPH Route prep  (Target ≥ 165)',
       PC.route? String(Math.round(PC.route.pph*10)/10) : '—',

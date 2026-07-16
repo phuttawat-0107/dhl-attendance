@@ -69,7 +69,7 @@ input:focus,select:focus{outline:none;border-color:var(--y);box-shadow:0 0 0 3px
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:100;display:none;flex-direction:column;}
 .overlay.show{display:flex;}
 #camVideo{flex:1;width:100%;object-fit:cover;}
-#rotateGuard{display:none;position:absolute;top:70px;left:12px;right:12px;z-index:6;background:rgba(212,5,17,.92);color:#fff;text-align:center;padding:10px 14px;border-radius:12px;font-size:14px;font-weight:700;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.4);}
+#rotateGuard{display:none;position:absolute;top:70px;left:12px;right:12px;z-index:6;background:rgba(255,204,0,.95);color:#1a1a1a;text-align:center;padding:10px 14px;border-radius:12px;font-size:14px;font-weight:700;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.4);}
 #camOverlay.pd #camVideo{transform:none;}
 .cam-top{position:absolute;top:0;left:0;right:0;padding:14px;background:linear-gradient(rgba(0,0,0,.6),transparent);color:#fff;display:flex;justify-content:space-between;align-items:center;}
 .cam-bottom{position:absolute;bottom:0;left:0;right:0;padding:20px;display:flex;justify-content:center;align-items:center;gap:40px;background:linear-gradient(transparent,rgba(0,0,0,.6));}
@@ -193,7 +193,7 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
 <!-- camera -->
 <div class="overlay" id="camOverlay">
   <video id="camVideo" autoplay playsinline muted></video>
-  <div id="rotateGuard">📱 หมุนมือถือเป็นแนวนอนก่อนกดถ่าย (ภาพหมู่)</div>
+  <div id="rotateGuard">📱 ถือมือถือแนวนอนเพื่อภาพหมู่ — กดถ่ายได้เลย</div>
   <div class="cam-top">
     <div><b id="camName">—</b><div class="small" style="color:#ddd" id="camSub"></div></div>
     <button class="cam-x" onclick="closeCamera()">✕</button>
@@ -663,18 +663,12 @@ async function renderPDCard(){
   el.innerHTML = h;
 }
 function retakePD(){ if(confirm('ถ่ายภาพ PD ใหม่แทนภาพเดิม?')) openPDCamera(); }
-function isPortrait(){
-  if(window.matchMedia && window.matchMedia('(orientation: portrait)').matches) return true;
-  if(window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return false;
-  return window.innerHeight > window.innerWidth;
-}
-function updateRotateGuard(){
+let rotHideT=null;
+function updateRotateGuard(){                       // แสดงคำแนะนำสั้นๆ ตอนเปิดกล้อง PD แล้วซ่อนเอง (ไม่บล็อกการถ่าย)
   const g=document.getElementById('rotateGuard'); if(!g) return;
-  g.style.display = (camPD && isPortrait())? 'block' : 'none';
+  if(camPD){ g.style.display='block'; clearTimeout(rotHideT); rotHideT=setTimeout(()=>{g.style.display='none';},4000); }
+  else g.style.display='none';
 }
-window.addEventListener('resize', updateRotateGuard);
-window.addEventListener('orientationchange', ()=>{ updateRotateGuard(); setTimeout(updateRotateGuard,300); });
-if(window.matchMedia){ try{ window.matchMedia('(orientation: portrait)').addEventListener('change', updateRotateGuard); }catch(e){} }
 async function openPDCamera(){
   camPD = true; camCourier = null; camAttach = null;
   camFacing = 'environment';                       // ภาพหมู่ใช้กล้องหลัง ไม่กลับด้าน
@@ -761,18 +755,27 @@ async function capture(){
   const v = document.getElementById('camVideo');
   if(!v.videoWidth){ return; }
   if(camPD){                                    // ภาพประชุม PD + stamp ชื่อสาขา
-    if(isPortrait()){                                   // บังคับแนวนอน กันภาพตะแคง (เช็คการหมุนจอเท่านั้น)
-      updateRotateGuard();
-      flash('📱 หมุนมือถือเป็นแนวนอนก่อนถ่ายภาพหมู่');
-      return;
-    }
     const now = new Date();
-    const maxpd = 1280, sc2 = Math.min(1, maxpd/Math.max(v.videoWidth,v.videoHeight));
+    // ทำภาพให้เป็นแนวนอนเสมอ: ถ้าเฟรมเป็นแนวตั้ง ให้หมุน 90° กันภาพตะแคง
+    let sw=v.videoWidth, sh=v.videoHeight;
+    const portraitFrame = sh > sw;
+    const maxpd = 1280;
+    const longSide = Math.max(sw,sh), shortSide=Math.min(sw,sh);
+    const sc2 = Math.min(1, maxpd/longSide);
     const cv2 = document.createElement('canvas');
-    cv2.width = Math.round(v.videoWidth*sc2); cv2.height = Math.round(v.videoHeight*sc2);
+    cv2.width = Math.round(longSide*sc2);         // กว้าง = ด้านยาว → แนวนอนเสมอ
+    cv2.height = Math.round(shortSide*sc2);
     const c2 = cv2.getContext('2d');
     c2.setTransform(1,0,0,1,0,0);                 // ไม่กลับซ้าย-ขวา (กล้องหลัง)
-    c2.drawImage(v,0,0,cv2.width,cv2.height);
+    if(portraitFrame){
+      c2.save();
+      c2.translate(cv2.width/2, cv2.height/2);
+      c2.rotate(Math.PI/2);
+      c2.drawImage(v, -cv2.height/2, -cv2.width/2, cv2.height, cv2.width);
+      c2.restore();
+    } else {
+      c2.drawImage(v,0,0,cv2.width,cv2.height);
+    }
     const fs2 = Math.round(cv2.width*0.062);            // ขนาดตัวอักษรกลางๆ
     const mR = Math.round(cv2.width*0.03), padS = Math.round(fs2*0.3);
     c2.textBaseline='top';

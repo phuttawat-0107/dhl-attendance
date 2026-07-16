@@ -756,26 +756,14 @@ async function capture(){
   if(!v.videoWidth){ return; }
   if(camPD){                                    // ภาพประชุม PD + stamp ชื่อสาขา
     const now = new Date();
-    // ทำภาพให้เป็นแนวนอนเสมอ: ถ้าเฟรมเป็นแนวตั้ง ให้หมุน 90° กันภาพตะแคง
-    let sw=v.videoWidth, sh=v.videoHeight;
-    const portraitFrame = sh > sw;
-    const maxpd = 1280;
-    const longSide = Math.max(sw,sh), shortSide=Math.min(sw,sh);
-    const sc2 = Math.min(1, maxpd/longSide);
+    // วาดภาพตามที่กล้องแสดงบนจอ (หันถูกด้านเสมอ ไม่หมุน ไม่กลับด้าน)
+    const maxpd = 1280, sc2 = Math.min(1, maxpd/Math.max(v.videoWidth,v.videoHeight));
     const cv2 = document.createElement('canvas');
-    cv2.width = Math.round(longSide*sc2);         // กว้าง = ด้านยาว → แนวนอนเสมอ
-    cv2.height = Math.round(shortSide*sc2);
+    cv2.width = Math.round(v.videoWidth*sc2);
+    cv2.height = Math.round(v.videoHeight*sc2);
     const c2 = cv2.getContext('2d');
-    c2.setTransform(1,0,0,1,0,0);                 // ไม่กลับซ้าย-ขวา (กล้องหลัง)
-    if(portraitFrame){
-      c2.save();
-      c2.translate(cv2.width/2, cv2.height/2);
-      c2.rotate(Math.PI/2);
-      c2.drawImage(v, -cv2.height/2, -cv2.width/2, cv2.height, cv2.width);
-      c2.restore();
-    } else {
-      c2.drawImage(v,0,0,cv2.width,cv2.height);
-    }
+    c2.setTransform(1,0,0,1,0,0);
+    c2.drawImage(v,0,0,cv2.width,cv2.height);
     const fs2 = Math.round(cv2.width*0.062);            // ขนาดตัวอักษรกลางๆ
     const mR = Math.round(cv2.width*0.03), padS = Math.round(fs2*0.3);
     c2.textBaseline='top';

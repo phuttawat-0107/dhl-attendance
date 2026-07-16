@@ -251,9 +251,10 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
   <div class="sheet">
     <h2 id="repTitle">รายงาน</h2>
     <div id="repCanvasWrap" style="margin:10px 0;"></div>
-    <button class="btn btn-r btn-block" id="repDlFull">⬇ โหลดแบบเต็ม (มีรูปถ่าย)</button>
+    <div class="hint" style="margin-bottom:10px;">⚠ ต้องโหลด <b>ทั้ง Report 1 และ Report 2</b> คู่กัน แล้วส่งทั้ง 2 ไฟล์ให้หัวหน้างาน</div>
+    <button class="btn btn-r btn-block" id="repDlFull">⬇ Report 1 (มีรูปถ่าย)</button>
     <div style="height:8px"></div>
-    <button class="btn btn-y btn-block" id="repDlSum">⬇ โหลดแบบสรุป (ไม่มีรูป)</button>
+    <button class="btn btn-y btn-block" id="repDlSum">⬇ Report 2 (สรุป ไม่มีรูป)</button>
     <div style="height:8px"></div>
     <button class="btn btn-o btn-block" onclick="document.getElementById('repModal').classList.remove('show')">ปิด</button>
     <div style="height:12px"></div>
@@ -1189,11 +1190,15 @@ async function openReport(key){
   wrap.innerHTML=''; cv.style.width='100%'; cv.style.borderRadius='10px'; cv.style.border='1px solid #eee';
   wrap.appendChild(cv);
   document.getElementById('repTitle').textContent = 'รายงาน '+thDate(key)+' — '+settings.depot;
-  document.getElementById('repDlFull').onclick = ()=> dlCanvas(cv, settings.depot+'_Attendance_'+key+'.png');
+  document.getElementById('repDlFull').onclick = ()=>{
+    dlCanvas(cv, settings.depot+'_Report1_'+key+'.png');
+    flash('✔ โหลด Report 1 แล้ว — อย่าลืมโหลด Report 2 ด้วย');
+  };
   document.getElementById('repDlSum').onclick = async ()=>{
-    flash('กำลังสร้างแบบสรุป...');
+    flash('กำลังสร้าง Report 2...');
     const sm = await drawSummary(key);
-    dlCanvas(sm, settings.depot+'_Summary_'+key+'.png');
+    dlCanvas(sm, settings.depot+'_Report2_'+key+'.png');
+    flash('✔ โหลด Report 2 แล้ว — ส่งทั้ง 2 ไฟล์ให้หัวหน้า');
   };
   document.getElementById('repModal').classList.add('show');
 }
@@ -1209,44 +1214,47 @@ async function drawSummary(key){
   const stemArr = pph? Object.values(pph.rp||{}).filter(x=>x.dep&&x.fdel&&x.fdel>x.dep).map(x=>x.fdel-x.dep) : [];
   const noUni = s.recs.filter(r=>r.uniform===false).length;
   const editN = s.recs.filter(r=>r.manualEdit).length;
+  const G='#2e7d32', R='#D40511', AM='#b58900', DK='#1a1a1a';
   const rows=[
-    ['Total Couriers', String(s.total), '#fff'],
-    ['Ontime', s.ontime+'   ('+s.ontimePct+'%)', '#5dcaa5'],
-    ['Late', s.late+'   ('+s.latePct+'%)', '#f0997b'],
+    ['Total Couriers', String(s.total), DK],
+    ['Ontime', s.ontime+'   ('+s.ontimePct+'%)', G],
+    ['Late', s.late+'   ('+s.latePct+'%)', R],
   ];
-  if(PC&&PC.sort) rows.push(['PPH Sort time', (Math.round(PC.sort.pph*10)/10)+'   (≥ 49)', PC.sort.pph>=49?'#5dcaa5':'#f0997b']);
-  if(PC&&PC.route) rows.push(['PPH Route prep', (Math.round(PC.route.pph*10)/10)+'   (≥ 165)', PC.route.pph>=165?'#5dcaa5':'#f0997b']);
+  if(PC&&PC.sort) rows.push(['PPH Sort time', (Math.round(PC.sort.pph*10)/10)+'   (target ≥ 49)', PC.sort.pph>=49?G:R]);
+  if(PC&&PC.route) rows.push(['PPH Route prep', (Math.round(PC.route.pph*10)/10)+'   (target ≥ 165)', PC.route.pph>=165?G:R]);
   if(fdArr.length){ const avgFd=fdArr.reduce((a,b)=>a+b,0)/fdArr.length; const ok=(new Date(avgFd).getHours()*3600+new Date(avgFd).getMinutes()*60)<9*3600;
-    rows.push(['First Delivery (avg)', fmtTime(avgFd)+'   (< 09:00)', ok?'#5dcaa5':'#f0997b']); }
-  if(stemArr.length) rows.push(['Avg Stem Out', Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000)+' min', '#fff']);
-  if(pph&&pph.pd&&pph.pd.ts) rows.push(['PD Performance Dialog', fmtTime(pph.pd.ts)+(pdInWindow(pph.pd.ts)?'   ✔':'   ✖'), pdInWindow(pph.pd.ts)?'#5dcaa5':'#f0997b']);
-  rows.push(['Risk (7d)', riskRows.length? (risk[riskRows[0].id]>=3?'RISK':'WATCH')+' — '+riskRows[0].name : 'ไม่มี', riskRows.length?'#ffd24a':'#5dcaa5']);
-  rows.push(['No uniform', String(noUni), noUni?'#f0997b':'#5dcaa5']);
-  if(editN) rows.push(['Time edited *', String(editN), '#ffd24a']);
+    rows.push(['First Delivery (avg)', fmtTime(avgFd)+'   (target < 09:00)', ok?G:R]); }
+  if(stemArr.length) rows.push(['Avg Stem Out', Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000)+' min', DK]);
+  if(pph&&pph.pd&&pph.pd.ts) rows.push(['PD Performance Dialog', fmtTime(pph.pd.ts)+(pdInWindow(pph.pd.ts)?'   in window':'   late'), pdInWindow(pph.pd.ts)?G:R]);
+  rows.push(['Risk (7d)', riskRows.length? (risk[riskRows[0].id]>=3?'RISK':'WATCH')+' — '+riskRows[0].name : 'none', riskRows.length?AM:G]);
+  rows.push(['No uniform', String(noUni), noUni?R:G]);
+  if(editN) rows.push(['Time edited *', String(editN), AM]);
 
   const W=1080, P=48, rowH=64;
-  const H = 200 + rows.length*rowH + 70;
+  const H = 210 + rows.length*rowH + 60;
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   const x=cv.getContext('2d');
-  x.fillStyle='#16181d'; x.fillRect(0,0,W,H);
+  x.fillStyle='#ffffff'; x.fillRect(0,0,W,H);
   x.fillStyle='#FFCC00'; x.fillRect(0,0,W,14);
-  fancyDepot(x, settings.depot, P, 104, true);
-  x.font='700 28px Segoe UI'; x.fillStyle='#e6e6e6'; x.textAlign='right';
+  fancyDepot(x, settings.depot, P, 104, false);
+  x.font='700 28px Segoe UI'; x.fillStyle=DK; x.textAlign='right';
   x.fillText('Daily Summary', W-P, 58);
-  x.font='20px Segoe UI'; x.fillStyle='#8a93a0';
+  x.font='20px Segoe UI'; x.fillStyle='#666';
   x.fillText(thDate(key)+(staffs.length? '   ·   Staff: '+staffs.join(', '):''), W-P, 90);
   x.textAlign='left';
-  let ry=170;
+  x.strokeStyle='#e6e6e6'; x.beginPath(); x.moveTo(P,150); x.lineTo(W-P,150); x.stroke();
+  let ry=166;
   rows.forEach((r,i)=>{
-    if(i%2===0){ x.fillStyle='#1c1f26'; roundRect(x,P-14,ry-6,W-2*(P-14),rowH-8,10); x.fill(); }
-    x.font='22px Segoe UI'; x.fillStyle='#aeb6c2'; x.textAlign='left';
-    x.fillText(r[0], P, ry+rowH/2-4);
+    if(i%2===0){ x.fillStyle='#fafafa'; x.fillRect(P-14,ry,W-2*(P-14),rowH); }
+    x.font='22px Segoe UI'; x.fillStyle='#555'; x.textAlign='left';
+    x.fillText(r[0], P, ry+rowH/2+8);
     x.font='700 26px Segoe UI'; x.fillStyle=r[2]; x.textAlign='right';
-    x.fillText(r[1], W-P, ry+rowH/2-4);
+    x.fillText(r[1], W-P, ry+rowH/2+8);
+    x.strokeStyle='#eee'; x.beginPath(); x.moveTo(P-14,ry+rowH); x.lineTo(W-(P-14),ry+rowH); x.stroke();
     ry+=rowH;
   });
-  x.fillStyle='#5a6270'; x.font='16px Segoe UI'; x.textAlign='center';
-  x.fillText('Generated by '+settings.staff+' — '+settings.depot+' Attendance System', W/2, H-28);
+  x.fillStyle='#999'; x.font='16px Segoe UI'; x.textAlign='center';
+  x.fillText('Generated by '+settings.staff+' — '+settings.depot+' Attendance System', W/2, H-26);
   x.fillStyle='#FFCC00'; x.fillRect(0,H-10,W,10);
   return cv;
 }
@@ -1275,14 +1283,13 @@ async function drawReport(key){
   const recs = s.recs.slice().sort((a,b)=>a.ts-b.ts);
   const imgs = await Promise.all(recs.map(r=>r.photo? loadImg(r.photo) : Promise.resolve(null)));
 
-  const W=1080, P=40, COLS=5, CELL=(W-P*2-(COLS-1)*16)/COLS, CELLH=CELL+56;
+  const W=1080, P=40, COLS=6, CELL=(W-P*2-(COLS-1)*14)/COLS, CELLH=CELL+50;
   const photoRows = Math.ceil(recs.length/COLS);
   const riskH = riskRows.length? 60+riskRows.length*34 : 70;
   const gridH = recs.length? 60+photoRows*(CELLH+16) : 60;
   const pph = await getPPH(key);
   const PC = pph? pphCalc(pph, recs.length) : null;
-  const hasFdel = pph && Object.values(pph.rp||{}).some(x=>x.fdel);
-  const pphH = PC? (220 + (hasFdel? 130:0)) : 0;
+  const pphH = PC? 200 : 0;
   const pd = (pph && pph.pd && pph.pd.photo)? pph.pd : null;
   const pdH = pd? 384 : 0;
   const H = 210 + 150 + 420 + pdH + riskH + pphH + gridH + 80;
@@ -1362,52 +1369,31 @@ async function drawReport(key){
     ry+=26;
   } else { ry+=36; x.fillStyle='#2e7d32'; x.font='22px Segoe UI'; x.fillText('ไม่มีพนักงานเสี่ยง', P+10, ry); ry+=20; }
 
-  /* PPH summary */
+  /* Operations KPI — 3 boxes เรียง (Sort / Route / First Del) */
   if(PC){
-    x.fillStyle='#1a1a1a'; x.font='700 26px Segoe UI'; x.textAlign='left';
-    x.fillText('📦 PPH Summary', P, ry+40);
-    x.font='16px Segoe UI'; x.fillStyle='#777'; x.textAlign='right';
-    x.fillText('Parcels '+PC.totalP+' (ใหม่ '+(pph.pNew||0)+' + เก่า '+(pph.pOld||0)+')  •  Staff '+(pph.staffN||0)+' / Sorter '+(pph.sorterN||0)+' / Courier '+(pph.courierN||0), W-P, ry+40);
     x.textAlign='left';
-    const by=ry+56, bw2=(W-P*2-16)/2, bh=130;
-    const box=(bx,title,val,ok,l1,l2)=>{
-      x.fillStyle='#fafafa'; roundRect(x,bx,by,bw2,bh,14); x.fill();
-      const col = ok===null? '#888888' : ok? '#2e7d32' : '#D40511';
-      x.fillStyle=col; x.fillRect(bx,by,8,bh);
-      x.font='700 20px Segoe UI'; x.fillStyle='#555'; x.fillText(title, bx+22, by+30);
-      x.font='800 40px Segoe UI'; x.fillStyle=col; x.fillText(val, bx+22, by+76);
-      x.font='15px Segoe UI'; x.fillStyle='#777';
-      x.fillText(l1, bx+22, by+101);
-      x.fillText(l2, bx+22, by+121);
-    };
-    box(P, 'PPH Sort time  (Target ≥ 49)',
-      PC.sort? String(Math.round(PC.sort.pph*10)/10) : '—',
-      PC.sort? PC.sort.pph>=49 : null,
-      (pph.inboundTs&&PC.sort)? 'First Inbound '+fmtTime(pph.inboundTs)+'  →  Avg First scan '+fmtTime(PC.sort.avgFs) : 'ยังจับเวลาไม่ครบ (FS '+PC.fsDone+'/'+recs.length+')',
-      'Man-hours '+(PC.sort? Math.round(PC.sort.mh*10)/10 : '—')+'  •  คนรวม '+PC.people);
-    box(P+bw2+16, 'PPH Route prep  (Target ≥ 165)',
-      PC.route? String(Math.round(PC.route.pph*10)/10) : '—',
-      PC.route? PC.route.pph>=165 : null,
-      PC.route? 'Avg FS '+fmtTime(PC.route.avgFs)+'  →  Avg Dep '+fmtTime(PC.route.avgDep)+'  •  Courier '+PC.route.n+' คน' : 'ยังจับเวลาไม่ครบ',
-      'Man-hours '+(PC.route? Math.round(PC.route.mh*10)/10 : '—')+'  •  นับเฉพาะ Courier');
-    ry = by + bh + 10;
-
-    /* First Delivery summary */
     const fdArr = Object.values(pph.rp||{}).map(x=>x.fdel).filter(Boolean);
     const stemArr = Object.values(pph.rp||{}).filter(x=>x.dep&&x.fdel&&x.fdel>x.dep).map(x=>x.fdel-x.dep);
-    if(fdArr.length){
-      const avgFd = fdArr.reduce((a,b)=>a+b,0)/fdArr.length;
-      const okFd = (new Date(avgFd).getHours()*3600+new Date(avgFd).getMinutes()*60) < 9*3600;
-      const avgStem = stemArr.length? Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000) : null;
-      const fby=ry, fbh=110;
-      x.fillStyle='#fafafa'; roundRect(x,P,fby,W-P*2,fbh,14); x.fill();
-      x.fillStyle= okFd? '#2e7d32':'#D40511'; x.fillRect(P,fby,8,fbh);
-      x.font='700 20px Segoe UI'; x.fillStyle='#555'; x.textAlign='left'; x.fillText('🚚 First Delivery  (Target ก่อน 09:00)', P+22, fby+30);
-      x.font='800 40px Segoe UI'; x.fillStyle= okFd? '#2e7d32':'#D40511'; x.fillText('Avg '+fmtTime(avgFd), P+22, fby+76);
-      x.font='16px Segoe UI'; x.fillStyle='#777';
-      x.fillText((okFd?'✔ ก่อน 09:00':'✖ เกิน 09:00')+'   •   ครบ '+fdArr.length+' คน'+(avgStem!=null? '   •   Avg Stem Out '+avgStem+' นาที':''), P+330, fby+66);
-      ry = fby + fbh + 10;
-    }
+    const avgFd = fdArr.length? fdArr.reduce((a,b)=>a+b,0)/fdArr.length : null;
+    const okFd = avgFd? (new Date(avgFd).getHours()*3600+new Date(avgFd).getMinutes()*60)<9*3600 : null;
+    const avgStem = stemArr.length? Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000) : null;
+    x.fillStyle='#1a1a1a'; x.font='700 26px Segoe UI'; x.fillText('Operations KPI', P, ry+34);
+    x.font='16px Segoe UI'; x.fillStyle='#777'; x.textAlign='right';
+    x.fillText('Parcels '+PC.totalP+'  •  Staff '+(pph.staffN||0)+' / Sorter '+(pph.sorterN||0)+' / Courier '+(pph.courierN||0), W-P, ry+34);
+    x.textAlign='left';
+    const by=ry+50, bw=(W-P*2-2*14)/3, bh=118;
+    const box=(bx,title,val,ok,sub)=>{
+      x.fillStyle = ok===null? '#f7f7f7' : ok? '#f2fbf6':'#fff5f5'; roundRect(x,bx,by,bw,bh,14); x.fill();
+      const col = ok===null? '#888' : ok? '#2e7d32':'#D40511';
+      x.fillStyle=col; roundRect(x,bx,by,7,bh,5); x.fill();
+      x.font='17px Segoe UI'; x.fillStyle='#555'; x.fillText(title, bx+20, by+30);
+      x.font='800 38px Segoe UI'; x.fillStyle=col; x.fillText(val, bx+20, by+74);
+      x.font='13px Segoe UI'; x.fillStyle='#888'; x.fillText(sub, bx+20, by+100);
+    };
+    box(P, 'PPH Sort  (≥ 49)', PC.sort? String(Math.round(PC.sort.pph*10)/10):'—', PC.sort? PC.sort.pph>=49:null, PC.sort? 'MH '+(Math.round(PC.sort.mh*10)/10)+' · '+PC.people+' คน' : 'FS '+PC.fsDone+'/'+recs.length);
+    box(P+bw+14, 'PPH Route  (≥ 165)', PC.route? String(Math.round(PC.route.pph*10)/10):'—', PC.route? PC.route.pph>=165:null, PC.route? PC.route.n+' คน' : 'ยังไม่ครบ');
+    box(P+2*(bw+14), 'First Del  (< 09:00)', avgFd? fmtTime(avgFd):'—', okFd, avgStem!=null? 'Stem out '+avgStem+' min' : 'ยังไม่ครบ');
+    ry = by + bh + 12;
   }
 
   /* photo grid */
@@ -1419,7 +1405,7 @@ async function drawReport(key){
   let gy=ry+50;
   recs.forEach((r,i)=>{
     const col=i%COLS, row=Math.floor(i/COLS);
-    const gx=P+col*(CELL+16), yy=gy+row*(CELLH+16);
+    const gx=P+col*(CELL+14), yy=gy+row*(CELLH+16);
     x.fillStyle='#f2f2f2'; roundRect(x,gx,yy,CELL,CELL,10); x.fill();
     const im=imgs[i];
     if(im){
@@ -1427,17 +1413,17 @@ async function drawReport(key){
       const sc=Math.max(CELL/im.width, CELL/im.height);
       x.drawImage(im, gx+(CELL-im.width*sc)/2, yy+(CELL-im.height*sc)/2, im.width*sc, im.height*sc);
       x.restore();
-    } else { x.fillStyle='#bbb'; x.font='14px Segoe UI'; x.textAlign='center'; x.fillText('no photo', gx+CELL/2, yy+CELL/2); x.textAlign='left'; }
+    } else { x.fillStyle='#bbb'; x.font='13px Segoe UI'; x.textAlign='center'; x.fillText('no photo', gx+CELL/2, yy+CELL/2); x.textAlign='left'; }
     const c=cMap[r.courierId]||{code:'?',name:'?'};
-    x.fillStyle = r.status==='ontime'? '#2e7d32':'#D40511';
-    x.fillRect(gx, yy+CELL+6, 8, 40);
-    x.fillStyle='#1a1a1a'; x.font='700 16px Segoe UI';
-    x.fillText(trunc(x, c.name, CELL-20), gx+14, yy+CELL+22);
-    x.font='14px Segoe UI'; x.fillStyle = r.status==='ontime'? '#2e7d32':'#D40511';
-    x.fillText(c.code+' • '+fmtTime(r.ts)+(r.manualEdit?'*':'')+(r.status==='late'?' LATE':' OK'), gx+14, yy+CELL+42);
+    const col2 = r.status==='ontime'? '#2e7d32':'#D40511';
+    x.fillStyle=col2; x.fillRect(gx, yy+CELL+5, 6, 34);
+    x.fillStyle='#1a1a1a'; x.font='700 13px Segoe UI';
+    x.fillText(trunc(x, c.name, CELL-16), gx+12, yy+CELL+20);
+    x.font='700 12px Segoe UI'; x.fillStyle=col2;
+    x.fillText(c.code+' '+fmtTime(r.ts)+(r.manualEdit?'*':'')+(r.status==='late'?' L':''), gx+12, yy+CELL+38);
     if(r.uniform===false){
-      x.fillStyle='#D40511'; x.font='700 14px Segoe UI'; x.textAlign='right';
-      x.fillText('👕✖', gx+CELL-8, yy+20); x.textAlign='left';
+      x.fillStyle='#D40511'; x.font='700 13px Segoe UI'; x.textAlign='right';
+      x.fillText('👕✖', gx+CELL-6, yy+18); x.textAlign='left';
     }
   });
 

@@ -12,7 +12,9 @@ body{font-family:'Segoe UI','Noto Sans Thai',Tahoma,sans-serif;background:linear
 .ybar{height:8px;background:var(--y);}
 .hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;}
 .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:22px;}
-.depot-logo{font-size:32px;font-weight:900;font-style:italic;letter-spacing:2px;color:var(--k);line-height:1;}
+.depot-logo{font-size:38px;font-weight:900;font-style:italic;letter-spacing:2px;line-height:1;color:var(--k);
+  background:linear-gradient(135deg,#1a1a1a 30%,#4a4a4a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  text-shadow:0 2px 4px rgba(0,0,0,.22);filter:drop-shadow(0 1px 1px rgba(255,204,0,.55));}
 .logo .ec{color:var(--k);font-weight:600;font-size:16px;}
 .hd .meta{text-align:right;font-size:12px;color:var(--muted);}
 .hd .meta b{display:block;font-size:15px;color:var(--k);}
@@ -249,7 +251,9 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
   <div class="sheet">
     <h2 id="repTitle">รายงาน</h2>
     <div id="repCanvasWrap" style="margin:10px 0;"></div>
-    <button class="btn btn-r btn-block" id="repDl">⬇ ดาวน์โหลดรายงาน (PNG)</button>
+    <button class="btn btn-r btn-block" id="repDlFull">⬇ โหลดแบบเต็ม (มีรูปถ่าย)</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-y btn-block" id="repDlSum">⬇ โหลดแบบสรุป (ไม่มีรูป)</button>
     <div style="height:8px"></div>
     <button class="btn btn-o btn-block" onclick="document.getElementById('repModal').classList.remove('show')">ปิด</button>
     <div style="height:12px"></div>
@@ -1177,6 +1181,7 @@ async function backupJSON(){
 }
 
 /* ================= REPORT (Export PNG หน้าเดียว) ================= */
+function dlCanvas(cv, name){ const a=document.createElement('a'); a.href=cv.toDataURL('image/png'); a.download=name; a.click(); }
 async function openReport(key){
   flash('กำลังสร้างรายงาน...');
   const cv = await drawReport(key);
@@ -1184,16 +1189,83 @@ async function openReport(key){
   wrap.innerHTML=''; cv.style.width='100%'; cv.style.borderRadius='10px'; cv.style.border='1px solid #eee';
   wrap.appendChild(cv);
   document.getElementById('repTitle').textContent = 'รายงาน '+thDate(key)+' — '+settings.depot;
-  document.getElementById('repDl').onclick = ()=>{
-    const a = document.createElement('a');
-    a.href = cv.toDataURL('image/png');
-    a.download = settings.depot+'_Attendance_'+key+'.png';
-    a.click();
+  document.getElementById('repDlFull').onclick = ()=> dlCanvas(cv, settings.depot+'_Attendance_'+key+'.png');
+  document.getElementById('repDlSum').onclick = async ()=>{
+    flash('กำลังสร้างแบบสรุป...');
+    const sm = await drawSummary(key);
+    dlCanvas(sm, settings.depot+'_Summary_'+key+'.png');
   };
   document.getElementById('repModal').classList.add('show');
 }
+/* ===== แบบสรุป (Dark, ไม่มีรูป) ===== */
+async function drawSummary(key){
+  const s = await dayStats(key);
+  const risk = await riskMap(key);
+  const riskRows = couriers.filter(c=>c.active && riskLevel(risk[c.id]||0)).sort((a,b)=>(risk[b.id]||0)-(risk[a.id]||0));
+  const pph = await getPPH(key);
+  const PC = pph? pphCalc(pph, s.recs.length) : null;
+  const staffs = [...new Set(s.recs.map(r=>r.staff).filter(Boolean))];
+  const fdArr = pph? Object.values(pph.rp||{}).map(x=>x.fdel).filter(Boolean) : [];
+  const stemArr = pph? Object.values(pph.rp||{}).filter(x=>x.dep&&x.fdel&&x.fdel>x.dep).map(x=>x.fdel-x.dep) : [];
+  const noUni = s.recs.filter(r=>r.uniform===false).length;
+  const editN = s.recs.filter(r=>r.manualEdit).length;
+  const rows=[
+    ['Total Couriers', String(s.total), '#fff'],
+    ['Ontime', s.ontime+'   ('+s.ontimePct+'%)', '#5dcaa5'],
+    ['Late', s.late+'   ('+s.latePct+'%)', '#f0997b'],
+  ];
+  if(PC&&PC.sort) rows.push(['PPH Sort time', (Math.round(PC.sort.pph*10)/10)+'   (≥ 49)', PC.sort.pph>=49?'#5dcaa5':'#f0997b']);
+  if(PC&&PC.route) rows.push(['PPH Route prep', (Math.round(PC.route.pph*10)/10)+'   (≥ 165)', PC.route.pph>=165?'#5dcaa5':'#f0997b']);
+  if(fdArr.length){ const avgFd=fdArr.reduce((a,b)=>a+b,0)/fdArr.length; const ok=(new Date(avgFd).getHours()*3600+new Date(avgFd).getMinutes()*60)<9*3600;
+    rows.push(['First Delivery (avg)', fmtTime(avgFd)+'   (< 09:00)', ok?'#5dcaa5':'#f0997b']); }
+  if(stemArr.length) rows.push(['Avg Stem Out', Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000)+' min', '#fff']);
+  if(pph&&pph.pd&&pph.pd.ts) rows.push(['PD Performance Dialog', fmtTime(pph.pd.ts)+(pdInWindow(pph.pd.ts)?'   ✔':'   ✖'), pdInWindow(pph.pd.ts)?'#5dcaa5':'#f0997b']);
+  rows.push(['Risk (7d)', riskRows.length? (risk[riskRows[0].id]>=3?'RISK':'WATCH')+' — '+riskRows[0].name : 'ไม่มี', riskRows.length?'#ffd24a':'#5dcaa5']);
+  rows.push(['No uniform', String(noUni), noUni?'#f0997b':'#5dcaa5']);
+  if(editN) rows.push(['Time edited *', String(editN), '#ffd24a']);
+
+  const W=1080, P=48, rowH=64;
+  const H = 200 + rows.length*rowH + 70;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const x=cv.getContext('2d');
+  x.fillStyle='#16181d'; x.fillRect(0,0,W,H);
+  x.fillStyle='#FFCC00'; x.fillRect(0,0,W,14);
+  fancyDepot(x, settings.depot, P, 104, true);
+  x.font='700 28px Segoe UI'; x.fillStyle='#e6e6e6'; x.textAlign='right';
+  x.fillText('Daily Summary', W-P, 58);
+  x.font='20px Segoe UI'; x.fillStyle='#8a93a0';
+  x.fillText(thDate(key)+(staffs.length? '   ·   Staff: '+staffs.join(', '):''), W-P, 90);
+  x.textAlign='left';
+  let ry=170;
+  rows.forEach((r,i)=>{
+    if(i%2===0){ x.fillStyle='#1c1f26'; roundRect(x,P-14,ry-6,W-2*(P-14),rowH-8,10); x.fill(); }
+    x.font='22px Segoe UI'; x.fillStyle='#aeb6c2'; x.textAlign='left';
+    x.fillText(r[0], P, ry+rowH/2-4);
+    x.font='700 26px Segoe UI'; x.fillStyle=r[2]; x.textAlign='right';
+    x.fillText(r[1], W-P, ry+rowH/2-4);
+    ry+=rowH;
+  });
+  x.fillStyle='#5a6270'; x.font='16px Segoe UI'; x.textAlign='center';
+  x.fillText('Generated by '+settings.staff+' — '+settings.depot+' Attendance System', W/2, H-28);
+  x.fillStyle='#FFCC00'; x.fillRect(0,H-10,W,10);
+  return cv;
+}
 function loadImg(src){
   return new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src; });
+}
+/* ชื่อ Depot เด่น มีเงา + ขีดเหลืองใต้ */
+function fancyDepot(x, txt, px, baseY, dark){
+  x.save();
+  x.font='italic 900 84px Segoe UI, Arial';
+  x.textAlign='left'; x.textBaseline='alphabetic';
+  const w = x.measureText(txt).width;
+  x.shadowColor = dark? 'rgba(0,0,0,.6)' : 'rgba(0,0,0,.30)';
+  x.shadowBlur = 12; x.shadowOffsetX = 0; x.shadowOffsetY = 5;
+  x.fillStyle = dark? '#ffffff' : '#1a1a1a';
+  x.fillText(txt, px, baseY);
+  x.restore();
+  x.fillStyle = '#FFCC00';
+  x.fillRect(px+2, baseY+10, Math.min(w, 260), 7);
 }
 async function drawReport(key){
   const s = await dayStats(key);
@@ -1220,13 +1292,13 @@ async function drawReport(key){
 
   /* header */
   x.fillStyle='#FFCC00'; x.fillRect(0,0,W,16);
-  x.fillStyle='#1a1a1a'; x.font='italic 900 68px Segoe UI'; x.textAlign='left';
-  x.fillText(settings.depot, P, 92);
-  x.font='700 30px Segoe UI'; x.textAlign='right';
-  x.fillText('Courier Attendance Report', W-P, 66);
+  fancyDepot(x, settings.depot, P, 104, false);
+  x.font='700 30px Segoe UI'; x.textAlign='right'; x.fillStyle='#1a1a1a';
+  x.fillText('Courier Attendance Report', W-P, 60);
   x.font='22px Segoe UI'; x.fillStyle='#555';
-  x.fillText(thDate(key), W-P, 100);
-  x.strokeStyle='#eee'; x.beginPath(); x.moveTo(P,130); x.lineTo(W-P,130); x.stroke();
+  x.fillText(thDate(key), W-P, 94);
+  x.textAlign='left';
+  x.strokeStyle='#eee'; x.beginPath(); x.moveTo(P,138); x.lineTo(W-P,138); x.stroke();
 
   /* KPI cards */
   const kY=160, kW=(W-P*2-3*16)/4;

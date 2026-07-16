@@ -205,6 +205,22 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
   </div>
 </div>
 
+<!-- PD photo preview + rotate -->
+<div class="overlay" id="pdPreview" style="align-items:center;justify-content:center;">
+  <div style="width:100%;max-width:700px;padding:16px;text-align:center;">
+    <div style="color:#fff;font-weight:700;margin-bottom:10px;">ตรวจภาพก่อนบันทึก — ถ้าตะแคง กดปุ่มหมุนให้คนยืนตรง</div>
+    <canvas id="pdPvCanvas" style="max-width:100%;max-height:58vh;border-radius:12px;background:#000;"></canvas>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-o btn-block" style="background:#333;color:#fff;border-color:#555;" onclick="rotatePD(-90)">↺ หมุนซ้าย</button>
+      <button class="btn btn-o btn-block" style="background:#333;color:#fff;border-color:#555;" onclick="rotatePD(90)">↻ หมุนขวา</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-o btn-block" style="background:#333;color:#fff;border-color:#555;" onclick="pdRetake()">📷 ถ่ายใหม่</button>
+      <button class="btn btn-y btn-block" onclick="savePDPhoto()">✔ บันทึกภาพนี้</button>
+    </div>
+  </div>
+</div>
+
 <!-- report modal -->
 <div class="modal" id="repModal">
   <div class="sheet">
@@ -750,48 +766,65 @@ async function flipCamera(){
     catch(e2){ alert(camErrorMsg(e2)); }
   }
 }
+/* ===== PD photo preview + หมุนเอง ===== */
+let pdRaw=null, pdRot=0, pdTs=0;
+function rotatedCanvas(src, deg){
+  deg=((deg%360)+360)%360;
+  const c=document.createElement('canvas');
+  if(deg===90||deg===270){ c.width=src.height; c.height=src.width; }
+  else { c.width=src.width; c.height=src.height; }
+  const x=c.getContext('2d');
+  x.translate(c.width/2, c.height/2); x.rotate(deg*Math.PI/180);
+  x.drawImage(src, -src.width/2, -src.height/2);
+  return c;
+}
+function drawPDPreview(){
+  if(!pdRaw) return;
+  const shown=rotatedCanvas(pdRaw, pdRot);
+  const pv=document.getElementById('pdPvCanvas');
+  pv.width=shown.width; pv.height=shown.height;
+  pv.getContext('2d').drawImage(shown,0,0);
+}
+function openPDPreview(){ pdRot=0; document.getElementById('pdPreview').classList.add('show'); drawPDPreview(); }
+function rotatePD(d){ pdRot=(pdRot+d); drawPDPreview(); }
+function pdRetake(){ document.getElementById('pdPreview').classList.remove('show'); openPDCamera(); }
+async function savePDPhoto(){
+  const cv2=rotatedCanvas(pdRaw, pdRot);            // ภาพตามทิศที่ผู้ใช้เลือก
+  const c2=cv2.getContext('2d');
+  const fs2=Math.round(cv2.width*0.055), mR=Math.round(cv2.width*0.025), padS=Math.round(fs2*0.3);
+  c2.textBaseline='top';
+  c2.font='italic 900 '+fs2+'px Segoe UI, Arial, sans-serif';
+  const txt=settings.depot, tw=c2.measureText(txt).width;
+  const bx=cv2.width-mR-tw-padS*2, by=mR;
+  c2.fillStyle='rgba(255,204,0,.93)'; c2.fillRect(bx,by,tw+padS*2,fs2+padS*2);
+  c2.fillStyle='#D40511'; c2.fillText(txt,bx+padS,by+padS);
+  const dtf=Math.round(fs2*0.42);
+  c2.font='700 '+dtf+'px Segoe UI, Arial, sans-serif';
+  const dts=thDate(todayKey())+'  '+fmtTime(pdTs), dtw=c2.measureText(dts).width;
+  c2.fillStyle='rgba(0,0,0,.55)'; c2.fillRect(cv2.width-mR-dtw-padS*2, by+fs2+padS*2+4, dtw+padS*2, dtf+padS);
+  c2.fillStyle='#fff'; c2.fillText(dts, cv2.width-mR-dtw-padS, by+fs2+padS*2+4+Math.round(padS*0.5));
+  let rec=await getPPH(todayKey());
+  if(!rec) rec={ date:todayKey(), staffN:1, sorterN:0, courierN:todayRecs.length, pNew:0, pOld:0, inboundTs:null, firstScanTs:null, rp:{} };
+  rec.pd={ ts:pdTs, photo:cv2.toDataURL('image/jpeg',0.78) };
+  await putPPH(rec);
+  document.getElementById('pdPreview').classList.remove('show');
+  pdRaw=null;
+  flash('📸 บันทึกภาพ PD แล้ว — '+fmtTime(pdTs)+(pdInWindow(pdTs)?' ✔':' (นอกช่วงเวลา)'));
+  renderPDCard();
+}
 async function capture(){
   if(!camStream || (!camCourier && !camPD)) return;
   const v = document.getElementById('camVideo');
   if(!v.videoWidth){ return; }
-  if(camPD){                                    // ภาพประชุม PD + stamp ชื่อสาขา
-    const now = new Date();
-    // วาดภาพตามที่กล้องแสดงบนจอ (หันถูกด้านเสมอ ไม่หมุน ไม่กลับด้าน)
+  if(camPD){                                    // ถ่ายภาพประชุม → ไปหน้าพรีวิว (หมุนเองได้) ก่อนบันทึก
     const maxpd = 1280, sc2 = Math.min(1, maxpd/Math.max(v.videoWidth,v.videoHeight));
-    const cv2 = document.createElement('canvas');
-    cv2.width = Math.round(v.videoWidth*sc2);
-    cv2.height = Math.round(v.videoHeight*sc2);
-    const c2 = cv2.getContext('2d');
-    c2.setTransform(1,0,0,1,0,0);
-    c2.drawImage(v,0,0,cv2.width,cv2.height);
-    const fs2 = Math.round(cv2.width*0.062);            // ขนาดตัวอักษรกลางๆ
-    const mR = Math.round(cv2.width*0.03), padS = Math.round(fs2*0.3);
-    c2.textBaseline='top';
-    c2.font = 'italic 900 '+fs2+'px Segoe UI, Arial, sans-serif';
-    const txt = settings.depot;
-    const tw = c2.measureText(txt).width;
-    const bx = cv2.width - mR - tw - padS*2, by = mR;
-    c2.fillStyle='rgba(255,204,0,.93)';                 // กล่องเหลือง DHL
-    c2.fillRect(bx, by, tw+padS*2, fs2+padS*2);
-    c2.fillStyle='#D40511';
-    c2.fillText(txt, bx+padS, by+padS);
-    const dtf = Math.round(fs2*0.42);
-    c2.font = '700 '+dtf+'px Segoe UI, Arial, sans-serif';
-    const dts = thDate(todayKey())+'  '+fmtTime(now.getTime());
-    const dtw = c2.measureText(dts).width;
-    c2.fillStyle='rgba(0,0,0,.55)';
-    c2.fillRect(cv2.width-mR-dtw-padS*2, by+fs2+padS*2+4, dtw+padS*2, dtf+padS);
-    c2.fillStyle='#ffffff';
-    c2.fillText(dts, cv2.width-mR-dtw-padS, by+fs2+padS*2+4+Math.round(padS*0.5));
-    const pdPhoto = cv2.toDataURL('image/jpeg',0.78);
-    let rec = await getPPH(todayKey());
-    if(!rec) rec = { date:todayKey(), staffN:1, sorterN:0, courierN:todayRecs.length,
-                     pNew:0, pOld:0, inboundTs:null, firstScanTs:null, rp:{} };
-    rec.pd = { ts:now.getTime(), photo:pdPhoto };
-    await putPPH(rec);
+    const raw = document.createElement('canvas');
+    raw.width = Math.round(v.videoWidth*sc2);
+    raw.height = Math.round(v.videoHeight*sc2);
+    raw.getContext('2d').drawImage(v,0,0,raw.width,raw.height);
+    pdRaw = raw; pdRot = 0; pdTs = Date.now();
     closeCamera();
-    flash('📸 บันทึกภาพ PD แล้ว — '+fmtTime(now.getTime())+(pdInWindow(now.getTime())?' ✔':' (นอกช่วงเวลา)'));
-    renderPDCard();
+    openPDPreview();
     return;
   }
   const now = new Date();                       // เวลาบันทึก = วินาทีที่ถ่าย

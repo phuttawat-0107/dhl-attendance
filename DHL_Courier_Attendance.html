@@ -86,6 +86,18 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
 .flash{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--k);color:#fff;padding:12px 20px;border-radius:99px;z-index:300;font-size:14px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.3);}
 .photo-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#eee;}
 .hint{background:#fff8dc;border:1px solid var(--y);border-radius:12px;padding:10px;font-size:12px;margin-bottom:10px;}
+.tlcard{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tl{display:flex;align-items:flex-start;padding:6px 2px 2px;min-width:max-content;}
+.tl .nd{display:flex;flex-direction:column;align-items:center;width:88px;}
+.tl .top{position:relative;width:100%;display:flex;justify-content:center;align-items:center;height:24px;}
+.tl .bar{position:absolute;top:10px;left:50%;width:100%;height:3px;background:#dcdcdc;}
+.tl .nd.done .bar{background:var(--g);}
+.tl .dot{width:22px;height:22px;border-radius:50%;background:#ccc;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;z-index:1;}
+.tl .nd.done .dot{background:var(--g);}
+.tl .nd.cur .dot{background:var(--y);color:#1a1a1a;box-shadow:0 0 0 4px rgba(255,204,0,.35);}
+.tl .lbl{font-size:11px;font-weight:700;margin-top:5px;text-align:center;line-height:1.2;}
+.tl .tgt{font-size:9px;color:var(--r);font-weight:800;margin-top:1px;}
+.tl .vt{font-size:10px;color:#444;font-weight:700;margin-top:1px;}
 </style>
 </head>
 <body>
@@ -100,6 +112,7 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
 
 <!-- ============ CHECK-IN ============ -->
 <div class="view active" id="view-checkin">
+  <div id="tlCheckin"></div>
   <div class="card" id="clockCard">
     <div class="bigclock">
       <div class="t" id="bigTime">--:--:--</div>
@@ -126,6 +139,7 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
 
 <!-- ============ PD ============ -->
 <div class="view" id="view-pd">
+  <div id="tlPd"></div>
   <div class="card" style="border-left-color:#7a3b8f;">
     <h2>📸 PD Performance Dialog <span class="small">(07:00–07:15)</span></h2>
     <div class="small">ถ่ายภาพหมู่การประชุมเช้า — บังคับกล้องสด <b>แนวนอน</b> เท่านั้น • ระบบ Stamp ชื่อสาขาให้อัตโนมัติ</div>
@@ -135,6 +149,9 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
 
 <!-- ============ PPH ============ -->
 <div class="view" id="view-pph"><div id="pphBody"></div></div>
+
+<!-- ============ FIRST DELIVERY ============ -->
+<div class="view" id="view-fdel"><div id="fdelBody"></div></div>
 
 <!-- ============ DASHBOARD ============ -->
 <div class="view" id="view-dash">
@@ -185,6 +202,7 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
   <button class="on" data-v="checkin" onclick="nav('checkin')"><span class="ic">1️⃣</span>เช็คอิน</button>
   <button data-v="pd" onclick="nav('pd')"><span class="ic">2️⃣</span>PD</button>
   <button data-v="pph" onclick="nav('pph')"><span class="ic">3️⃣</span>PPH</button>
+  <button data-v="fdel" onclick="nav('fdel')"><span class="ic">4️⃣</span>First Del</button>
   <button data-v="dash" onclick="nav('dash')"><span class="ic">📊</span>Dashboard</button>
   <button data-v="hist" onclick="nav('hist')"><span class="ic">🗓</span>ประวัติ</button>
   <button data-v="manage" onclick="nav('manage')"><span class="ic">👥</span>จัดการ</button>
@@ -433,15 +451,85 @@ function refreshLocks(){
 function nav(v){
   if(v==='pd' && !gateAttend){ flash('🔒 ทำ Time Attendance ก่อน (เช็คอินอย่างน้อย 1 คน)'); return; }
   if(v==='pph' && !gatePD){ flash(gateAttend? '🔒 ถ่ายภาพ PD (ขั้นที่ 2) ก่อน' : '🔒 เริ่มจากเช็คอิน → PD → PPH ตามลำดับ'); return; }
+  if(v==='fdel' && !gatePD){ flash('🔒 ทำขั้น 1→2→3 ก่อน (เช็คอิน → PD → PPH)'); return; }
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
   if(v==='checkin') renderCheckin();
   if(v==='pd') renderPDCard();
   if(v==='pph') renderPPH();
+  if(v==='fdel') renderFDel();
   if(v==='dash') renderDash();
   if(v==='hist') renderHist();
   if(v==='manage') renderManage();
+}
+/* ===== Timeline เชื่อม 4 สเตป ===== */
+async function buildTimeline(){
+  const recs = await getByDate(todayKey());
+  const p = await getPPH(todayKey()) || {};
+  const deps = Object.values(p.rp||{}).map(x=>x.dep).filter(Boolean);
+  const fdels = Object.values(p.rp||{}).map(x=>x.fdel).filter(Boolean);
+  const avg = a => a.length? a.reduce((x,y)=>x+y,0)/a.length : null;
+  const steps = [
+    {l:'เข้างาน', tgt:'07:00', done:recs.length>0, val:null},
+    {l:'PD Board', tgt:'<07:15', done:!!(p.pd&&p.pd.ts), val:(p.pd&&p.pd.ts)?p.pd.ts:null},
+    {l:'First Inbound', tgt:'', done:!!p.inboundTs, val:p.inboundTs||null},
+    {l:'Last Inbound', tgt:'', done:!!p.lastInboundTs, val:p.lastInboundTs||null},
+    {l:'Departure', tgt:'<08:30', done:deps.length>0, val:avg(deps)},
+    {l:'First Del', tgt:'<09:00', done:fdels.length>0, val:avg(fdels)},
+  ];
+  let cur = steps.findIndex(s=>!s.done); if(cur<0) cur=steps.length;
+  let h='<div class="card tlcard" style="padding:8px 6px;"><div class="tl">';
+  steps.forEach((s,i)=>{
+    const cls = s.done? 'done' : (i===cur? 'cur':'');
+    h+='<div class="nd '+cls+'"><div class="top">'
+      +(i<steps.length-1? '<div class="bar"></div>':'')
+      +'<div class="dot">'+(s.done? '✓' : (i+1))+'</div></div>'
+      +'<div class="lbl">'+s.l+'</div>'
+      +(s.tgt? '<div class="tgt">'+s.tgt+'</div>':'<div class="tgt" style="visibility:hidden;">-</div>')
+      +'<div class="vt">'+(s.val? fmtTime(s.val):'—')+'</div></div>';
+  });
+  h+='</div></div>';
+  return h;
+}
+/* ===== First Delivery (Tab 4) ===== */
+const FDEL_TARGET = 9*3600;                        // 09:00
+function fdelStatus(ts){ const d=new Date(ts); return (d.getHours()*3600+d.getMinutes()*60+d.getSeconds()) < FDEL_TARGET; }
+async function renderFDel(){
+  todayRecs = await getByDate(todayKey());
+  pphRec = await getPPH(todayKey());
+  if(!pphRec){ pphRec={ date:todayKey(), staffN:1, sorterN:0, courierN:todayRecs.length, pNew:0, pOld:0, inboundTs:null, lastInboundTs:null, rp:{} }; await putPPH(pphRec); }
+  let h = await buildTimeline();
+  h += '<div class="card" style="border-left-color:#1565c0;"><h2>4️⃣ First Delivery <span class="small">(Target ก่อน 09:00)</span></h2>'
+    +'<div class="small">Stem Out = จับเวลาตั้งแต่ <b>Departure</b> (จากขั้น 3) → <b>First Del</b> • กด First Del เพื่อหยุดเวลา (แก้ไข/ล้างได้)</div></div>';
+  const chk = todayRecs.map(r=>couriers.find(c=>c.id===r.courierId)).filter(Boolean);
+  const rows = [];
+  const stems = [];
+  chk.forEach(c=>{
+    const q = (pphRec.rp||{})[c.id]||{};
+    let stemTxt='';
+    if(q.dep && q.fdel && q.fdel>q.dep){ const mins=Math.round((q.fdel-q.dep)/60000); stems.push(q.fdel-q.dep); stemTxt=' • Stem Out '+mins+' นาที'; }
+    const ok = q.fdel? fdelStatus(q.fdel) : null;
+    const chip = q.fdel? (ok? '<span class="chip ontime">✔ '+fmtTime(q.fdel)+'</span>':'<span class="chip late">✖ '+fmtTime(q.fdel)+'</span>') : '';
+    rows.push('<div class="row-c" style="box-shadow:none;border:1px solid #eee;">'
+      +'<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • DEP '+(q.dep? fmtTime(q.dep):'—')+stemTxt+'</div></div>'
+      +chip
+      +'<button class="btn '+(q.fdel?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;'+(!q.dep?'opacity:.45;':'')+'" '+(q.dep?'':'disabled ')+'onclick="rpStamp('+c.id+',\'fdel\')">'+(q.fdel? 'แก้ '+fmtTime(q.fdel) : 'First Del')+'</button></div>');
+  });
+  h += '<div class="card">';
+  if(!chk.length) h += '<div class="hint">ยังไม่มี Courier เช็คอิน</div>';
+  else h += rows.join('');
+  const avgF = stems.length? null : null;
+  const doneFd = chk.map(c=>(pphRec.rp||{})[c.id]).filter(x=>x&&x.fdel);
+  if(doneFd.length){
+    const avgFdel = doneFd.reduce((a,x)=>a+x.fdel,0)/doneFd.length;
+    const avgStem = stems.length? Math.round(stems.reduce((a,b)=>a+b,0)/stems.length/60000) : null;
+    const ok = fdelStatus(avgFdel);
+    h += '<div style="margin-top:10px;font-size:15px;">ครบ '+doneFd.length+' คน • เฉลี่ย First Del = <b style="font-size:22px;color:'+(ok?'var(--g)':'var(--r)')+'">'+fmtTime(avgFdel)+'</b> '+(ok?'✅ ก่อน 09:00':'❌ เกิน 09:00')
+      +(avgStem!=null? '<br>เฉลี่ย Stem Out (Dep→First Del) = <b>'+avgStem+' นาที</b>':'')+'</div>';
+  } else h += '<div class="small" style="margin-top:8px;">กด First Del รายคน (ต้องมี DEP จากขั้น 3 ก่อน) — คำนวณค่าเฉลี่ยให้อัตโนมัติ</div>';
+  h += '</div>';
+  document.getElementById('fdelBody').innerHTML = h;
 }
 
 /* ================= CHECK-IN VIEW ================= */
@@ -450,6 +538,7 @@ async function renderCheckin(){
   document.getElementById('ciDate').textContent = thDate(todayKey());
   todayRecs = await getByDate(todayKey());
   gateAttend = todayRecs.length>0; refreshLocks();
+  buildTimeline().then(t=>{ const el=document.getElementById('tlCheckin'); if(el) el.innerHTML=t; });
   const risk = await riskMap(todayKey());
   const byC = {}; todayRecs.forEach(r=>byC[r.courierId]=r);
   const act = couriers.filter(c=>c.active);
@@ -599,7 +688,8 @@ async function rpStamp(cid,k){
   pphRec.rp = pphRec.rp||{}; pphRec.rp[cid] = pphRec.rp[cid]||{};
   if(!pphRec.rp[cid][k]) pphRec.rp[cid][k]=Date.now();
   else { const v=editTs(pphRec.rp[cid][k]); if(v===undefined) return; pphRec.rp[cid][k]=v; }
-  await putPPH(pphRec); renderPPH();
+  await putPPH(pphRec);
+  if(document.getElementById('view-fdel').classList.contains('active')) renderFDel(); else renderPPH();
 }
 async function pphNum(k,v){ pphRec[k]=Math.max(0,parseInt(v)||0); await putPPH(pphRec); renderPPH(); }
 async function pphSyncCourier(){ pphRec.courierN = todayRecs.length; await putPPH(pphRec); renderPPH(); }
@@ -613,7 +703,8 @@ async function renderPPH(){
   }
   const C = pphCalc(pphRec, todayRecs.length);
   const tBtn=(label,ts,fn)=>'<button class="btn '+(ts?'btn-o':'btn-y')+'" style="min-height:44px;" onclick="'+fn+'">'+(ts? label+' '+fmtTime(ts)+' ✏️' : label)+'</button>';
-  let h = '<div class="card"><h2>📦 PPH — '+thDate(todayKey())+'</h2>'
+  let h = await buildTimeline();
+  h += '<div class="card"><h2>📦 PPH — '+thDate(todayKey())+'</h2>'
     +'<div class="small" style="margin-bottom:8px;">กดปุ่มเวลา = บันทึกเวลาปัจจุบันทันที • กดซ้ำ = แก้ไข หรือพิมพ์ - เพื่อล้าง</div>'
     +'<button class="btn btn-o" style="min-height:40px;padding:8px 14px;font-size:13px;" onclick="document.getElementById(\'pphHelpModal\').classList.add(\'show\')">❓ วิธีคำนวณ PPH</button></div>';
   h += '<div class="card"><h2>ข้อมูลพื้นฐานวันนี้</h2>'
@@ -682,6 +773,7 @@ function pdInWindow(ts){
   return s>=7*3600 && s<=7*3600+15*60;
 }
 async function renderPDCard(){
+  buildTimeline().then(t=>{ const el=document.getElementById('tlPd'); if(el) el.innerHTML=t; });
   const el=document.getElementById('pdCard'); if(!el) return;
   let rec=null; try{ rec=await getPPH(todayKey()); }catch(e){}
   const pd = (rec && rec.pd && rec.pd.ts)? rec.pd : null;
@@ -1107,7 +1199,8 @@ async function drawReport(key){
   const gridH = recs.length? 60+photoRows*(CELLH+16) : 60;
   const pph = await getPPH(key);
   const PC = pph? pphCalc(pph, recs.length) : null;
-  const pphH = PC? 220 : 0;
+  const hasFdel = pph && Object.values(pph.rp||{}).some(x=>x.fdel);
+  const pphH = PC? (220 + (hasFdel? 130:0)) : 0;
   const pd = (pph && pph.pd && pph.pd.photo)? pph.pd : null;
   const pdH = pd? 384 : 0;
   const H = 210 + 150 + 420 + pdH + riskH + pphH + gridH + 80;
@@ -1216,6 +1309,23 @@ async function drawReport(key){
       PC.route? 'Avg FS '+fmtTime(PC.route.avgFs)+'  →  Avg Dep '+fmtTime(PC.route.avgDep)+'  •  Courier '+PC.route.n+' คน' : 'ยังจับเวลาไม่ครบ',
       'Man-hours '+(PC.route? Math.round(PC.route.mh*10)/10 : '—')+'  •  นับเฉพาะ Courier');
     ry = by + bh + 10;
+
+    /* First Delivery summary */
+    const fdArr = Object.values(pph.rp||{}).map(x=>x.fdel).filter(Boolean);
+    const stemArr = Object.values(pph.rp||{}).filter(x=>x.dep&&x.fdel&&x.fdel>x.dep).map(x=>x.fdel-x.dep);
+    if(fdArr.length){
+      const avgFd = fdArr.reduce((a,b)=>a+b,0)/fdArr.length;
+      const okFd = (new Date(avgFd).getHours()*3600+new Date(avgFd).getMinutes()*60) < 9*3600;
+      const avgStem = stemArr.length? Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000) : null;
+      const fby=ry, fbh=110;
+      x.fillStyle='#fafafa'; roundRect(x,P,fby,W-P*2,fbh,14); x.fill();
+      x.fillStyle= okFd? '#2e7d32':'#D40511'; x.fillRect(P,fby,8,fbh);
+      x.font='700 20px Segoe UI'; x.fillStyle='#555'; x.textAlign='left'; x.fillText('🚚 First Delivery  (Target ก่อน 09:00)', P+22, fby+30);
+      x.font='800 40px Segoe UI'; x.fillStyle= okFd? '#2e7d32':'#D40511'; x.fillText('Avg '+fmtTime(avgFd), P+22, fby+76);
+      x.font='16px Segoe UI'; x.fillStyle='#777';
+      x.fillText((okFd?'✔ ก่อน 09:00':'✖ เกิน 09:00')+'   •   ครบ '+fdArr.length+' คน'+(avgStem!=null? '   •   Avg Stem Out '+avgStem+' นาที':''), P+330, fby+66);
+      ry = fby + fbh + 10;
+    }
   }
 
   /* photo grid */

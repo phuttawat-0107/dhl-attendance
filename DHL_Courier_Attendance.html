@@ -112,6 +112,7 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
     </div>
     <div class="small" id="modeHint" style="margin-top:6px;"></div>
   </div>
+  <div id="pdCard"></div>
   <div class="card">
     <h2>เช็คอินเข้างานวันนี้ <span class="small" id="ciDate"></span></h2>
     <div class="small">Staff เป็นผู้ถ่ายภาพและบันทึกเวลา</div>
@@ -410,6 +411,7 @@ let todayRecs = [];
 async function renderCheckin(){
   document.getElementById('ciDate').textContent = thDate(todayKey());
   todayRecs = await getByDate(todayKey());
+  renderPDCard();
   const risk = await riskMap(todayKey());
   const byC = {}; todayRecs.forEach(r=>byC[r.courierId]=r);
   const act = couriers.filter(c=>c.active);
@@ -612,7 +614,49 @@ async function renderPPH(){
 }
 
 /* ================= CAMERA ================= */
-let camStream=null, camCourier=null, camFacing='environment', camAttach=null, camUniform=true;
+let camStream=null, camCourier=null, camFacing='environment', camAttach=null, camUniform=true, camPD=false;
+/* ---------- PD Performance Dialog (07:00–07:15) ---------- */
+function pdInWindow(ts){
+  const d=new Date(ts); const s=d.getHours()*3600+d.getMinutes()*60;
+  return s>=7*3600 && s<=7*3600+15*60;
+}
+async function renderPDCard(){
+  const el=document.getElementById('pdCard'); if(!el) return;
+  let rec=null; try{ rec=await getPPH(todayKey()); }catch(e){}
+  const pd = (rec && rec.pd && rec.pd.ts)? rec.pd : null;
+  let h = '<div class="card" style="border-left-color:'+(pd? 'var(--g)':'var(--y)')+'">'
+    +'<h2>📸 PD Performance Dialog <span class="small">(07:00–07:15)</span></h2>';
+  if(pd){
+    h += '<div style="display:flex;gap:10px;align-items:center;">'
+      +(pd.photo? '<img src="'+pd.photo+'" style="width:104px;height:78px;object-fit:cover;border-radius:10px;">':'')
+      +'<div style="flex:1;"><b>ถ่ายแล้ว '+fmtTime(pd.ts)+'</b><br>'
+      +(pdInWindow(pd.ts)? '<span class="chip ontime">✔ ในช่วงเวลา</span>':'<span class="chip late">✖ นอกช่วง 07:00–07:15</span>')+'</div>'
+      +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="retakePD()">↺ ถ่ายใหม่</button></div>';
+  } else {
+    h += '<button class="btn btn-y btn-block" onclick="openPDCamera()">📸 ถ่ายภาพประชุมรวม (บังคับถ่ายสด)</button>'
+      +'<div class="small" style="margin-top:6px;">ภาพจะถูก Stamp ชื่อสาขา '+escapeHtml(settings? settings.depot:'')+' มุมขวาบนอัตโนมัติ และเข้ารายงานประจำวัน</div>';
+  }
+  h += '</div>';
+  el.innerHTML = h;
+}
+function retakePD(){ if(confirm('ถ่ายภาพ PD ใหม่แทนภาพเดิม?')) openPDCamera(); }
+async function openPDCamera(){
+  camPD = true; camCourier = null; camAttach = null;
+  document.getElementById('camName').textContent = '📸 PD Performance Dialog';
+  document.getElementById('camSub').textContent = settings.depot+' • '+thDate(todayKey());
+  const ub=document.getElementById('uniBtn'); if(ub) ub.style.display='none';
+  document.getElementById('camOverlay').classList.add('show');
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:camFacing}, audio:false});
+    document.getElementById('camVideo').srcObject = camStream;
+  }catch(e){
+    try{ camStream = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
+         document.getElementById('camVideo').srcObject = camStream; return; }
+    catch(e2){ e=e2; }
+    closeCamera();
+    alert(camErrorMsg(e));
+  }
+}
 function camErrorMsg(e){
   if(e.name==='NotAllowedError'||e.name==='PermissionDeniedError')
     return 'สิทธิ์กล้องถูกปฏิเสธ (เคยกด Block ไว้)\n\nวิธีแก้:\n1. กดไอคอนแม่กุญแจ 🔒 หรือ 🎥 ข้างแถบ URL\n2. ตั้ง Camera = Allow (อนุญาต)\n3. รีเฟรชหน้าแล้วลองใหม่';
@@ -658,7 +702,8 @@ async function openCamera(courierId, attachId){
 }
 function closeCamera(){
   if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
-  camAttach = null;
+  camAttach = null; camPD = false;
+  const ub=document.getElementById('uniBtn'); if(ub) ub.style.display='';
   document.getElementById('camOverlay').classList.remove('show');
 }
 async function flipCamera(){
@@ -674,9 +719,46 @@ async function flipCamera(){
   }
 }
 async function capture(){
-  if(!camStream || !camCourier) return;
+  if(!camStream || (!camCourier && !camPD)) return;
   const v = document.getElementById('camVideo');
   if(!v.videoWidth){ return; }
+  if(camPD){                                    // ภาพประชุม PD + stamp ชื่อสาขา
+    const now = new Date();
+    const maxpd = 1024, sc2 = Math.min(1, maxpd/Math.max(v.videoWidth,v.videoHeight));
+    const cv2 = document.createElement('canvas');
+    cv2.width = Math.round(v.videoWidth*sc2); cv2.height = Math.round(v.videoHeight*sc2);
+    const c2 = cv2.getContext('2d');
+    c2.drawImage(v,0,0,cv2.width,cv2.height);
+    const fs2 = Math.round(cv2.width*0.062);            // ขนาดตัวอักษรกลางๆ
+    const mR = Math.round(cv2.width*0.03), padS = Math.round(fs2*0.3);
+    c2.textBaseline='top';
+    c2.font = 'italic 900 '+fs2+'px Segoe UI, Arial, sans-serif';
+    const txt = settings.depot;
+    const tw = c2.measureText(txt).width;
+    const bx = cv2.width - mR - tw - padS*2, by = mR;
+    c2.fillStyle='rgba(255,204,0,.93)';                 // กล่องเหลือง DHL
+    c2.fillRect(bx, by, tw+padS*2, fs2+padS*2);
+    c2.fillStyle='#D40511';
+    c2.fillText(txt, bx+padS, by+padS);
+    const dtf = Math.round(fs2*0.42);
+    c2.font = '700 '+dtf+'px Segoe UI, Arial, sans-serif';
+    const dts = thDate(todayKey())+'  '+fmtTime(now.getTime());
+    const dtw = c2.measureText(dts).width;
+    c2.fillStyle='rgba(0,0,0,.55)';
+    c2.fillRect(cv2.width-mR-dtw-padS*2, by+fs2+padS*2+4, dtw+padS*2, dtf+padS);
+    c2.fillStyle='#ffffff';
+    c2.fillText(dts, cv2.width-mR-dtw-padS, by+fs2+padS*2+4+Math.round(padS*0.5));
+    const pdPhoto = cv2.toDataURL('image/jpeg',0.78);
+    let rec = await getPPH(todayKey());
+    if(!rec) rec = { date:todayKey(), staffN:1, sorterN:0, courierN:todayRecs.length,
+                     pNew:0, pOld:0, inboundTs:null, firstScanTs:null, rp:{} };
+    rec.pd = { ts:now.getTime(), photo:pdPhoto };
+    await putPPH(rec);
+    closeCamera();
+    flash('📸 บันทึกภาพ PD แล้ว — '+fmtTime(now.getTime())+(pdInWindow(now.getTime())?' ✔':' (นอกช่วงเวลา)'));
+    renderPDCard();
+    return;
+  }
   const now = new Date();                       // เวลาบันทึก = วินาทีที่ถ่าย
   const max = 640, sc = Math.min(1, max/Math.max(v.videoWidth,v.videoHeight));
   const cv = document.createElement('canvas');
@@ -892,7 +974,8 @@ function resetAll(){
 async function backupJSON(){
   const all = await new Promise((res,rej)=>{ const q=tx('readonly').getAll(); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
   const pphAll = await new Promise((res)=>{ const q=pphTx('readonly').getAll(); q.onsuccess=()=>res(q.result); q.onerror=()=>res([]); });
-  const data = { settings, couriers, checkins: all.map(r=>({...r, photo: undefined})), pph: pphAll };
+  const data = { settings, couriers, checkins: all.map(r=>({...r, photo: undefined})),
+                 pph: pphAll.map(p=>p.pd? {...p, pd:{ts:p.pd.ts}} : p) };
   const blob = new Blob([JSON.stringify(data)],{type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -934,7 +1017,9 @@ async function drawReport(key){
   const pph = await getPPH(key);
   const PC = pph? pphCalc(pph, recs.length) : null;
   const pphH = PC? 220 : 0;
-  const H = 210 + 150 + 420 + riskH + pphH + gridH + 80;
+  const pd = (pph && pph.pd && pph.pd.photo)? pph.pd : null;
+  const pdH = pd? 384 : 0;
+  const H = 210 + 150 + 420 + pdH + riskH + pphH + gridH + 80;
   const cv = document.createElement('canvas'); cv.width=W; cv.height=H;
   const x = cv.getContext('2d');
   x.fillStyle='#fff'; x.fillRect(0,0,W,H);
@@ -977,8 +1062,27 @@ async function drawReport(key){
   const tcv=document.createElement('canvas'); tcv.width=600; tcv.height=280;
   drawTrend(tcv, tdays); x.drawImage(tcv, W/2+20, chY+50, 480, 224);
 
-  /* risk */
+  /* PD Performance Dialog photo */
   let ry = chY+330;
+  if(pd){
+    const pdIm = await loadImg(pd.photo);
+    x.fillStyle='#1a1a1a'; x.font='700 26px Segoe UI'; x.textAlign='left';
+    x.fillText('📸 PD Performance Dialog', P, ry);
+    x.font='20px Segoe UI'; x.textAlign='right';
+    x.fillStyle = pdInWindow(pd.ts)? '#2e7d32' : '#D40511';
+    x.fillText((pdInWindow(pd.ts)? '✔ ':'✖ ')+fmtTime(pd.ts)+'  (กำหนด 07:00–07:15)', W-P, ry);
+    x.textAlign='left';
+    if(pdIm){
+      const bh=300, s2=Math.min((W-P*2)/pdIm.width, bh/pdIm.height);
+      const dw=pdIm.width*s2, dh=pdIm.height*s2;
+      const dx=P+((W-P*2)-dw)/2;                     // จัดกึ่งกลาง
+      x.save(); roundRect(x,dx,ry+16,dw,dh,14); x.clip();
+      x.drawImage(pdIm, dx, ry+16, dw, dh); x.restore();
+      ry += 16 + dh + 40;
+    } else { ry += 44; }
+  }
+
+  /* risk */
   x.fillStyle='#D40511'; x.font='700 26px Segoe UI'; x.fillText('⚠ Risk Alert — Late in last '+RISK_WINDOW_DAYS+' days', P, ry);
   ry+=14;
   if(riskRows.length){

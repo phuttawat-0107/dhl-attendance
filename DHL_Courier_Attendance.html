@@ -798,9 +798,12 @@ async function renderPDCard(){
   if(pd){
     h += '<div style="display:flex;gap:10px;align-items:center;">'
       +(pd.photo? '<img src="'+pd.photo+'" style="width:104px;height:78px;object-fit:cover;border-radius:10px;">':'')
-      +'<div style="flex:1;"><b>ถ่ายแล้ว '+fmtTime(pd.ts)+'</b><br>'
+      +'<div style="flex:1;"><b>ถ่ายแล้ว '+fmtTime(pd.ts)+(pd.manualEdit?'*':'')+'</b><br>'
       +(pdInWindow(pd.ts)? '<span class="chip ontime">✔ ในช่วงเวลา</span>':'<span class="chip late">✖ นอกช่วง 07:00–07:15</span>')+'</div>'
-      +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="retakePD()">↺ ถ่ายใหม่</button></div>';
+      +'<div style="display:flex;flex-direction:column;gap:6px;">'
+      +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="editPDTime()">🕐 แก้เวลา</button>'
+      +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="retakePD()">↺ ถ่ายใหม่</button>'
+      +'</div></div>';
   } else {
     h += '<button class="btn btn-y btn-block" onclick="openPDCamera()">📸 ถ่ายภาพประชุมรวม (บังคับถ่ายสด)</button>'
       +'<div class="small" style="margin-top:6px;">ภาพจะถูก Stamp ชื่อสาขา '+escapeHtml(settings? settings.depot:'')+' มุมขวาบนอัตโนมัติ และเข้ารายงานประจำวัน</div>';
@@ -809,6 +812,20 @@ async function renderPDCard(){
   el.innerHTML = h;
 }
 function retakePD(){ if(confirm('ถ่ายภาพ PD ใหม่แทนภาพเดิม?')) openPDCamera(); }
+async function editPDTime(){
+  const rec = await getPPH(todayKey());
+  if(!rec || !rec.pd || !rec.pd.ts){ flash('ยังไม่มีภาพ PD วันนี้'); return; }
+  const t = prompt('แก้ไขเวลา PD (HH:MM เช่น 07:05)\n⚠ รายการที่แก้จะติดเครื่องหมาย * ในรายงาน', fmtTime(rec.pd.ts));
+  if(t===null) return;
+  const m = t.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if(!m){ flash('รูปแบบไม่ถูกต้อง ใช้ HH:MM'); return; }
+  if(+m[1]>23||+m[2]>59){ flash('เวลาไม่ถูกต้อง'); return; }
+  const d = new Date(rec.pd.ts); d.setHours(+m[1],+m[2],0,0);
+  rec.pd.ts = d.getTime(); rec.pd.manualEdit = true;
+  await putPPH(rec);
+  flash('🕐 แก้เวลา PD เป็น '+fmtTime(rec.pd.ts)+' ('+(pdInWindow(rec.pd.ts)?'✔ ในช่วงเวลา':'✖ นอกช่วง')+') *');
+  renderPDCard();
+}
 let rotHideT=null;
 function updateRotateGuard(){                       // แสดงคำแนะนำสั้นๆ ตอนเปิดกล้อง PD แล้วซ่อนเอง (ไม่บล็อกการถ่าย)
   const g=document.getElementById('rotateGuard'); if(!g) return;
@@ -1343,7 +1360,7 @@ async function drawReport(key){
     x.fillText('📸 PD Performance Dialog', P, ry);
     x.font='20px Segoe UI'; x.textAlign='right';
     x.fillStyle = pdInWindow(pd.ts)? '#2e7d32' : '#D40511';
-    x.fillText((pdInWindow(pd.ts)? '✔ ':'✖ ')+fmtTime(pd.ts)+'  (กำหนด 07:00–07:15)', W-P, ry);
+    x.fillText((pdInWindow(pd.ts)? '✔ ':'✖ ')+fmtTime(pd.ts)+(pd.manualEdit?'*':'')+'  (กำหนด 07:00–07:15)', W-P, ry);
     x.textAlign='left';
     if(pdIm){
       const bh=300, s2=Math.min((W-P*2)/pdIm.width, bh/pdIm.height);

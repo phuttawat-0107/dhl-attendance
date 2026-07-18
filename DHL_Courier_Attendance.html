@@ -627,6 +627,16 @@ async function buildTimeline(){
 /* ===== First Delivery (Tab 4) ===== */
 const FDEL_TARGET = 9*3600;                        // 09:00
 function fdelStatus(ts){ const d=new Date(ts); return (d.getHours()*3600+d.getMinutes()*60+d.getSeconds()) < FDEL_TARGET; }
+/* ===== list search (PPH / First Del) ===== */
+let rpSearchVal='', fdSearchVal='';
+function filterRows(inp, listId, store){
+  const v = (inp.value||'').trim().toLowerCase();
+  if(store==='rp') rpSearchVal=v; else if(store==='fd') fdSearchVal=v;
+  document.querySelectorAll('#'+listId+' .row-c').forEach(r=>{
+    r.style.display = (!v || (r.dataset.q||'').indexOf(v)>=0) ? '' : 'none';
+  });
+}
+
 async function renderFDel(){
   todayRecs = await getByDate(todayKey());
   pphRec = await getPPH(todayKey());
@@ -643,14 +653,15 @@ async function renderFDel(){
     if(q.dep && q.fdel && q.fdel>q.dep){ const mins=Math.round((q.fdel-q.dep)/60000); stems.push(q.fdel-q.dep); stemTxt=' • Stem Out '+mins+' นาที'; }
     const ok = q.fdel? fdelStatus(q.fdel) : null;
     const chip = q.fdel? (ok? '<span class="chip ontime">✔ '+fmtTime(q.fdel)+'</span>':'<span class="chip late">✖ '+fmtTime(q.fdel)+'</span>') : '';
-    rows.push('<div class="row-c" style="box-shadow:none;border:1px solid #eee;">'
+    rows.push('<div class="row-c" data-q="'+escapeHtml((c.name+' '+c.code+' '+(c.vendor||'')).toLowerCase())+'" style="box-shadow:none;border:1px solid #eee;">'
       +'<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • DEP '+(q.dep? fmtTime(q.dep):'—')+stemTxt+'</div></div>'
       +chip
       +'<button class="btn '+(q.fdel?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;'+(!q.dep?'opacity:.45;':'')+'" '+(q.dep?'':'disabled ')+'onclick="rpStamp('+c.id+',\'fdel\')">'+(q.fdel? 'แก้ '+fmtTime(q.fdel) : 'First Del')+'</button></div>');
   });
   h += '<div class="card">';
   if(!chk.length) h += '<div class="hint">ยังไม่มี Courier เช็คอิน</div>';
-  else h += rows.join('');
+  else h += '<input type="search" id="fdSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor" value="'+escapeHtml(fdSearchVal)+'" oninput="filterRows(this,\'fdList\',\'fd\')">'
+    +'<div id="fdList">'+rows.join('')+'</div>';
   const avgF = stems.length? null : null;
   const doneFd = chk.map(c=>(pphRec.rp||{})[c.id]).filter(x=>x&&x.fdel);
   if(doneFd.length){
@@ -662,6 +673,7 @@ async function renderFDel(){
   } else h += '<div class="small" style="margin-top:8px;">กด First Del รายคน (ต้องมี DEP จากขั้น 3 ก่อน) — คำนวณค่าเฉลี่ยให้อัตโนมัติ</div>';
   h += '</div>';
   document.getElementById('fdelBody').innerHTML = h;
+  const fdi=document.getElementById('fdSearch'); if(fdi && fdSearchVal) filterRows(fdi,'fdList','fd');
 }
 
 /* ================= CHECK-IN VIEW ================= */
@@ -882,14 +894,15 @@ async function renderPPH(){
     h += '<div class="small" style="color:var(--r);">🔒 กด 📥 First Inbound ในขั้น Sort time ก่อน</div></div>';
   } else {
     if(!chk.length) h += '<div class="hint">ยังไม่มี Courier เช็คอินวันนี้ — ทำ Time Attendance ก่อน</div>';
-    else h += chk.map(c=>{
+    else h += '<input type="search" id="rpSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor" value="'+escapeHtml(rpSearchVal)+'" oninput="filterRows(this,\'rpList\',\'rp\')">'
+      +'<div id="rpList">'+chk.map(c=>{
       const q = (pphRec.rp||{})[c.id]||{};
-      return '<div class="row-c" style="box-shadow:none;border:1px solid #eee;">'
+      return '<div class="row-c" data-q="'+escapeHtml((c.name+' '+c.code+' '+(c.vendor||'')).toLowerCase())+'" style="box-shadow:none;border:1px solid #eee;">'
         +'<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+'</div></div>'
         +'<button class="btn '+(q.fs?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;" onclick="rpStamp('+c.id+',\'fs\')">'+(q.fs? 'FS '+fmtTime(q.fs) : 'FS')+'</button>'
         +'<button class="btn '+(q.dep?'btn-o':'btn-y')+'" style="min-height:38px;padding:6px 10px;font-size:12px;" onclick="rpStamp('+c.id+',\'dep\')">'+(q.dep? 'DEP '+fmtTime(q.dep) : 'DEP')+'</button>'
         +'</div>';
-    }).join('');
+    }).join('')+'</div>';
     h += (C.route
       ? '<div style="margin-top:8px;font-size:15px;">ครบ '+C.route.n+' คน • เฉลี่ย FS '+fmtTime(C.route.avgFs)+' → DEP '+fmtTime(C.route.avgDep)+'<br>Man-hours รวม <b>'+(Math.round(C.route.mh*10)/10)+'</b> ชม. → PPH Route prep = <b style="font-size:26px;color:'+(rVal>=165?'var(--g)':'var(--r)')+'">'+rVal+'</b> '+(rVal>=165?'✅ ผ่านเป้า':'❌ ต่ำกว่าเป้า 165')+'</div>'
       : '<div class="small" style="margin-top:8px;">กด FS (First Scan) และ DEP (Departure) รายคน — คำนวณจากคนที่มีครบทั้งคู่</div>');
@@ -898,6 +911,7 @@ async function renderPPH(){
   h += '<button class="btn btn-o btn-block" style="color:var(--r);border-color:var(--r);" onclick="pphClearToday()">🗑 ล้างข้อมูล PPH วันนี้ (คีย์ผิด เริ่มใหม่)</button>'
     +'<div class="small" style="text-align:center;margin-top:6px;">แก้เวลาทีละจุด: กดปุ่มเวลานั้นซ้ำ แล้วพิมพ์เวลาใหม่ หรือพิมพ์ - เพื่อล้างเฉพาะจุด</div>';
   document.getElementById('pphBody').innerHTML = h;
+  const rpi=document.getElementById('rpSearch'); if(rpi && rpSearchVal) filterRows(rpi,'rpList','rp');
 }
 
 /* ================= CAMERA ================= */

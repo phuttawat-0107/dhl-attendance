@@ -105,6 +105,121 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
 .tl .lbl{font-size:9.5px;font-weight:700;margin-top:5px;text-align:center;line-height:1.15;padding:0 1px;}
 .tl .tgt{font-size:8.5px;color:var(--r);font-weight:800;margin-top:1px;}
 .tl .vt{font-size:9.5px;color:#444;font-weight:700;margin-top:1px;}
+
+/* ================= THEMES (เลือกได้ในหน้า จัดการ > ตั้งค่า) ================= */
+/* ---- 1 SOFT (Neumorphism) ---- */
+body[data-theme="soft"]{background:#eef0f4;}
+body[data-theme="soft"] .topbar{background:#eef0f4;box-shadow:0 2px 10px #d8dce3;}
+body[data-theme="soft"] .card,body[data-theme="soft"] .kpi{background:#eef0f4;border-color:transparent;box-shadow:6px 6px 13px #d3d7de,-6px -6px 13px #ffffff;}
+body[data-theme="soft"] .row-c{background:#eef0f4;border-color:transparent;box-shadow:inset 3px 3px 7px #d3d7de,inset -3px -3px 7px #fff;}
+body[data-theme="soft"] .row-c.st-ontime{background:#e7f2ea;}
+body[data-theme="soft"] .row-c.st-late{background:#f7e6e6;}
+body[data-theme="soft"] .kpi.red{background:#f4e9ea;} body[data-theme="soft"] .kpi.green{background:#e9f2ec;}
+body[data-theme="soft"] input,body[data-theme="soft"] select{background:#eef0f4;border-color:transparent;box-shadow:inset 3px 3px 7px #d3d7de,inset -3px -3px 7px #fff;}
+body[data-theme="soft"] .btn-o{background:#eef0f4;border-color:transparent;box-shadow:4px 4px 9px #d3d7de,-4px -4px 9px #fff;}
+body[data-theme="soft"] .btn:active{box-shadow:inset 3px 3px 7px rgba(0,0,0,.15);}
+body[data-theme="soft"] .nav{background:#eef0f4;box-shadow:6px 6px 14px #c9cdd4,-4px -4px 10px #fff;}
+body[data-theme="soft"] .progress-wrap{background:#dde1e8;}
+body[data-theme="soft"] .modal .sheet{background:#eef0f4;}
+body[data-theme="soft"] #clockCard.c-warn{background:#f4efd8;} body[data-theme="soft"] #clockCard.c-late{background:#f5e3e3;}
+
+/* ---- 2 GLASS (Glassmorphism) ---- */
+body[data-theme="glass"]{background:linear-gradient(165deg,#FFCC00 0%,#ffb700 22%,#26262c 22.2%,#141419 100%) fixed;color:#fff;}
+body[data-theme="glass"] .topbar{background:rgba(30,30,36,.55);}
+body[data-theme="glass"] .hd .meta b,body[data-theme="glass"] h2,body[data-theme="glass"] .row-c .nm,body[data-theme="glass"] .bigclock .t,body[data-theme="glass"] .kpi .v{color:#fff;}
+body[data-theme="glass"] .small,body[data-theme="glass"] .row-c .sub,body[data-theme="glass"] .hd .meta,body[data-theme="glass"] .kpi .l,body[data-theme="glass"] .bigclock .m{color:rgba(255,255,255,.66);}
+body[data-theme="glass"] .card,body[data-theme="glass"] .kpi{background:rgba(255,255,255,.12);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-color:rgba(255,255,255,.2);}
+body[data-theme="glass"] .row-c{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.15);}
+body[data-theme="glass"] .row-c.st-ontime{background:rgba(93,202,165,.16);border-color:rgba(93,202,165,.35);}
+body[data-theme="glass"] .row-c.st-late{background:rgba(255,110,110,.16);border-color:rgba(255,110,110,.35);}
+body[data-theme="glass"] .kpi.red{background:rgba(255,110,110,.14);} body[data-theme="glass"] .kpi.green{background:rgba(93,202,165,.14);}
+body[data-theme="glass"] input,body[data-theme="glass"] select{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:#fff;}
+body[data-theme="glass"] input::placeholder{color:rgba(255,255,255,.45);}
+body[data-theme="glass"] .btn-o{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.3);}
+body[data-theme="glass"] .nav{background:rgba(30,30,36,.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+body[data-theme="glass"] .nav button{color:rgba(255,255,255,.55);}
+body[data-theme="glass"] .modal .sheet{background:rgba(34,34,40,.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:#fff;}
+body[data-theme="glass"] td,body[data-theme="glass"] th{border-bottom-color:rgba(255,255,255,.14);}
+body[data-theme="glass"] .hint{background:rgba(255,204,0,.14);color:#ffe58a;}
+body[data-theme="glass"] .depot-logo{background:linear-gradient(135deg,#ffffff 30%,#cfd4de);-webkit-background-clip:text;background-clip:text;}
+body[data-theme="glass"] #clockCard.c-warn{background:rgba(255,204,0,.14);} body[data-theme="glass"] #clockCard.c-late{background:rgba(212,5,17,.2);}
+body[data-theme="glass"] .tl .vt{color:#ddd;} body[data-theme="glass"] .progress-wrap{background:rgba(255,255,255,.16);}
+body[data-theme="glass"] .photo-thumb{background:rgba(255,255,255,.15);}
+
+/* ---- 3 BOLD POP (Neo-brutalism) ---- */
+body[data-theme="bold"]{background:#fdf6e3;}
+body[data-theme="bold"] .topbar{background:#fdf6e3;border-bottom:3px solid #1a1a1a;box-shadow:none;}
+body[data-theme="bold"] .card,body[data-theme="bold"] .kpi{border:3px solid #1a1a1a;border-left:7px solid var(--y);border-radius:12px;box-shadow:5px 5px 0 #1a1a1a;}
+body[data-theme="bold"] .card.red{border-left-color:var(--r);}
+body[data-theme="bold"] .kpi.red{border-left-color:var(--r);} body[data-theme="bold"] .kpi.green{border-left-color:var(--g);}
+body[data-theme="bold"] .row-c{border:2.5px solid #1a1a1a;border-radius:12px;box-shadow:4px 4px 0 #1a1a1a;}
+body[data-theme="bold"] input,body[data-theme="bold"] select{border:2.5px solid #1a1a1a;border-radius:10px;}
+body[data-theme="bold"] .btn{border:3px solid #1a1a1a;border-radius:10px;box-shadow:3px 3px 0 #1a1a1a;}
+body[data-theme="bold"] .btn:active{transform:translate(3px,3px);box-shadow:0 0 0 #1a1a1a;}
+body[data-theme="bold"] .btn-y{background:var(--y);} body[data-theme="bold"] .btn-r{background:var(--r);}
+body[data-theme="bold"] .nav{border:3px solid #1a1a1a;border-radius:16px;box-shadow:5px 5px 0 #1a1a1a;background:#fff;}
+body[data-theme="bold"] .nav button.on{background:#1a1a1a;color:var(--y);}
+body[data-theme="bold"] .progress-wrap{border:2px solid #1a1a1a;background:#efe6cc;}
+body[data-theme="bold"] .modal .sheet{border:3px solid #1a1a1a;border-bottom:none;}
+body[data-theme="bold"] .chip{border:2px solid #1a1a1a;}
+body[data-theme="bold"] #clockCard.c-warn{background:#fff3bf;} body[data-theme="bold"] #clockCard.c-late{background:#ffd6d6;}
+
+/* ---- 4 NIGHT OPS (Dark) ---- */
+body[data-theme="night"]{background:#0d1017;color:#e8ecf3;}
+body[data-theme="night"] .topbar{background:rgba(13,16,23,.92);box-shadow:0 2px 12px rgba(0,0,0,.5);}
+body[data-theme="night"] .hd .meta b,body[data-theme="night"] h2,body[data-theme="night"] .row-c .nm,body[data-theme="night"] .kpi .v{color:#e8ecf3;}
+body[data-theme="night"] .small,body[data-theme="night"] .row-c .sub,body[data-theme="night"] .hd .meta,body[data-theme="night"] .kpi .l,body[data-theme="night"] .bigclock .m{color:#8a93a3;}
+body[data-theme="night"] .card,body[data-theme="night"] .kpi{background:#151a24;border-color:#232a38;}
+body[data-theme="night"] .row-c{background:#151a24;border-color:#232a38;}
+body[data-theme="night"] .row-c.st-ontime{background:#10241b;border-color:#1d4034;}
+body[data-theme="night"] .row-c.st-late{background:#2a1416;border-color:#52222a;}
+body[data-theme="night"] .kpi.red{background:#241216;} body[data-theme="night"] .kpi.green{background:#0f2019;}
+body[data-theme="night"] .bigclock .t{color:#FFCC00;text-shadow:0 0 16px rgba(255,204,0,.35);}
+body[data-theme="night"] #clockCard.c-warn{background:#26200c;} body[data-theme="night"] #clockCard.c-late{background:#2a1214;}
+body[data-theme="night"] input,body[data-theme="night"] select{background:#1c2230;border-color:#2a3242;color:#e8ecf3;}
+body[data-theme="night"] input::placeholder{color:#5d6675;}
+body[data-theme="night"] .btn-o{background:#1c2230;color:#c6cddb;border-color:#2a3242;}
+body[data-theme="night"] .btn-y{background:transparent;color:#FFCC00;border:1.5px solid #FFCC00;box-shadow:0 0 12px rgba(255,204,0,.15);}
+body[data-theme="night"] .btn-y:active{background:#FFCC00;color:#12151c;}
+body[data-theme="night"] .nav{background:rgba(21,26,36,.95);box-shadow:0 8px 28px rgba(0,0,0,.6);}
+body[data-theme="night"] .nav button{color:#6b7484;}
+body[data-theme="night"] .nav button.on{background:#232a38;color:#FFCC00;text-shadow:0 0 8px rgba(255,204,0,.6);}
+body[data-theme="night"] .modal .sheet{background:#151a24;color:#e8ecf3;}
+body[data-theme="night"] td,body[data-theme="night"] th{border-bottom-color:#232a38;}
+body[data-theme="night"] .hint{background:#1f2410;border-color:#4a4410;color:#d8c76a;}
+body[data-theme="night"] .chip.pending{background:#232a38;color:#8a93a3;}
+body[data-theme="night"] .chip.ontime{background:rgba(93,202,165,.14);color:#5dcaa5;}
+body[data-theme="night"] .chip.late{background:rgba(255,122,110,.14);color:#ff8d82;}
+body[data-theme="night"] .st-ic.ok{background:rgba(93,202,165,.16);color:#5dcaa5;}
+body[data-theme="night"] .st-ic.no{background:rgba(255,122,110,.16);color:#ff8d82;}
+body[data-theme="night"] .depot-logo{background:linear-gradient(135deg,#FFCC00 30%,#c79f00);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 8px rgba(255,204,0,.4));animation:nglow 2.4s ease-in-out infinite;}
+@keyframes nglow{0%,100%{filter:drop-shadow(0 0 4px rgba(255,204,0,.25));}50%{filter:drop-shadow(0 0 12px rgba(255,204,0,.7));}}
+body[data-theme="night"] .progress-wrap{background:#232a38;}
+body[data-theme="night"] .photo-thumb{background:#232a38;}
+body[data-theme="night"] .tl .vt{color:#aab3c2;} body[data-theme="night"] .tl .bar{background:#232a38;} body[data-theme="night"] .tl .dot{background:#232a38;color:#6b7484;}
+body[data-theme="night"] .tl .nd.done .bar,body[data-theme="night"] .tl .nd.done .dot{background:var(--g);color:#fff;}
+body[data-theme="night"] .tl .nd.cur .dot{background:var(--y);color:#12151c;}
+body[data-theme="night"] #setupOverlay{background:#0d1017;color:#e8ecf3;}
+
+/* ---- 5 FRIENDLY (Material Soft) ---- */
+body[data-theme="material"]{background:#f7f4ee;}
+body[data-theme="material"] .topbar{background:rgba(247,244,238,.92);}
+body[data-theme="material"] .card,body[data-theme="material"] .kpi{border-radius:22px;border-color:transparent;box-shadow:0 1px 6px rgba(0,0,0,.07);}
+body[data-theme="material"] .row-c{border-radius:18px;border-color:transparent;box-shadow:0 1px 5px rgba(0,0,0,.06);}
+body[data-theme="material"] input,body[data-theme="material"] select{border-radius:14px;background:#fbf9f4;}
+body[data-theme="material"] .btn{border-radius:99px;}
+body[data-theme="material"] .btn-y{background:#1a1a1a;color:#FFCC00;box-shadow:0 3px 10px rgba(0,0,0,.25);}
+body[data-theme="material"] .btn-o{background:#f2ede2;border-color:transparent;color:#5a5140;}
+body[data-theme="material"] .nav{border-radius:26px;}
+body[data-theme="material"] .nav button{border-radius:20px;transition:all .25s cubic-bezier(.34,1.56,.64,1);}
+body[data-theme="material"] .nav button.on{background:#FFF3C2;color:#7a5c00;transform:scale(1.06);}
+body[data-theme="material"] #clockCard{background:linear-gradient(135deg,#FFE58A,#FFCC00);border-left-color:transparent;}
+body[data-theme="material"] #clockCard .t{color:#4a3b00;} body[data-theme="material"] #clockCard .m{color:#7a6410;}
+body[data-theme="material"] #clockCard.c-warn{background:linear-gradient(135deg,#FFD68A,#FFB300);}
+body[data-theme="material"] #clockCard.c-late{background:linear-gradient(135deg,#ff9c9c,#e6212e);}
+body[data-theme="material"] #clockCard.c-late .t,body[data-theme="material"] #clockCard.c-late .m{color:#fff;}
+body[data-theme="material"] .modal .sheet{border-radius:28px 28px 0 0;}
+body[data-theme="material"] .progress-wrap{background:#efe9db;}
 </style>
 </head>
 <body>
@@ -183,6 +298,11 @@ td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left;}
     <button class="btn btn-y btn-block" onclick="addCourier()">+ เพิ่มพนักงาน</button>
   </div>
   <div class="card"><h2>รายชื่อพนักงาน (<span id="mCount">0</span>)</h2><div id="mList"></div></div>
+  <div class="card">
+    <h2>🎨 ธีมหน้าจอ</h2>
+    <div class="small" style="margin-bottom:8px;">เลือกสไตล์ที่ชอบ — จำค่าเฉพาะเครื่องนี้ ไม่กระทบข้อมูลและรายงาน</div>
+    <div id="themeRow" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+  </div>
   <div class="card red">
     <h2>ตั้งค่า</h2>
     <label class="small">สาขา (Depot)</label>
@@ -1515,7 +1635,33 @@ function admTap(){
   }
 }
 
+/* ===== UI THEMES ===== */
+const UI_THEMES=[
+  ['classic','⭐ Classic'],
+  ['soft','☁️ Soft'],
+  ['glass','💎 Glass'],
+  ['bold','🟨 Bold Pop'],
+  ['night','🌙 Night Ops'],
+  ['material','🌼 Friendly'],
+];
+function applyTheme(t){
+  t = t || 'classic';
+  if(t==='classic'){ delete document.body.dataset.theme; }
+  else { document.body.dataset.theme = t; }
+  try{ localStorage.setItem('uiTheme', t); }catch(e){}
+  renderThemeRow();
+}
+function renderThemeRow(){
+  const el = document.getElementById('themeRow');
+  if(!el) return;
+  let cur='classic'; try{ cur = localStorage.getItem('uiTheme') || 'classic'; }catch(e){}
+  el.innerHTML = UI_THEMES.map(([k,n])=>
+    `<button class="btn ${k===cur?'btn-y':'btn-o'}" style="min-height:40px;padding:8px 12px;font-size:13px;" onclick="applyTheme('${k}')">${n}</button>`
+  ).join('');
+}
+
 (async function init(){
+  try{ applyTheme(localStorage.getItem('uiTheme')||'classic'); }catch(e){ renderThemeRow(); }
   renderLogo();
   document.querySelector('.topbar .logo').addEventListener('click', admTap);
   applyMode();

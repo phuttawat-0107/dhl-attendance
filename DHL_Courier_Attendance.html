@@ -970,14 +970,14 @@ async function renderInsight(){
       const tot=p.on+p.late, lp=tot?Math.round(p.late/tot*100):0;
       return {c,p,tot,lp};
     }).filter(Boolean).sort((a,b)=> b.p.late-a.p.late || b.lp-a.lp);
-    h += '<div class="card"><h2>👥 การเข้างานรายคน <span class="small">เรียงสายมาก→น้อย • แตะชื่อเพื่อเจาะดู</span></h2>'
-      +'<table><tr><th>รหัส/ชื่อ</th><th style="text-align:center;">มา</th><th style="text-align:center;">ตรง</th><th style="text-align:center;">สาย</th><th style="text-align:center;">%สาย</th></tr>'
-      +rows.map(x=>'<tr onclick="insSet(\'courier\',\''+x.c.id+'\')" style="cursor:pointer;'+(x.p.late>=3?'background:rgba(212,5,17,.07);':'')+'">'
-        +'<td><b>'+escapeHtml(x.c.code)+'</b> <span class="small">'+escapeHtml(x.c.name)+'</span>'+(x.p.late>=3?' <span class="badge risk">RISK</span>':(x.p.late===2?' <span class="badge watch">WATCH</span>':''))+'</td>'
-        +'<td style="text-align:center;">'+x.tot+'</td><td style="text-align:center;color:var(--g);font-weight:700;">'+x.p.on+'</td>'
-        +'<td style="text-align:center;color:'+(x.p.late?'var(--r)':'#999')+';font-weight:700;">'+x.p.late+'</td>'
-        +'<td style="text-align:center;font-weight:700;color:'+(x.lp>=20?'var(--r)':(x.lp>0?'#b58900':'var(--g)'))+';">'+x.lp+'%</td></tr>').join('')
-      +'</table></div>';
+    h += '<div class="card"><h2>👥 การเข้างานรายคน <span class="small">เรียงสายมาก→น้อย • แตะเพื่อเจาะดู</span></h2>'
+      +rows.map(x=>'<div class="row-c" onclick="insSet(\'courier\',\''+x.c.id+'\')" style="cursor:pointer;box-shadow:none;'+(x.p.late>=3?'border-color:#f4c9c9;':'')+'">'
+        +'<div class="info"><div class="nm">'+escapeHtml(x.c.code)+' <span style="font-weight:400;font-size:13px;">'+escapeHtml(x.c.name)+'</span>'
+          +(x.p.late>=3?' <span class="badge risk">RISK</span>':(x.p.late===2?' <span class="badge watch">WATCH</span>':''))+'</div>'
+        +'<div class="sub">มา '+x.tot+' วัน • <span style="color:var(--g);font-weight:700;">ตรง '+x.p.on+'</span> • <span style="color:'+(x.p.late?'var(--r)':'#999')+';font-weight:700;">สาย '+x.p.late+'</span></div></div>'
+        +'<div style="text-align:right;flex-shrink:0;"><div style="font-size:20px;font-weight:800;color:'+(x.lp>=20?'var(--r)':(x.lp>0?'#b58900':'var(--g)'))+';">'+x.lp+'%</div><div class="small">สาย</div></div>'
+        +'</div>').join('')
+      +'</div>';
   } else {
     /* ประวัติรายวันของคนที่เลือก */
     const mine = recs.filter(r=>String(r.courierId)===String(insCourier)).sort((a,b)=> a.date<b.date?1:-1);
@@ -986,6 +986,39 @@ async function renderInsight(){
       +mine.map(r=>'<tr><td>'+thDate(r.date)+'</td><td>'+fmtTime(r.ts)+(r.manualEdit?' <b style="color:var(--r);">*</b>':'')+'</td>'
         +'<td>'+(r.status==='ontime'?'<span class="chip ontime">✔ Ontime</span>':'<span class="chip late">✖ Late</span>')+'</td></tr>').join('')
       +'</table><div class="small" style="margin-top:6px;">* = มีการแก้เวลาโดย Staff</div></div>';
+  }
+
+  /* ---- B1) อินไซต์ Sort time — บริหารจัดการคนของ Staff (มาก่อน Route prep) ---- */
+  const srows=[]; let sSum={mins:0,pph:0,ppl:0,pass:0,n:0};
+  pphs.forEach(p=>{
+    const C = pphCalc(p, p.courierN || Object.keys(p.rp||{}).length || 0);
+    if(!C.sort) return;
+    const mins = C.sort.hrs*60;
+    const pphS = Math.round(C.sort.pph*10)/10;
+    const recPpl = Math.max(1, Math.ceil(C.totalP/(49*C.sort.hrs)));   // คนที่พอดีเป้า 49
+    const diff = C.people - recPpl;
+    sSum.mins+=mins; sSum.pph+=pphS; sSum.ppl+=C.people; sSum.n++;
+    if(pphS>=49) sSum.pass++;
+    const staffTxt = diff>0? '👥 เกิน −'+diff+' คน' : (diff<0? '👥 ขาด +'+(-diff)+' คน' : '✔ คนพอดี');
+    const staffCol = diff>0? 'var(--r)' : (diff<0? '#b58900' : 'var(--g)');
+    srows.push('<div class="row-c" style="box-shadow:none;">'
+      +'<div class="info"><div class="nm">'+thDate(p.date)+'</div>'
+      +'<div class="sub">IB '+fmtTime(p.inboundTs)+' • ใช้ '+Math.round(mins)+' น. • คน '+C.people+' ('+(+p.staffN||0)+'/'+(+p.sorterN||0)+'/'+(+p.courierN||0)+') • พัสดุ '+C.totalP+'</div>'
+      +'<div class="sub" style="font-weight:700;color:'+staffCol+';">'+staffTxt+' <span style="font-weight:400;color:#999;">(พอดีเป้า = '+recPpl+' คน)</span></div></div>'
+      +'<div style="text-align:right;flex-shrink:0;"><div style="font-size:22px;font-weight:800;color:'+(pphS>=49?'var(--g)':'var(--r)')+';">'+pphS+'</div><div class="small">PPH Sort</div></div>'
+      +'</div>');
+  });
+  if(srows.length){
+    const avgM=Math.round(sSum.mins/sSum.n), avgP=Math.round(sSum.pph/sSum.n*10)/10, avgPpl=Math.round(sSum.ppl/sSum.n*10)/10;
+    h += '<div class="card"><h2>🔀 อินไซต์ Sort time <span class="small">บริหารคน Staff/Sorter • Target ≥ 49</span></h2>'
+      +'<div class="kpis" style="margin-bottom:10px;">'
+      +'<div class="kpi '+(avgP>=49?'green':'red')+'"><div class="v">'+avgP+'</div><div class="l">PPH Sort เฉลี่ย</div></div>'
+      +'<div class="kpi"><div class="v">'+sSum.pass+'/'+sSum.n+'</div><div class="l">วันที่ผ่านเป้า 49</div></div>'
+      +'<div class="kpi"><div class="v">'+avgM+'</div><div class="l">นาทีเฉลี่ย IB→Avg FS</div></div>'
+      +'<div class="kpi"><div class="v">'+avgPpl+'</div><div class="l">คนเฉลี่ย/วัน</div></div>'
+      +'</div>'
+      +srows.join('')
+      +'<div class="small" style="margin-top:6px;">คนพอดีเป้า = พัสดุ ÷ (49 × ชม.ที่ใช้จริง) • <b style="color:var(--r);">เกิน</b> = ใช้คนมากไป PPH ตก • <b style="color:#b58900;">ขาด</b> = เสี่ยงงานช้า • ตัวเลขในวงเล็บ = Staff/Sorter/Courier</div></div>';
   }
 
   /* ---- B) PPH เจาะลึกรายรหัส (จาก Route prep FS→DEP) ---- */
@@ -1018,53 +1051,15 @@ async function renderInsight(){
   else {
     const worst=insPphAsc? prows[0] : prows[prows.length-1];
     const best =insPphAsc? prows[prows.length-1] : prows[0];
-    h += '<table><tr><th>รหัส/ชื่อ</th><th style="text-align:center;">วัน</th><th style="text-align:center;">เฉลี่ย FS→DEP</th><th style="text-align:center;">PPH~</th><th style="text-align:center;">Stem</th><th style="text-align:center;">First Del</th></tr>'
-      +prows.map(x=>{
+    h += prows.map(x=>{
         const isW=prows.length>1&&x===worst, isB=prows.length>1&&x===best;
-        return '<tr style="'+(isW?'background:rgba(212,5,17,.07);':(isB?'background:rgba(46,125,50,.07);':''))+'">'
-        +'<td>'+(isB?'🏆 ':'')+(isW?'⚠ ':'')+'<b>'+escapeHtml(x.c.code)+'</b> <span class="small">'+escapeHtml(x.c.name)+'</span></td>'
-        +'<td style="text-align:center;">'+x.n+'</td>'
-        +'<td style="text-align:center;">'+Math.round(x.mins)+' นาที</td>'
-        +'<td style="text-align:center;font-weight:800;color:'+(x.pph>=165?'var(--g)':'var(--r)')+';">'+Math.round(x.pph)+'</td>'
-        +'<td style="text-align:center;">'+(x.stem!=null? Math.round(x.stem)+' น.':'—')+'</td>'
-        +'<td style="text-align:center;">'+(x.fdel!=null? fmtMS(x.fdel):'—')+'</td></tr>';
+        return '<div class="row-c" style="box-shadow:none;'+(isW?'border-color:#f4c9c9;background:rgba(212,5,17,.05);':(isB?'border-color:#bfe6d4;background:rgba(46,125,50,.05);':''))+'">'
+        +'<div class="info"><div class="nm">'+(isB?'🏆 ':'')+(isW?'⚠ ':'')+escapeHtml(x.c.code)+' <span style="font-weight:400;font-size:13px;">'+escapeHtml(x.c.name)+'</span></div>'
+        +'<div class="sub">FS→DEP '+Math.round(x.mins)+' นาที • Stem '+(x.stem!=null? Math.round(x.stem)+' น.':'—')+' • F.Del '+(x.fdel!=null? fmtMS(x.fdel):'—')+' • '+x.n+' วัน</div></div>'
+        +'<div style="text-align:right;flex-shrink:0;"><div style="font-size:22px;font-weight:800;color:'+(x.pph>=165?'var(--g)':'var(--r)')+';">'+Math.round(x.pph)+'</div><div class="small">PPH~</div></div>'
+        +'</div>';
       }).join('')
-      +'</table>'
       +'<div class="small" style="margin-top:6px;">PPH~ รายคน (ประมาณ) = (พัสดุรวมวันนั้น ÷ จำนวน Courier) ÷ ชั่วโมง FS→DEP ของคนนั้น • Stem = DEP→First Del • ค่าทางการของสาขาดูที่ Dashboard/Report</div></div>';
-  }
-
-  /* ---- B2) อินไซต์ Sort time — บริหารจัดการคนของ Staff ---- */
-  const srows=[]; let sSum={mins:0,pph:0,ppl:0,par:0,pass:0,n:0};
-  pphs.forEach(p=>{
-    const C = pphCalc(p, p.courierN || Object.keys(p.rp||{}).length || 0);
-    if(!C.sort) return;
-    const mins = C.sort.hrs*60;
-    const pphS = Math.round(C.sort.pph*10)/10;
-    const recPpl = Math.max(1, Math.ceil(C.totalP/(49*C.sort.hrs)));   // คนที่พอดีเป้า 49
-    const diff = C.people - recPpl;
-    sSum.mins+=mins; sSum.pph+=pphS; sSum.ppl+=C.people; sSum.par+=C.totalP; sSum.n++;
-    if(pphS>=49) sSum.pass++;
-    srows.push('<tr><td>'+thDate(p.date)+'</td>'
-      +'<td style="text-align:center;">'+fmtTime(p.inboundTs)+'</td>'
-      +'<td style="text-align:center;">'+Math.round(mins)+' น.</td>'
-      +'<td style="text-align:center;">'+C.people+'<span class="small"> ('+(+p.staffN||0)+'/'+(+p.sorterN||0)+'/'+(+p.courierN||0)+')</span></td>'
-      +'<td style="text-align:center;">'+C.totalP+'</td>'
-      +'<td style="text-align:center;font-weight:800;color:'+(pphS>=49?'var(--g)':'var(--r)')+';">'+pphS+'</td>'
-      +'<td style="text-align:center;font-weight:700;'+(diff>0?'color:var(--r);':(diff<0?'color:#b58900;':'color:var(--g);'))+'">'
-        +recPpl+(diff>0?' (−'+diff+' คน)':(diff<0?' (+'+(-diff)+' คน)':' ✔ พอดี'))+'</td></tr>');
-  });
-  if(srows.length){
-    const avgM=Math.round(sSum.mins/sSum.n), avgP=Math.round(sSum.pph/sSum.n*10)/10, avgPpl=Math.round(sSum.ppl/sSum.n*10)/10;
-    h += '<div class="card"><h2>🔀 อินไซต์ Sort time <span class="small">บริหารคน Staff/Sorter • Target ≥ 49</span></h2>'
-      +'<div class="kpis" style="margin-bottom:10px;">'
-      +'<div class="kpi '+(avgP>=49?'green':'red')+'"><div class="v">'+avgP+'</div><div class="l">PPH Sort เฉลี่ย</div></div>'
-      +'<div class="kpi"><div class="v">'+sSum.pass+'/'+sSum.n+'</div><div class="l">วันที่ผ่านเป้า 49</div></div>'
-      +'<div class="kpi"><div class="v">'+avgM+'</div><div class="l">นาทีเฉลี่ย Inbound→Avg FS</div></div>'
-      +'<div class="kpi"><div class="v">'+avgPpl+'</div><div class="l">คนเฉลี่ยที่ใช้/วัน</div></div>'
-      +'</div>'
-      +'<table><tr><th>วันที่</th><th style="text-align:center;">Inbound</th><th style="text-align:center;">ใช้เวลา</th><th style="text-align:center;">คน (S/So/C)</th><th style="text-align:center;">พัสดุ</th><th style="text-align:center;">PPH</th><th style="text-align:center;">คนที่พอดีเป้า</th></tr>'
-      +srows.join('')+'</table>'
-      +'<div class="small" style="margin-top:6px;">คนที่พอดีเป้า = พัสดุ ÷ (49 × ชม.ที่ใช้จริง) • <b style="color:var(--r);">−N</b> = วันนั้นใช้คนเกิน N คน (PPH ตก) • <b style="color:#b58900;">+N</b> = คนขาด N คน (เสี่ยงงานช้า) • ใช้ประกอบการจัดกำลังคนวันถัดไป</div></div>';
   }
 
   /* ---- C) PPH ภาพรวมรายวัน ---- */

@@ -1577,7 +1577,7 @@ async function drawRoutePrep(key){
   x.textAlign='left';
 
   const COL=[P, P+52, P+330, P+450, P+575, P+700, P+830, P+960];
-  const HDRS=['#','รหัส / ชื่อ','FS','DEP','FS→DEP','PPH','First Del','Stem Out'];
+  const HDRS=['#','รหัส / ชื่อ','FS','DEP','FS→DEP','PPH','Stem Out','First Del'];
   let y=HD-40;
   x.fillStyle='#f2f2f4'; x.fillRect(P-10, y-4, W-2*(P-10), 40);
   x.font='700 18px Segoe UI'; x.fillStyle='#444';
@@ -1599,10 +1599,10 @@ async function drawRoutePrep(key){
     x.fillText(r.prep? Math.round(r.prep/60000)+' น.':'—', COL[4], base);
     x.fillStyle=r.pph? (r.pph>=165? G:R) : '#bbb';
     x.fillText(r.pph? String(Math.round(r.pph)) : '—', COL[5], base);
-    x.fillStyle=r.fdel? (secOf(r.fdel)<9*3600? G:R) : '#bbb';
-    x.fillText(r.fdel? fmtTime(r.fdel):'—', COL[6], base);
     x.fillStyle=r.stem? (r.stem/60000<=25? G:AM) : '#bbb';
-    x.fillText(r.stem? Math.round(r.stem/60000)+' น.':'—', COL[7], base);
+    x.fillText(r.stem? Math.round(r.stem/60000)+' น.':'—', COL[6], base);
+    x.fillStyle=r.fdel? (secOf(r.fdel)<9*3600? G:R) : '#bbb';
+    x.fillText(r.fdel? fmtTime(r.fdel):'—', COL[7], base);
     x.strokeStyle='#ececec'; x.beginPath(); x.moveTo(P-10,y+RH); x.lineTo(W-(P-10),y+RH); x.stroke();
     y += RH;
   });
@@ -1617,8 +1617,8 @@ async function drawRoutePrep(key){
   let sum = 'เฉลี่ย: ';
   if(avPrep) sum += 'FS→DEP '+Math.round(avPrep/60000)+' น.   ';
   if(avDep)  sum += 'DEP '+fmtTime(avDep)+'   ';
-  if(avFd)   sum += 'First Del '+fmtTime(avFd)+'   ';
-  if(avStem) sum += 'Stem Out '+Math.round(avStem/60000)+' น.';
+  if(avStem) sum += 'Stem Out '+Math.round(avStem/60000)+' น.   ';
+  if(avFd)   sum += 'First Del '+fmtTime(avFd);
   x.fillText(sum, P, y+10);
   if(PC&&PC.route){ const v=Math.round(PC.route.pph*10)/10;
     x.textAlign='right'; x.fillStyle=v>=165?G:R; x.font='700 22px Segoe UI';

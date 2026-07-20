@@ -281,6 +281,9 @@ body[data-theme="material"] .progress-wrap{background:#efe9db;}
   <button class="btn btn-r btn-block" onclick="openReport(todayKey())">📄 สร้างรายงานวันนี้ (Export ภาพ)</button>
 </div>
 
+<!-- ============ INSIGHT ============ -->
+<div class="view" id="view-insight"><div id="insBody"></div></div>
+
 <!-- ============ HISTORY ============ -->
 <div class="view" id="view-hist">
   <div class="card"><h2>ประวัติรายวัน</h2><div class="small">แตะวันที่เพื่อดู/ดาวน์โหลดรายงานย้อนหลัง</div></div>
@@ -331,6 +334,7 @@ body[data-theme="material"] .progress-wrap{background:#efe9db;}
   <button data-v="pph" onclick="nav('pph')"><span class="ic">3️⃣</span>PPH</button>
   <button data-v="fdel" onclick="nav('fdel')"><span class="ic">4️⃣</span>First Del</button>
   <button data-v="dash" onclick="nav('dash')"><span class="ic">📊</span>Dashboard</button>
+  <button data-v="insight" onclick="nav('insight')"><span class="ic">📈</span>อินไซต์</button>
   <button data-v="hist" onclick="nav('hist')"><span class="ic">🗓</span>ประวัติ</button>
   <button data-v="manage" onclick="nav('manage')"><span class="ic">👥</span>จัดการ</button>
 </div>
@@ -592,6 +596,7 @@ function nav(v){
   if(v==='pph') renderPPH();
   if(v==='fdel') renderFDel();
   if(v==='dash') renderDash();
+  if(v==='insight') renderInsight();
   if(v==='hist') renderHist();
   if(v==='manage') renderManage();
 }
@@ -912,6 +917,139 @@ async function renderPPH(){
     +'<div class="small" style="text-align:center;margin-top:6px;">แก้เวลาทีละจุด: กดปุ่มเวลานั้นซ้ำ แล้วพิมพ์เวลาใหม่ หรือพิมพ์ - เพื่อล้างเฉพาะจุด</div>';
   document.getElementById('pphBody').innerHTML = h;
   const rpi=document.getElementById('rpSearch'); if(rpi && rpSearchVal) filterRows(rpi,'rpList','rp');
+}
+
+/* ================= INSIGHT (สรุปเชิงลึกจากข้อมูลทั้งหมดในเครื่อง) ================= */
+let insRange='30', insCourier='all', insPphAsc=true;
+function getAllCheckins(){ return new Promise((res,rej)=>{ const q=tx('readonly').getAll(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error); }); }
+function getAllPPHRecs(){ return new Promise((res,rej)=>{ const q=pphTx('readonly').getAll(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error); }); }
+function insSet(k,v){ if(k==='range')insRange=v; if(k==='courier')insCourier=v; if(k==='pphsort'){insPphAsc=!insPphAsc;} renderInsight(); }
+function insMin(){ return insRange==='all' ? '' : dateKey(addDays(new Date(), -(parseInt(insRange)-1))); }
+
+async function renderInsight(){
+  const allC = await getAllCheckins();
+  const allP = await getAllPPHRecs();
+  const minK = insMin();
+  const recs = allC.filter(r=> r.date>=minK);
+  const pphs = allP.filter(p=> p.date>=minK).sort((a,b)=> a.date<b.date?1:-1);
+  const dates = [...new Set(recs.map(r=>r.date))].sort();
+
+  /* ---- ตัวกรอง ---- */
+  const rBtn=(v,l)=>'<button class="btn '+(insRange===v?'btn-y':'btn-o')+'" style="min-height:38px;padding:7px 12px;font-size:12.5px;" onclick="insSet(\'range\',\''+v+'\')">'+l+'</button>';
+  let h = '<div class="card"><h2>📈 อินไซต์ <span class="small">ข้อมูลทั้งหมดที่เก็บในเครื่องนี้</span></h2>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'+rBtn('7','7 วัน')+rBtn('30','30 วัน')+rBtn('90','90 วัน')+rBtn('all','ทั้งหมด')+'</div>'
+    +'<select onchange="insSet(\'courier\',this.value)">'
+    +'<option value="all">👥 ทุกคน ('+couriers.filter(c=>c.active).length+' คน)</option>'
+    +couriers.filter(c=>c.active).map(c=>'<option value="'+c.id+'" '+(String(insCourier)===String(c.id)?'selected':'')+'>'+escapeHtml(c.code+' — '+c.name)+'</option>').join('')
+    +'</select>'
+    +'<div class="small">ช่วงข้อมูล: '+(dates.length? thDate(dates[0])+' → '+thDate(dates[dates.length-1]) : 'ยังไม่มีข้อมูล')+' • '+dates.length+' วันทำงาน</div></div>';
+
+  if(!recs.length){ h+='<div class="card"><div class="hint">ยังไม่มีข้อมูลเช็คอินในช่วงที่เลือก</div></div>'; document.getElementById('insBody').innerHTML=h; return; }
+
+  /* ---- A) สรุปการเข้างาน ---- */
+  const fRecs = insCourier==='all'? recs : recs.filter(r=>String(r.courierId)===String(insCourier));
+  const onT = fRecs.filter(r=>r.status==='ontime').length;
+  const late = fRecs.filter(r=>r.status==='late').length;
+  const pct = fRecs.length? Math.round(onT/fRecs.length*100) : 0;
+  const edits = fRecs.filter(r=>r.manualEdit).length;
+  h += '<div class="kpis">'
+    +'<div class="kpi green"><div class="v">'+pct+'%</div><div class="l">Ontime ('+onT+'/'+fRecs.length+' ครั้ง)</div></div>'
+    +'<div class="kpi '+(late>0?'red':'')+'"><div class="v">'+late+'</div><div class="l">มาสาย (ครั้ง)</div></div>'
+    +'<div class="kpi"><div class="v">'+dates.length+'</div><div class="l">วันทำงานที่บันทึก</div></div>'
+    +'<div class="kpi"><div class="v">'+edits+'</div><div class="l">แก้เวลา * (ครั้ง)</div></div>'
+    +'</div>';
+
+  if(insCourier==='all'){
+    /* ตารางรายคน — เรียงสายมาก→น้อย */
+    const per = {};
+    recs.forEach(r=>{ const p=per[r.courierId]=per[r.courierId]||{on:0,late:0,edit:0,lastLate:null};
+      if(r.status==='late'){ p.late++; if(!p.lastLate||r.date>p.lastLate)p.lastLate=r.date; } else p.on++;
+      if(r.manualEdit)p.edit++; });
+    const rows = Object.entries(per).map(([cid,p])=>{
+      const c=couriers.find(x=>String(x.id)===String(cid)); if(!c) return null;
+      const tot=p.on+p.late, lp=tot?Math.round(p.late/tot*100):0;
+      return {c,p,tot,lp};
+    }).filter(Boolean).sort((a,b)=> b.p.late-a.p.late || b.lp-a.lp);
+    h += '<div class="card"><h2>👥 การเข้างานรายคน <span class="small">เรียงสายมาก→น้อย • แตะชื่อเพื่อเจาะดู</span></h2>'
+      +'<table><tr><th>รหัส/ชื่อ</th><th style="text-align:center;">มา</th><th style="text-align:center;">ตรง</th><th style="text-align:center;">สาย</th><th style="text-align:center;">%สาย</th></tr>'
+      +rows.map(x=>'<tr onclick="insSet(\'courier\',\''+x.c.id+'\')" style="cursor:pointer;'+(x.p.late>=3?'background:rgba(212,5,17,.07);':'')+'">'
+        +'<td><b>'+escapeHtml(x.c.code)+'</b> <span class="small">'+escapeHtml(x.c.name)+'</span>'+(x.p.late>=3?' <span class="badge risk">RISK</span>':(x.p.late===2?' <span class="badge watch">WATCH</span>':''))+'</td>'
+        +'<td style="text-align:center;">'+x.tot+'</td><td style="text-align:center;color:var(--g);font-weight:700;">'+x.p.on+'</td>'
+        +'<td style="text-align:center;color:'+(x.p.late?'var(--r)':'#999')+';font-weight:700;">'+x.p.late+'</td>'
+        +'<td style="text-align:center;font-weight:700;color:'+(x.lp>=20?'var(--r)':(x.lp>0?'#b58900':'var(--g)'))+';">'+x.lp+'%</td></tr>').join('')
+      +'</table></div>';
+  } else {
+    /* ประวัติรายวันของคนที่เลือก */
+    const mine = recs.filter(r=>String(r.courierId)===String(insCourier)).sort((a,b)=> a.date<b.date?1:-1);
+    h += '<div class="card"><h2>🗓 ประวัติรายวัน</h2>'
+      +'<table><tr><th>วันที่</th><th>เวลา</th><th>สถานะ</th></tr>'
+      +mine.map(r=>'<tr><td>'+thDate(r.date)+'</td><td>'+fmtTime(r.ts)+(r.manualEdit?' <b style="color:var(--r);">*</b>':'')+'</td>'
+        +'<td>'+(r.status==='ontime'?'<span class="chip ontime">✔ Ontime</span>':'<span class="chip late">✖ Late</span>')+'</td></tr>').join('')
+      +'</table><div class="small" style="margin-top:6px;">* = มีการแก้เวลาโดย Staff</div></div>';
+  }
+
+  /* ---- B) PPH เจาะลึกรายรหัส (จาก Route prep FS→DEP) ---- */
+  const stat = {};
+  pphs.forEach(p=>{
+    const nC = p.courierN || Object.keys(p.rp||{}).length || 0;
+    const totalP = (p.pNew||0)+(p.pOld||0);
+    if(!nC || !totalP) return;
+    const share = totalP/nC;
+    Object.entries(p.rp||{}).forEach(([cid,q])=>{
+      if(insCourier!=='all' && String(cid)!==String(insCourier)) return;
+      if(!(q.fs&&q.dep&&q.dep>q.fs)) return;
+      const hrs=(q.dep-q.fs)/3600000;
+      const s=stat[cid]=stat[cid]||{n:0,mins:0,pph:0,stemN:0,stem:0,fdelN:0,fdel:0};
+      s.n++; s.mins+=hrs*60; s.pph+=share/hrs;
+      if(q.fdel&&q.dep&&q.fdel>q.dep){ s.stemN++; s.stem+=(q.fdel-q.dep)/60000; }
+      if(q.fdel){ s.fdelN++; s.fdel+=q.fdel-(new Date(p.date+'T00:00:00')).getTime(); }
+    });
+  });
+  const prows = Object.entries(stat).map(([cid,s])=>{
+    const c=couriers.find(x=>String(x.id)===String(cid)); if(!c||!s.n) return null;
+    return {c, n:s.n, mins:s.mins/s.n, pph:s.pph/s.n, stem:s.stemN? s.stem/s.stemN:null,
+      fdel:s.fdelN? s.fdel/s.fdelN:null};
+  }).filter(Boolean).sort((a,b)=> insPphAsc? a.pph-b.pph : b.pph-a.pph);
+  const fmtMS=ms=>{ const m=Math.round(ms/60000); return pad(Math.floor(m/60))+':'+pad(m%60); };
+
+  h += '<div class="card"><h2>📦 PPH รายรหัส (Route prep) <span class="small">Target ≥ 165</span></h2>'
+    +'<button class="btn btn-o" style="min-height:36px;padding:6px 12px;font-size:12px;margin-bottom:8px;" onclick="insSet(\'pphsort\')">↕ เรียง: '+(insPphAsc?'ต่ำ → สูง (แย่ก่อน)':'สูง → ต่ำ (เก่งก่อน)')+'</button>';
+  if(!prows.length){ h+='<div class="hint">ยังไม่มีข้อมูล FS/DEP ในช่วงที่เลือก</div></div>'; }
+  else {
+    const worst=insPphAsc? prows[0] : prows[prows.length-1];
+    const best =insPphAsc? prows[prows.length-1] : prows[0];
+    h += '<table><tr><th>รหัส/ชื่อ</th><th style="text-align:center;">วัน</th><th style="text-align:center;">เฉลี่ย FS→DEP</th><th style="text-align:center;">PPH~</th><th style="text-align:center;">Stem</th><th style="text-align:center;">First Del</th></tr>'
+      +prows.map(x=>{
+        const isW=prows.length>1&&x===worst, isB=prows.length>1&&x===best;
+        return '<tr style="'+(isW?'background:rgba(212,5,17,.07);':(isB?'background:rgba(46,125,50,.07);':''))+'">'
+        +'<td>'+(isB?'🏆 ':'')+(isW?'⚠ ':'')+'<b>'+escapeHtml(x.c.code)+'</b> <span class="small">'+escapeHtml(x.c.name)+'</span></td>'
+        +'<td style="text-align:center;">'+x.n+'</td>'
+        +'<td style="text-align:center;">'+Math.round(x.mins)+' นาที</td>'
+        +'<td style="text-align:center;font-weight:800;color:'+(x.pph>=165?'var(--g)':'var(--r)')+';">'+Math.round(x.pph)+'</td>'
+        +'<td style="text-align:center;">'+(x.stem!=null? Math.round(x.stem)+' น.':'—')+'</td>'
+        +'<td style="text-align:center;">'+(x.fdel!=null? fmtMS(x.fdel):'—')+'</td></tr>';
+      }).join('')
+      +'</table>'
+      +'<div class="small" style="margin-top:6px;">PPH~ รายคน (ประมาณ) = (พัสดุรวมวันนั้น ÷ จำนวน Courier) ÷ ชั่วโมง FS→DEP ของคนนั้น • Stem = DEP→First Del • ค่าทางการของสาขาดูที่ Dashboard/Report</div></div>';
+  }
+
+  /* ---- C) PPH ภาพรวมรายวัน ---- */
+  const drows = pphs.map(p=>{
+    const C = pphCalc(p, p.courierN || Object.keys(p.rp||{}).length || 0);
+    const s = C.sort? Math.round(C.sort.pph*10)/10 : null;
+    const r = C.route? Math.round(C.route.pph*10)/10 : null;
+    if(s==null&&r==null) return null;
+    return '<tr><td>'+thDate(p.date)+'</td>'
+      +'<td style="text-align:center;font-weight:700;color:'+(s==null?'#999':(s>=49?'var(--g)':'var(--r)'))+';">'+(s==null?'—':s)+'</td>'
+      +'<td style="text-align:center;font-weight:700;color:'+(r==null?'#999':(r>=165?'var(--g)':'var(--r)'))+';">'+(r==null?'—':r)+'</td></tr>';
+  }).filter(Boolean);
+  if(drows.length){
+    h += '<div class="card"><h2>🗓 PPH สาขารายวัน</h2>'
+      +'<table><tr><th>วันที่</th><th style="text-align:center;">Sort (≥49)</th><th style="text-align:center;">Route (≥165)</th></tr>'
+      +drows.join('')+'</table></div>';
+  }
+
+  document.getElementById('insBody').innerHTML = h;
 }
 
 /* ================= CAMERA ================= */

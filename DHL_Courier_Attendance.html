@@ -1538,20 +1538,21 @@ async function drawSummary(key){
   const noUni = s.recs.filter(r=>r.uniform===false).length;
   const editN = s.recs.filter(r=>r.manualEdit).length;
   const G='#2e7d32', R='#D40511', AM='#b58900', DK='#1a1a1a';
+  /* เรียงตามลำดับ Process: ① เช็คอิน → ② PD → ③ Sort → Route prep → ④ First Del (จบ) */
   const rows=[
-    ['Total Couriers', String(s.total), DK],
-    ['Ontime', s.ontime+'   ('+s.ontimePct+'%)', G],
-    ['Late', s.late+'   ('+s.latePct+'%)', R],
+    ['1) Total Couriers', String(s.total), DK],
+    ['1) Ontime', s.ontime+'   ('+s.ontimePct+'%)', G],
+    ['1) Late', s.late+'   ('+s.latePct+'%)', R],
+    ['1) No uniform', String(noUni), noUni?R:G],
   ];
-  if(PC&&PC.sort) rows.push(['PPH Sort time', (Math.round(PC.sort.pph*10)/10)+'   (target ≥ 49)', PC.sort.pph>=49?G:R]);
-  if(PC&&PC.route) rows.push(['PPH Route prep', (Math.round(PC.route.pph*10)/10)+'   (target ≥ 165)', PC.route.pph>=165?G:R]);
+  if(editN) rows.push(['1) Time edited *', String(editN), AM]);
+  rows.push(['1) Risk (7d)', riskRows.length? (risk[riskRows[0].id]>=3?'RISK':'WATCH')+' — '+riskRows[0].name : 'none', riskRows.length?AM:G]);
+  if(pph&&pph.pd&&pph.pd.ts) rows.push(['2) PD Performance Dialog', fmtTime(pph.pd.ts)+(pdInWindow(pph.pd.ts)?'   in window':'   late'), pdInWindow(pph.pd.ts)?G:R]);
+  if(PC&&PC.sort) rows.push(['3) PPH Sort time', (Math.round(PC.sort.pph*10)/10)+'   (target ≥ 49)', PC.sort.pph>=49?G:R]);
+  if(PC&&PC.route) rows.push(['3) PPH Route prep', (Math.round(PC.route.pph*10)/10)+'   (target ≥ 165)', PC.route.pph>=165?G:R]);
+  if(stemArr.length) rows.push(['4) Avg Stem Out', Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000)+' min', DK]);
   if(fdArr.length){ const avgFd=fdArr.reduce((a,b)=>a+b,0)/fdArr.length; const ok=(new Date(avgFd).getHours()*3600+new Date(avgFd).getMinutes()*60)<9*3600;
-    rows.push(['First Delivery (avg)', fmtTime(avgFd)+'   (target < 09:00)', ok?G:R]); }
-  if(stemArr.length) rows.push(['Avg Stem Out', Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000)+' min', DK]);
-  if(pph&&pph.pd&&pph.pd.ts) rows.push(['PD Performance Dialog', fmtTime(pph.pd.ts)+(pdInWindow(pph.pd.ts)?'   in window':'   late'), pdInWindow(pph.pd.ts)?G:R]);
-  rows.push(['Risk (7d)', riskRows.length? (risk[riskRows[0].id]>=3?'RISK':'WATCH')+' — '+riskRows[0].name : 'none', riskRows.length?AM:G]);
-  rows.push(['No uniform', String(noUni), noUni?R:G]);
-  if(editN) rows.push(['Time edited *', String(editN), AM]);
+    rows.push(['4) First Delivery (avg)', fmtTime(avgFd)+'   (target < 09:00)', ok?G:R]); }
 
   const W=1080, P=48, rowH=64;
   const H = 210 + rows.length*rowH + 60;

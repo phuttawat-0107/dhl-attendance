@@ -1033,6 +1033,40 @@ async function renderInsight(){
       +'<div class="small" style="margin-top:6px;">PPH~ รายคน (ประมาณ) = (พัสดุรวมวันนั้น ÷ จำนวน Courier) ÷ ชั่วโมง FS→DEP ของคนนั้น • Stem = DEP→First Del • ค่าทางการของสาขาดูที่ Dashboard/Report</div></div>';
   }
 
+  /* ---- B2) อินไซต์ Sort time — บริหารจัดการคนของ Staff ---- */
+  const srows=[]; let sSum={mins:0,pph:0,ppl:0,par:0,pass:0,n:0};
+  pphs.forEach(p=>{
+    const C = pphCalc(p, p.courierN || Object.keys(p.rp||{}).length || 0);
+    if(!C.sort) return;
+    const mins = C.sort.hrs*60;
+    const pphS = Math.round(C.sort.pph*10)/10;
+    const recPpl = Math.max(1, Math.ceil(C.totalP/(49*C.sort.hrs)));   // คนที่พอดีเป้า 49
+    const diff = C.people - recPpl;
+    sSum.mins+=mins; sSum.pph+=pphS; sSum.ppl+=C.people; sSum.par+=C.totalP; sSum.n++;
+    if(pphS>=49) sSum.pass++;
+    srows.push('<tr><td>'+thDate(p.date)+'</td>'
+      +'<td style="text-align:center;">'+fmtTime(p.inboundTs)+'</td>'
+      +'<td style="text-align:center;">'+Math.round(mins)+' น.</td>'
+      +'<td style="text-align:center;">'+C.people+'<span class="small"> ('+(+p.staffN||0)+'/'+(+p.sorterN||0)+'/'+(+p.courierN||0)+')</span></td>'
+      +'<td style="text-align:center;">'+C.totalP+'</td>'
+      +'<td style="text-align:center;font-weight:800;color:'+(pphS>=49?'var(--g)':'var(--r)')+';">'+pphS+'</td>'
+      +'<td style="text-align:center;font-weight:700;'+(diff>0?'color:var(--r);':(diff<0?'color:#b58900;':'color:var(--g);'))+'">'
+        +recPpl+(diff>0?' (−'+diff+' คน)':(diff<0?' (+'+(-diff)+' คน)':' ✔ พอดี'))+'</td></tr>');
+  });
+  if(srows.length){
+    const avgM=Math.round(sSum.mins/sSum.n), avgP=Math.round(sSum.pph/sSum.n*10)/10, avgPpl=Math.round(sSum.ppl/sSum.n*10)/10;
+    h += '<div class="card"><h2>🔀 อินไซต์ Sort time <span class="small">บริหารคน Staff/Sorter • Target ≥ 49</span></h2>'
+      +'<div class="kpis" style="margin-bottom:10px;">'
+      +'<div class="kpi '+(avgP>=49?'green':'red')+'"><div class="v">'+avgP+'</div><div class="l">PPH Sort เฉลี่ย</div></div>'
+      +'<div class="kpi"><div class="v">'+sSum.pass+'/'+sSum.n+'</div><div class="l">วันที่ผ่านเป้า 49</div></div>'
+      +'<div class="kpi"><div class="v">'+avgM+'</div><div class="l">นาทีเฉลี่ย Inbound→Avg FS</div></div>'
+      +'<div class="kpi"><div class="v">'+avgPpl+'</div><div class="l">คนเฉลี่ยที่ใช้/วัน</div></div>'
+      +'</div>'
+      +'<table><tr><th>วันที่</th><th style="text-align:center;">Inbound</th><th style="text-align:center;">ใช้เวลา</th><th style="text-align:center;">คน (S/So/C)</th><th style="text-align:center;">พัสดุ</th><th style="text-align:center;">PPH</th><th style="text-align:center;">คนที่พอดีเป้า</th></tr>'
+      +srows.join('')+'</table>'
+      +'<div class="small" style="margin-top:6px;">คนที่พอดีเป้า = พัสดุ ÷ (49 × ชม.ที่ใช้จริง) • <b style="color:var(--r);">−N</b> = วันนั้นใช้คนเกิน N คน (PPH ตก) • <b style="color:#b58900;">+N</b> = คนขาด N คน (เสี่ยงงานช้า) • ใช้ประกอบการจัดกำลังคนวันถัดไป</div></div>';
+  }
+
   /* ---- C) PPH ภาพรวมรายวัน ---- */
   const drows = pphs.map(p=>{
     const C = pphCalc(p, p.courierN || Object.keys(p.rp||{}).length || 0);

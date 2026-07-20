@@ -989,36 +989,37 @@ async function renderInsight(){
   }
 
   /* ---- B1) อินไซต์ Sort time — บริหารจัดการคนของ Staff (มาก่อน Route prep) ---- */
-  const srows=[]; let sSum={mins:0,pph:0,ppl:0,pass:0,n:0};
+  const srows=[]; let sSum={mins:0,pph:0,pass:0,n:0};
+  const mMin = ms => Math.round(ms/60000)+' นาที';
   pphs.forEach(p=>{
     const C = pphCalc(p, p.courierN || Object.keys(p.rp||{}).length || 0);
     if(!C.sort) return;
     const mins = C.sort.hrs*60;
     const pphS = Math.round(C.sort.pph*10)/10;
-    const recPpl = Math.max(1, Math.ceil(C.totalP/(49*C.sort.hrs)));   // คนที่พอดีเป้า 49
-    const diff = C.people - recPpl;
-    sSum.mins+=mins; sSum.pph+=pphS; sSum.ppl+=C.people; sSum.n++;
+    sSum.mins+=mins; sSum.pph+=pphS; sSum.n++;
     if(pphS>=49) sSum.pass++;
-    const staffTxt = diff>0? '👥 เกิน −'+diff+' คน' : (diff<0? '👥 ขาด +'+(-diff)+' คน' : '✔ คนพอดี');
-    const staffCol = diff>0? 'var(--r)' : (diff<0? '#b58900' : 'var(--g)');
-    srows.push('<div class="row-c" style="box-shadow:none;">'
-      +'<div class="info"><div class="nm">'+thDate(p.date)+'</div>'
-      +'<div class="sub">IB '+fmtTime(p.inboundTs)+' • ใช้ '+Math.round(mins)+' น. • คน '+C.people+' ('+(+p.staffN||0)+'/'+(+p.sorterN||0)+'/'+(+p.courierN||0)+') • พัสดุ '+C.totalP+'</div>'
-      +'<div class="sub" style="font-weight:700;color:'+staffCol+';">'+staffTxt+' <span style="font-weight:400;color:#999;">(พอดีเป้า = '+recPpl+' คน)</span></div></div>'
-      +'<div style="text-align:right;flex-shrink:0;"><div style="font-size:22px;font-weight:800;color:'+(pphS>=49?'var(--g)':'var(--r)')+';">'+pphS+'</div><div class="small">PPH Sort</div></div>'
-      +'</div>');
+    const lib = p.lastInboundTs;
+    srows.push('<div class="row-c" style="box-shadow:none;display:block;">'
+      +'<div class="nm" style="margin-bottom:5px;">'+thDate(p.date)
+        +'<span style="float:right;font-size:20px;font-weight:800;color:'+(pphS>=49?'var(--g)':'var(--r)')+';">'+pphS+'</span></div>'
+      +'<div class="sub" style="line-height:1.7;">'
+        +'📥 First Inbound <b>'+fmtTime(p.inboundTs)+'</b><br>'
+        +'📦 Last Inbound <b>'+(lib? fmtTime(lib):'—')+'</b>'+(lib&&lib>p.inboundTs? ' <span style="color:#888;">('+mMin(lib-p.inboundTs)+')</span>':'')+'<br>'
+        +'⏱ Avg FS <b>'+fmtTime(C.sort.avgFs)+'</b> <span style="color:#888;">('+Math.round(mins)+' นาที จาก First Inbound)</span><br>'
+        +'👥 Staff '+(+p.staffN||0)+' • Sorter '+(+p.sorterN||0)+' • Courier '+(+p.courierN||0)+' • พัสดุ '+C.totalP+' ชิ้น • Man-hours '+(Math.round(C.sort.mh*10)/10)
+      +'</div></div>');
   });
   if(srows.length){
-    const avgM=Math.round(sSum.mins/sSum.n), avgP=Math.round(sSum.pph/sSum.n*10)/10, avgPpl=Math.round(sSum.ppl/sSum.n*10)/10;
-    h += '<div class="card"><h2>🔀 อินไซต์ Sort time <span class="small">บริหารคน Staff/Sorter • Target ≥ 49</span></h2>'
+    const avgM=Math.round(sSum.mins/sSum.n), avgP=Math.round(sSum.pph/sSum.n*10)/10;
+    h += '<div class="card"><h2>🔀 Sort time <span class="small">Target ≥ 49</span></h2>'
       +'<div class="kpis" style="margin-bottom:10px;">'
       +'<div class="kpi '+(avgP>=49?'green':'red')+'"><div class="v">'+avgP+'</div><div class="l">PPH Sort เฉลี่ย</div></div>'
       +'<div class="kpi"><div class="v">'+sSum.pass+'/'+sSum.n+'</div><div class="l">วันที่ผ่านเป้า 49</div></div>'
-      +'<div class="kpi"><div class="v">'+avgM+'</div><div class="l">นาทีเฉลี่ย IB→Avg FS</div></div>'
-      +'<div class="kpi"><div class="v">'+avgPpl+'</div><div class="l">คนเฉลี่ย/วัน</div></div>'
+      +'<div class="kpi"><div class="v">'+avgM+'</div><div class="l">นาทีเฉลี่ย First Inbound → Avg FS</div></div>'
+      +'<div class="kpi"><div class="v">'+sSum.n+'</div><div class="l">วันที่มีข้อมูล</div></div>'
       +'</div>'
       +srows.join('')
-      +'<div class="small" style="margin-top:6px;">คนพอดีเป้า = พัสดุ ÷ (49 × ชม.ที่ใช้จริง) • <b style="color:var(--r);">เกิน</b> = ใช้คนมากไป PPH ตก • <b style="color:#b58900;">ขาด</b> = เสี่ยงงานช้า • ตัวเลขในวงเล็บ = Staff/Sorter/Courier</div></div>';
+      +'</div>';
   }
 
   /* ---- B) PPH เจาะลึกรายรหัส (จาก Route prep FS→DEP) ---- */
@@ -1055,11 +1056,11 @@ async function renderInsight(){
         const isW=prows.length>1&&x===worst, isB=prows.length>1&&x===best;
         return '<div class="row-c" style="box-shadow:none;'+(isW?'border-color:#f4c9c9;background:rgba(212,5,17,.05);':(isB?'border-color:#bfe6d4;background:rgba(46,125,50,.05);':''))+'">'
         +'<div class="info"><div class="nm">'+(isB?'🏆 ':'')+(isW?'⚠ ':'')+escapeHtml(x.c.code)+' <span style="font-weight:400;font-size:13px;">'+escapeHtml(x.c.name)+'</span></div>'
-        +'<div class="sub">FS→DEP '+Math.round(x.mins)+' นาที • Stem '+(x.stem!=null? Math.round(x.stem)+' น.':'—')+' • F.Del '+(x.fdel!=null? fmtMS(x.fdel):'—')+' • '+x.n+' วัน</div></div>'
-        +'<div style="text-align:right;flex-shrink:0;"><div style="font-size:22px;font-weight:800;color:'+(x.pph>=165?'var(--g)':'var(--r)')+';">'+Math.round(x.pph)+'</div><div class="small">PPH~</div></div>'
+        +'<div class="sub">FS → DEP '+Math.round(x.mins)+' นาที • Stem Out '+(x.stem!=null? Math.round(x.stem)+' นาที':'—')+' • First Del '+(x.fdel!=null? fmtMS(x.fdel):'—')+' • '+x.n+' วัน</div></div>'
+        +'<div style="text-align:right;flex-shrink:0;"><div style="font-size:22px;font-weight:800;color:'+(x.pph>=165?'var(--g)':'var(--r)')+';">'+Math.round(x.pph)+'</div><div class="small">PPH</div></div>'
         +'</div>';
       }).join('')
-      +'<div class="small" style="margin-top:6px;">PPH~ รายคน (ประมาณ) = (พัสดุรวมวันนั้น ÷ จำนวน Courier) ÷ ชั่วโมง FS→DEP ของคนนั้น • Stem = DEP→First Del • ค่าทางการของสาขาดูที่ Dashboard/Report</div></div>';
+      +'</div>';
   }
 
   /* ---- C) PPH ภาพรวมรายวัน ---- */
@@ -1535,19 +1536,19 @@ async function drawSummary(key){
   const G='#2e7d32', R='#D40511', AM='#b58900', DK='#1a1a1a';
   /* เรียงตามลำดับ Process: ① เช็คอิน → ② PD → ③ Sort → Route prep → ④ First Del (จบ) */
   const rows=[
-    ['1) Total Couriers', String(s.total), DK],
-    ['1) Ontime', s.ontime+'   ('+s.ontimePct+'%)', G],
-    ['1) Late', s.late+'   ('+s.latePct+'%)', R],
-    ['1) No uniform', String(noUni), noUni?R:G],
+    ['Total Couriers', String(s.total), DK],
+    ['Ontime', s.ontime+'   ('+s.ontimePct+'%)', G],
+    ['Late', s.late+'   ('+s.latePct+'%)', R],
+    ['No uniform', String(noUni), noUni?R:G],
   ];
-  if(editN) rows.push(['1) Time edited *', String(editN), AM]);
-  rows.push(['1) Risk (7d)', riskRows.length? (risk[riskRows[0].id]>=3?'RISK':'WATCH')+' — '+riskRows[0].name : 'none', riskRows.length?AM:G]);
-  if(pph&&pph.pd&&pph.pd.ts) rows.push(['2) PD Performance Dialog', fmtTime(pph.pd.ts)+(pdInWindow(pph.pd.ts)?'   in window':'   late'), pdInWindow(pph.pd.ts)?G:R]);
-  if(PC&&PC.sort) rows.push(['3) PPH Sort time', (Math.round(PC.sort.pph*10)/10)+'   (target ≥ 49)', PC.sort.pph>=49?G:R]);
-  if(PC&&PC.route) rows.push(['3) PPH Route prep', (Math.round(PC.route.pph*10)/10)+'   (target ≥ 165)', PC.route.pph>=165?G:R]);
-  if(stemArr.length) rows.push(['4) Avg Stem Out', Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000)+' min', DK]);
+  if(editN) rows.push(['Time edited *', String(editN), AM]);
+  rows.push(['Risk (7d)', riskRows.length? (risk[riskRows[0].id]>=3?'RISK':'WATCH')+' — '+riskRows[0].name : 'none', riskRows.length?AM:G]);
+  if(pph&&pph.pd&&pph.pd.ts) rows.push(['PD Performance Dialog', fmtTime(pph.pd.ts)+(pdInWindow(pph.pd.ts)?'   in window':'   late'), pdInWindow(pph.pd.ts)?G:R]);
+  if(PC&&PC.sort) rows.push(['PPH Sort time', (Math.round(PC.sort.pph*10)/10)+'   (target ≥ 49)', PC.sort.pph>=49?G:R]);
+  if(PC&&PC.route) rows.push(['PPH Route prep', (Math.round(PC.route.pph*10)/10)+'   (target ≥ 165)', PC.route.pph>=165?G:R]);
+  if(stemArr.length) rows.push(['Avg Stem Out', Math.round(stemArr.reduce((a,b)=>a+b,0)/stemArr.length/60000)+' min', DK]);
   if(fdArr.length){ const avgFd=fdArr.reduce((a,b)=>a+b,0)/fdArr.length; const ok=(new Date(avgFd).getHours()*3600+new Date(avgFd).getMinutes()*60)<9*3600;
-    rows.push(['4) First Delivery (avg)', fmtTime(avgFd)+'   (target < 09:00)', ok?G:R]); }
+    rows.push(['First Delivery (avg)', fmtTime(avgFd)+'   (target < 09:00)', ok?G:R]); }
 
   const W=1080, P=48, rowH=64;
   const H = 210 + rows.length*rowH + 60;

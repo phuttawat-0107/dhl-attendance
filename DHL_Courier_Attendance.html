@@ -934,48 +934,54 @@ async function renderPPH(){
 }
 
 /* ================= INSIGHT (สรุปเชิงลึกจากข้อมูลทั้งหมดในเครื่อง) ================= */
-let insRange='30', insCourier='all', insPphAsc=true, insDate='all';
+let insFrom='', insTo='', insCourier='all', insPphAsc=true;
 function getAllCheckins(){ return new Promise((res,rej)=>{ const q=tx('readonly').getAll(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error); }); }
 function getAllPPHRecs(){ return new Promise((res,rej)=>{ const q=pphTx('readonly').getAll(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error); }); }
 function insSet(k,v){
-  if(k==='range'){ insRange=v; insDate='all'; }
+  if(k==='from') insFrom=v;
+  if(k==='to') insTo=v;
   if(k==='courier') insCourier=v;
-  if(k==='date') insDate=v;
   if(k==='pphsort') insPphAsc=!insPphAsc;
+  if(k==='reset'){ insFrom=''; insTo=''; }
   renderInsight();
 }
-function insMin(){ return insRange==='all' ? '' : dateKey(addDays(new Date(), -(parseInt(insRange)-1))); }
 
 async function renderInsight(){
   const allC = await getAllCheckins();
   const allP = await getAllPPHRecs();
-  const minK = insMin();
-  const allDates = [...new Set(allC.map(r=>r.date))].sort().reverse();
-  if(insDate!=='all' && !allDates.includes(insDate)) insDate='all';
-  const inRange = d => (insDate!=='all') ? (d===insDate) : (d>=minK);
+  const allDates = [...new Set(allC.map(r=>r.date))].sort();
+  const minD = allDates[0] || todayKey(), maxD = allDates[allDates.length-1] || todayKey();
+  if(!insFrom || insFrom<minD || insFrom>maxD) insFrom = minD;
+  if(!insTo || insTo>maxD || insTo<minD) insTo = maxD;
+  if(insFrom > insTo){ const t=insFrom; insFrom=insTo; insTo=t; }
+  const inRange = d => d>=insFrom && d<=insTo;
   const recs = allC.filter(r=> inRange(r.date));
   const pphs = allP.filter(p=> inRange(p.date)).sort((a,b)=> a.date<b.date?1:-1);
   const dates = [...new Set(recs.map(r=>r.date))].sort();
+  const oneDay = insFrom===insTo;
+  const fullRange = insFrom===minD && insTo===maxD;
 
-  /* ---- ตัวกรอง ---- */
-  const rBtn=(v,l)=>'<button class="btn '+((insDate==='all'&&insRange===v)?'btn-y':'btn-o')+'" style="min-height:38px;padding:7px 12px;font-size:12.5px;" onclick="insSet(\'range\',\''+v+'\')">'+l+'</button>';
-  let h = '<div class="card"><h2>📈 อินไซต์ <span class="small">ข้อมูลทั้งหมดที่เก็บในเครื่องนี้</span></h2>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'+rBtn('7','7 วัน')+rBtn('30','30 วัน')+rBtn('90','90 วัน')+rBtn('all','ทั้งหมด')
-    +'<button class="btn '+(insDate!=='all'?'btn-y':'btn-o')+'" style="min-height:38px;padding:7px 12px;font-size:12.5px;" onclick="insSet(\'date\',\'all\')">📊 รวมทุกวัน (ค่าเฉลี่ย)</button></div>'
-    +'<select onchange="insSet(\'date\',this.value)" style="margin-bottom:8px;">'
-    +'<option value="all"'+(insDate==='all'?' selected':'')+'>🗓 ทุกวันในช่วงที่เลือก ('+allDates.length+' วันในเครื่อง)</option>'
-    +allDates.map(d=>'<option value="'+d+'"'+(insDate===d?' selected':'')+'>'+thDate(d)+'</option>').join('')
-    +'</select>'
+  /* ---- ตัวกรอง (ช่วงวันที่แบบปฏิทิน) ---- */
+  let h = '<div class="card"><h2>📈 อินไซต์</h2>'
+    +'<div style="display:flex;gap:10px;margin-bottom:8px;">'
+    +'<div style="flex:1;"><label class="small">📅 จากวันที่</label>'
+    +'<input type="date" value="'+insFrom+'" min="'+minD+'" max="'+maxD+'" onchange="insSet(\'from\',this.value)" style="margin-bottom:0;"></div>'
+    +'<div style="flex:1;"><label class="small">ถึงวันที่</label>'
+    +'<input type="date" value="'+insTo+'" min="'+minD+'" max="'+maxD+'" onchange="insSet(\'to\',this.value)" style="margin-bottom:0;"></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'
+    +'<button class="btn '+(oneDay&&insFrom===maxD?'btn-y':'btn-o')+'" style="min-height:36px;padding:6px 12px;font-size:12.5px;" onclick="insSet(\'from\',\''+maxD+'\');insSet(\'to\',\''+maxD+'\')">วันล่าสุด</button>'
+    +'<button class="btn '+(fullRange&&!oneDay?'btn-y':'btn-o')+'" style="min-height:36px;padding:6px 12px;font-size:12.5px;" onclick="insSet(\'reset\')">ทุกวันที่มีข้อมูล</button>'
+    +'</div>'
     +'<select onchange="insSet(\'courier\',this.value)">'
     +'<option value="all">👥 ทุกคน ('+couriers.filter(c=>c.active).length+' คน)</option>'
     +couriers.filter(c=>c.active).map(c=>'<option value="'+c.id+'" '+(String(insCourier)===String(c.id)?'selected':'')+'>'+escapeHtml(c.code+' — '+c.name)+'</option>').join('')
     +'</select>'
-    +'<div class="small" style="margin-bottom:8px;">ช่วงข้อมูล: '+(dates.length? thDate(dates[0])+' → '+thDate(dates[dates.length-1]) : 'ยังไม่มีข้อมูล')+' • '+dates.length+' วันทำงาน</div>'
+    +'<div class="small" style="margin-bottom:10px;">'+(dates.length? (oneDay? '🗓 '+thDate(insFrom) : '🗓 '+thDate(insFrom)+' → '+thDate(insTo))+' • มีข้อมูล '+dates.length+' วันทำงาน' : 'ไม่มีข้อมูลในช่วงที่เลือก')+'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
     +'<button class="btn btn-r" style="flex:1;min-width:150px;font-size:13px;" onclick="openRangeReport(\'rp\')">📄 Report Route prep</button>'
     +'<button class="btn btn-y" style="flex:1;min-width:150px;font-size:13px;" onclick="openRangeReport(\'att\')">📄 Report การเข้างาน</button>'
     +'</div>'
-    +'<div class="small" style="margin-top:6px;">Report ใช้ช่วงวัน/วันที่ที่เลือกด้านบน — เลือกวันเดียวได้ หรือรวมทั้งช่วงเป็นค่าเฉลี่ย/ผลรวม</div>'
     +'</div>';
 
   if(!recs.length){ h+='<div class="card"><div class="hint">ยังไม่มีข้อมูลเช็คอินในช่วงที่เลือก</div></div>'; document.getElementById('insBody').innerHTML=h; return; }
@@ -1787,14 +1793,12 @@ async function drawAttendanceRange(from,to){
 /* เปิด Report ตามช่วงที่เลือกในหน้าอินไซต์ */
 async function openRangeReport(type){
   flash('กำลังสร้าง Report...');
-  let from, to;
-  if(insDate!=='all'){ from=insDate; to=insDate; }
-  else { from = insRange==='all'? '0000-00-00' : insMin(); to = todayKey(); }
+  const from = insFrom, to = insTo;
   const cv = type==='rp'? await drawRoutePrepRange(from,to) : await drawAttendanceRange(from,to);
   const wrap=document.getElementById('rpRepWrap');
   wrap.innerHTML=''; cv.style.width='100%'; cv.style.borderRadius='10px'; cv.style.border='1px solid #eee';
   wrap.appendChild(cv);
-  const label = insDate!=='all'? thDate(insDate) : (insRange==='all'? 'ทั้งหมด' : insRange+' วันล่าสุด');
+  const label = from===to? thDate(from) : thDate(from)+' → '+thDate(to);
   document.getElementById('rpRepTitle').textContent = (type==='rp'? 'Route prep':'Time Attendance')+' — '+label;
   document.getElementById('rpRepDl').onclick=()=>{
     dlCanvas(cv, settings.depot+'_'+(type==='rp'?'RoutePrep':'Attendance')+'_'+from+'_'+to+'.png');

@@ -971,7 +971,11 @@ async function renderInsight(){
     +couriers.filter(c=>c.active).map(c=>'<option value="'+c.id+'" '+(String(insCourier)===String(c.id)?'selected':'')+'>'+escapeHtml(c.code+' — '+c.name)+'</option>').join('')
     +'</select>'
     +'<div class="small" style="margin-bottom:8px;">ช่วงข้อมูล: '+(dates.length? thDate(dates[0])+' → '+thDate(dates[dates.length-1]) : 'ยังไม่มีข้อมูล')+' • '+dates.length+' วันทำงาน</div>'
-    +(insDate!=='all'? '<button class="btn btn-r btn-block" onclick="openRoutePrepReport(\''+insDate+'\')">📄 Report Route prep วันนี้ที่เลือก</button>' : '')
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    +'<button class="btn btn-r" style="flex:1;min-width:150px;font-size:13px;" onclick="openRangeReport(\'rp\')">📄 Report Route prep</button>'
+    +'<button class="btn btn-y" style="flex:1;min-width:150px;font-size:13px;" onclick="openRangeReport(\'att\')">📄 Report การเข้างาน</button>'
+    +'</div>'
+    +'<div class="small" style="margin-top:6px;">Report ใช้ช่วงวัน/วันที่ที่เลือกด้านบน — เลือกวันเดียวได้ หรือรวมทั้งช่วงเป็นค่าเฉลี่ย/ผลรวม</div>'
     +'</div>';
 
   if(!recs.length){ h+='<div class="card"><div class="hint">ยังไม่มีข้อมูลเช็คอินในช่วงที่เลือก</div></div>'; document.getElementById('insBody').innerHTML=h; return; }
@@ -1628,6 +1632,177 @@ async function drawRoutePrep(key){
   x.fillStyle='#FFCC00'; x.fillRect(0,H-10,W,10);
   return cv;
 }
+/* ===== Route prep Report แบบช่วงวัน (ค่าเฉลี่ยรายคน) ===== */
+function secHM(s){ const m=Math.round(s/60); return pad(Math.floor(m/60))+':'+pad(m%60); }
+async function drawRoutePrepRange(from,to){
+  const allP = await getAllPPHRecs();
+  const pphs = allP.filter(p=> p.date>=from && p.date<=to);
+  const cMap={}; couriers.forEach(c=>cMap[c.id]=c);
+  const secOf = ts => { const d=new Date(ts); return d.getHours()*3600+d.getMinutes()*60; };
+  const dts = pphs.map(p=>p.date).sort();
+  const agg={};
+  pphs.forEach(p=>{
+    const nC=(+p.courierN)||Object.keys(p.rp||{}).length||0;
+    const totalP=(+p.pNew||0)+(+p.pOld||0);
+    const share=(nC&&totalP)? totalP/nC : 0;
+    Object.entries(p.rp||{}).forEach(([cid,q])=>{
+      if(!(q.fs||q.dep||q.fdel)) return;
+      const a=agg[cid]=agg[cid]||{days:0,fs:[],dep:[],prep:[],pph:[],stem:[],fdel:[]};
+      a.days++;
+      if(q.fs) a.fs.push(secOf(q.fs));
+      if(q.dep) a.dep.push(secOf(q.dep));
+      if(q.fs&&q.dep&&q.dep>q.fs){ const pr=q.dep-q.fs; a.prep.push(pr); if(share) a.pph.push(share/(pr/3600000)); }
+      if(q.dep&&q.fdel&&q.fdel>q.dep) a.stem.push(q.fdel-q.dep);
+      if(q.fdel) a.fdel.push(secOf(q.fdel));
+    });
+  });
+  const av=x=>x.length? x.reduce((s,v)=>s+v,0)/x.length : null;
+  let list=Object.entries(agg).map(([cid,a])=>{
+    const c=cMap[cid]; if(!c) return null;
+    return {c,days:a.days,fs:av(a.fs),dep:av(a.dep),prep:av(a.prep),pph:av(a.pph),stem:av(a.stem),fdel:av(a.fdel)};
+  }).filter(Boolean);
+  list.sort((a,b)=>{
+    const ra=a.fdel!=null?0:(a.dep!=null?1:2), rb=b.fdel!=null?0:(b.dep!=null?1:2);
+    if(ra!==rb) return ra-rb;
+    if(ra===0) return a.fdel-b.fdel;
+    if(ra===1) return a.dep-b.dep;
+    return a.c.code.localeCompare(b.c.code);
+  });
+
+  const G='#1c7a4d', R='#c1121f', AM='#b58900', DK='#1a1a1a';
+  const W=1180, P=34, HD=190, RH=46, FT=60;
+  const H = HD + 44 + Math.max(list.length,1)*RH + FT;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const x=cv.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,W,H);
+  x.fillStyle='#FFCC00'; x.fillRect(0,0,W,14);
+  fancyDepot(x, settings.depot, P, 100, false);
+  x.textAlign='right'; x.font='700 28px Segoe UI'; x.fillStyle=DK;
+  x.fillText('Route prep — ค่าเฉลี่ยรายบุคคล', W-P, 56);
+  x.font='19px Segoe UI'; x.fillStyle='#666';
+  x.fillText((dts.length? thDate(dts[0])+' → '+thDate(dts[dts.length-1]) : '-')+'   ·   '+dts.length+' วัน   ·   Courier '+list.length+' คน', W-P, 86);
+  x.font='16px Segoe UI'; x.fillStyle='#888';
+  x.fillText('Target: PPH ≥ 165  ·  DEP < 08:30  ·  First Del < 09:00', W-P, 112);
+  x.textAlign='left';
+  const COL=[P, P+50, P+308, P+372, P+472, P+572, P+688, P+788, P+930];
+  const HDRS=['#','รหัส / ชื่อ','วัน','FS','DEP','FS→DEP','PPH','Stem Out','First Del'];
+  let y=HD-40;
+  x.fillStyle='#f2f2f4'; x.fillRect(P-10,y-4,W-2*(P-10),40);
+  x.font='700 18px Segoe UI'; x.fillStyle='#444';
+  HDRS.forEach((t,i)=> x.fillText(t, COL[i], y+22));
+  y+=44;
+  list.forEach((r,i)=>{
+    if(i%2===0){ x.fillStyle='#fafafa'; x.fillRect(P-10,y,W-2*(P-10),RH); }
+    const base=y+RH/2+7;
+    x.font='16px Segoe UI'; x.fillStyle='#999'; x.fillText(String(i+1), COL[0], base);
+    x.font='700 18px Segoe UI'; x.fillStyle=DK; x.fillText(r.c.code, COL[1], base);
+    x.font='15px Segoe UI'; x.fillStyle='#777'; x.fillText(String(r.c.name).slice(0,16), COL[1]+92, base);
+    x.font='700 18px Segoe UI';
+    x.fillStyle='#555'; x.fillText(String(r.days), COL[2], base);
+    x.fillStyle=r.fs!=null? DK:'#bbb'; x.fillText(r.fs!=null? secHM(r.fs):'—', COL[3], base);
+    x.fillStyle=r.dep!=null? (r.dep<8*3600+1800? G:R):'#bbb'; x.fillText(r.dep!=null? secHM(r.dep):'—', COL[4], base);
+    x.fillStyle=r.prep!=null? DK:'#bbb'; x.fillText(r.prep!=null? Math.round(r.prep/60000)+' น.':'—', COL[5], base);
+    x.fillStyle=r.pph!=null? (r.pph>=165? G:R):'#bbb'; x.fillText(r.pph!=null? String(Math.round(r.pph)):'—', COL[6], base);
+    x.fillStyle=r.stem!=null? (r.stem/60000<=25? G:AM):'#bbb'; x.fillText(r.stem!=null? Math.round(r.stem/60000)+' น.':'—', COL[7], base);
+    x.fillStyle=r.fdel!=null? (r.fdel<9*3600? G:R):'#bbb'; x.fillText(r.fdel!=null? secHM(r.fdel):'—', COL[8], base);
+    x.strokeStyle='#ececec'; x.beginPath(); x.moveTo(P-10,y+RH); x.lineTo(W-(P-10),y+RH); x.stroke();
+    y+=RH;
+  });
+  if(!list.length){ x.font='18px Segoe UI'; x.fillStyle='#999'; x.fillText('ไม่มีข้อมูล Route prep ในช่วงที่เลือก', P, y+28); y+=RH; }
+  x.textAlign='center'; x.font='15px Segoe UI'; x.fillStyle='#999';
+  x.fillText('Generated by '+settings.staff+' — '+settings.depot+' Attendance System', W/2, H-22);
+  x.fillStyle='#FFCC00'; x.fillRect(0,H-10,W,10);
+  return cv;
+}
+
+/* ===== Time Attendance Report รายบุคคล แบบช่วงวัน (นาทีสาย เรียงมาก→น้อย) ===== */
+async function drawAttendanceRange(from,to){
+  const allC = await getAllCheckins();
+  const recs = allC.filter(r=> r.date>=from && r.date<=to);
+  const cMap={}; couriers.forEach(c=>cMap[c.id]=c);
+  const dts=[...new Set(recs.map(r=>r.date))].sort();
+  const agg={};
+  recs.forEach(r=>{
+    const a=agg[r.courierId]=agg[r.courierId]||{days:0,on:0,late:0,lateMin:0,worst:0};
+    a.days++;
+    if(r.status==='late'){
+      a.late++;
+      const d=new Date(r.ts); const sec=d.getHours()*3600+d.getMinutes()*60+d.getSeconds();
+      const m=Math.max(1, Math.round((sec-CUTOFF_SHOWN)/60));
+      a.lateMin+=m; if(m>a.worst)a.worst=m;
+    } else a.on++;
+  });
+  let list=Object.entries(agg).map(([cid,a])=>{ const c=cMap[cid]; return c? {c,...a}:null; }).filter(Boolean);
+  list.sort((a,b)=> b.lateMin-a.lateMin || b.late-a.late || a.c.code.localeCompare(b.c.code));
+
+  const G='#1c7a4d', R='#c1121f', DK='#1a1a1a';
+  const W=1180, P=34, HD=190, RH=46, FT=60;
+  const H = HD + 44 + Math.max(list.length,1)*RH + FT;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const x=cv.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,W,H);
+  x.fillStyle='#FFCC00'; x.fillRect(0,0,W,14);
+  fancyDepot(x, settings.depot, P, 100, false);
+  x.textAlign='right'; x.font='700 28px Segoe UI'; x.fillStyle=DK;
+  x.fillText('Time Attendance — รายบุคคล', W-P, 56);
+  x.font='19px Segoe UI'; x.fillStyle='#666';
+  x.fillText((dts.length? thDate(dts[0])+' → '+thDate(dts[dts.length-1]) : '-')+'   ·   '+dts.length+' วัน   ·   เรียงสายมาก → น้อย', W-P, 86);
+  x.font='16px Segoe UI'; x.fillStyle='#888';
+  x.fillText('เวลาเข้างาน 07:00 น.  ·  นาทีสาย = เวลาที่เกิน 07:00 (เฉพาะครั้งที่สถานะ Late)', W-P, 112);
+  x.textAlign='left';
+  const COL=[P, P+44, P+150, P+400, P+460, P+610, P+675, P+740, P+815, P+985];
+  const HDRS=['#','รหัส','ชื่อ-นามสกุล','รถ','Vendor','มา','ตรง','สาย','นาทีสายรวม','สายสูงสุด'];
+  let y=HD-40;
+  x.fillStyle='#f2f2f4'; x.fillRect(P-10,y-4,W-2*(P-10),40);
+  x.font='700 18px Segoe UI'; x.fillStyle='#444';
+  HDRS.forEach((t,i)=> x.fillText(t, COL[i], y+22));
+  y+=44;
+  list.forEach((r,i)=>{
+    if(r.lateMin>0 && i<3){ x.fillStyle='rgba(212,5,17,.06)'; x.fillRect(P-10,y,W-2*(P-10),RH); }
+    else if(i%2===0){ x.fillStyle='#fafafa'; x.fillRect(P-10,y,W-2*(P-10),RH); }
+    const base=y+RH/2+7;
+    x.font='16px Segoe UI'; x.fillStyle='#999'; x.fillText(String(i+1), COL[0], base);
+    x.font='700 18px Segoe UI'; x.fillStyle=DK; x.fillText(r.c.code, COL[1], base);
+    x.font='17px Segoe UI'; x.fillStyle='#333'; x.fillText(String(r.c.name).slice(0,22), COL[2], base);
+    x.fillStyle='#555'; x.fillText(r.c.type||'-', COL[3], base);
+    x.fillText(String(r.c.vendor||'-').slice(0,13), COL[4], base);
+    x.font='700 18px Segoe UI';
+    x.fillStyle='#555'; x.fillText(String(r.days), COL[5], base);
+    x.fillStyle=G; x.fillText(String(r.on), COL[6], base);
+    x.fillStyle=r.late? R:'#bbb'; x.fillText(String(r.late), COL[7], base);
+    x.fillStyle=r.lateMin? R:'#bbb'; x.font='800 19px Segoe UI';
+    x.fillText(r.lateMin? r.lateMin+' นาที':'—', COL[8], base);
+    x.font='700 18px Segoe UI'; x.fillStyle=r.worst? '#b58900':'#bbb';
+    x.fillText(r.worst? r.worst+' นาที':'—', COL[9], base);
+    x.strokeStyle='#ececec'; x.beginPath(); x.moveTo(P-10,y+RH); x.lineTo(W-(P-10),y+RH); x.stroke();
+    y+=RH;
+  });
+  if(!list.length){ x.font='18px Segoe UI'; x.fillStyle='#999'; x.fillText('ไม่มีข้อมูลเช็คอินในช่วงที่เลือก', P, y+28); y+=RH; }
+  x.textAlign='center'; x.font='15px Segoe UI'; x.fillStyle='#999';
+  x.fillText('Generated by '+settings.staff+' — '+settings.depot+' Attendance System', W/2, H-22);
+  x.fillStyle='#FFCC00'; x.fillRect(0,H-10,W,10);
+  return cv;
+}
+
+/* เปิด Report ตามช่วงที่เลือกในหน้าอินไซต์ */
+async function openRangeReport(type){
+  flash('กำลังสร้าง Report...');
+  let from, to;
+  if(insDate!=='all'){ from=insDate; to=insDate; }
+  else { from = insRange==='all'? '0000-00-00' : insMin(); to = todayKey(); }
+  const cv = type==='rp'? await drawRoutePrepRange(from,to) : await drawAttendanceRange(from,to);
+  const wrap=document.getElementById('rpRepWrap');
+  wrap.innerHTML=''; cv.style.width='100%'; cv.style.borderRadius='10px'; cv.style.border='1px solid #eee';
+  wrap.appendChild(cv);
+  const label = insDate!=='all'? thDate(insDate) : (insRange==='all'? 'ทั้งหมด' : insRange+' วันล่าสุด');
+  document.getElementById('rpRepTitle').textContent = (type==='rp'? 'Route prep':'Time Attendance')+' — '+label;
+  document.getElementById('rpRepDl').onclick=()=>{
+    dlCanvas(cv, settings.depot+'_'+(type==='rp'?'RoutePrep':'Attendance')+'_'+from+'_'+to+'.png');
+    flash('✔ ดาวน์โหลดแล้ว');
+  };
+  document.getElementById('rpRepModal').classList.add('show');
+}
+
 async function openRoutePrepReport(key){
   flash('กำลังสร้าง Report...');
   const cv = await drawRoutePrep(key);

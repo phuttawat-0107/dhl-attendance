@@ -65,6 +65,9 @@ tr:last-child td{border-bottom:none;}
 .hint{background:#fff8d9;border:none;border-radius:14px;padding:11px;font-size:12px;margin-bottom:10px;color:#7a5c00;}
 .empty{text-align:center;color:#b0a892;padding:44px 10px 30px;font-size:13.5px;}
 .empty::before{content:'📊';display:block;font-size:44px;margin-bottom:10px;opacity:.85;}
+.mtabs{display:flex;gap:5px;background:#fff;border-radius:99px;padding:5px;box-shadow:0 1px 6px rgba(60,50,20,.08);margin-bottom:12px;position:sticky;top:64px;z-index:40;}
+.mtab{flex:1;border:none;border-radius:99px;padding:10px 4px;font-weight:700;font-size:12.5px;background:none;color:#a09884;cursor:pointer;transition:all .25s cubic-bezier(.34,1.56,.64,1);font-family:inherit;}
+.mtab.on{background:#1a1a1a;color:var(--y);transform:scale(1.03);}
 </style>
 </head>
 <body>
@@ -216,6 +219,19 @@ function render(){
     +'<input type="date" value="'+mTo+'" min="'+minD+'" max="'+maxD+'" onchange="mSet(\'to\',this.value)"></div></div>'
     +'<div class="small" style="margin-top:6px;">🗓 '+thD(mFrom)+(mFrom===mTo?'':' → '+thD(mTo))+' • '+names.length+' สาขา</div></div>';
 
+  /* ---- แท็บ ---- */
+  const tb = window._mtab || 'over';
+  h+='<div class="mtabs">'
+    +[['over','📊 ภาพรวม'],['dep','🏢 สาขา'],['per','👥 รายคน']].map(([k,l])=>
+      '<button class="mtab'+(tb===k?' on':'')+'" onclick="window._mtab=\''+k+'\';render()">'+l+'</button>').join('')
+    +'</div>';
+
+  window._ddep = names.includes(window._ddep)? window._ddep : names[0];
+  const st = S[window._ddep];
+  const depSel = '<select onchange="window._ddep=this.value;render()" style="margin-bottom:8px;">'
+    +names.map(n=>'<option'+(window._ddep===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>';
+
+  if(tb==='over'){
   /* ---- KPI รวม ---- */
   h+='<div class="kpis">'
     +'<div class="kpi '+(onPct>=95?'green':(onPct>=85?'':'red'))+'"><div class="v">'+onPct+'%</div><div class="l">Ontime รวม ('+g.on+'/'+tot+')</div></div>'
@@ -226,6 +242,21 @@ function render(){
     +'<div class="kpi '+(g.pdAll&&g.pdOk===g.pdAll?'green':(g.pdAll?'':'red'))+'"><div class="v">'+g.pdOk+'/'+g.pdAll+'</div><div class="l">PD ในเวลา (&lt;07:15)</div></div>'
     +'</div>';
 
+  /* ---- กราฟภาพรวม ---- */
+  h+='<div class="card"><h2>📊 กราฟภาพรวม</h2>'
+    +'<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">'
+    +'<canvas id="cvDonut" style="width:128px;height:128px;flex-shrink:0;"></canvas>'
+    +'<div style="flex:1;min-width:190px;"><div class="small" style="margin-bottom:4px;font-weight:700;">Ontime% รายสาขา</div>'
+    +'<canvas id="cvBars" style="width:100%;"></canvas></div></div>'
+    +'<div class="small" style="margin:10px 0 4px;font-weight:700;">แนวโน้ม Ontime% รายวัน (เป้า 95%)</div>'
+    +'<canvas id="cvTrend" style="width:100%;height:120px;"></canvas>'
+    +'<div class="small" style="margin:12px 0 4px;font-weight:700;">PPH Route prep รายวัน (เป้า ≥165)</div>'
+    +'<canvas id="cvPph" style="width:100%;height:140px;"></canvas>'
+    +'<div class="chips" id="pphLegend"></div>'
+    +'</div>';
+  } /* end tab over */
+
+  if(tb==='dep'){
   /* ---- ตารางเทียบสาขา ---- */
   h+='<div class="card"><h2>🏢 เทียบสาขา</h2><div class="tscroll"><table><tr>'
     +'<th>สาขา</th><th>คน</th><th>Ontime%</th><th>สาย</th><th>นาทีสาย</th><th>👕</th><th>แก้*</th><th>PD</th><th>Sort</th><th>Route</th><th>F.Del</th></tr>';
@@ -245,6 +276,9 @@ function render(){
   });
   h+='</table></div><div class="small" style="margin-top:6px;">แก้* = จำนวนครั้งที่ Staff แก้เวลา • PD = วันที่ถ่ายทัน 07:15 / วันที่ถ่าย</div></div>';
 
+  } /* end dep-1 */
+
+  if(tb==='per'){
   /* ---- Top สาย (ทุกสาขา ทำบทลงโทษ) ---- */
   const lateAll=[];
   names.forEach(n=>Object.entries(S[n].per).forEach(([cid,a])=>{
@@ -263,13 +297,11 @@ function render(){
   });
   h+='</div>';
 
+  } /* end per-1 */
+
+  if(tb==='dep'){
   /* ---- รายวันต่อสาขา ---- */
-  h+='<div class="card"><h2>🗓 รายวันต่อสาขา</h2>'
-    +'<select id="ddep" onchange="render()" style="margin-bottom:8px;">'
-    +names.map(n=>'<option'+(window._ddep===n?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>';
-  const sel=document.getElementById('ddep')? document.getElementById('ddep').value : names[0];
-  window._ddep=names.includes(sel)?sel:names[0];
-  const st=S[window._ddep];
+  h+='<div class="card"><h2>🗓 รายวันต่อสาขา</h2>'+depSel;
   const dayMap={};
   st.days.forEach(d=>dayMap[d]={});
   st.sort.forEach(x=>{(dayMap[x.date]=dayMap[x.date]||{}).s=x.v;});
@@ -288,14 +320,17 @@ function render(){
       +'<td class="'+(o.f!=null?(o.f<T_FDEL?'gtxt':'rtxt'):'')+'">'+(o.f!=null?secHM(o.f):'—')+'</td></tr>';
   });
   h+='</table></div></div>';
+  } /* end dep-2 */
 
+  if(tb==='per'){
   /* ---- Route prep รายบุคคล (สาขาที่เลือก) ---- */
   const rpl=Object.entries(st.rp).map(([cid,a])=>{
     const c=st.cMap[cid]; if(!c||!a.n) return null;
     return {c,n:a.n,prep:av(a.prep),pph:av(a.pph),stem:av(a.stem),fdel:av(a.fdel)};
   }).filter(Boolean).sort((a,b)=>(a.fdel??99999)-(b.fdel??99999));
+  h+='<div class="card"><h2>📦 Route prep รายคน <span class="small">เฉลี่ยช่วงที่เลือก • ดีสุดบนสุด</span></h2>'+depSel;
+  if(!rpl.length) h+='<div class="small">ยังไม่มีข้อมูล Route prep ของสาขานี้ในช่วงที่เลือก</div></div>';
   if(rpl.length){
-    h+='<div class="card"><h2>📦 Route prep รายคน — '+esc(window._ddep)+' <span class="small">เฉลี่ยช่วงที่เลือก • ดีสุดบนสุด</span></h2>';
     rpl.forEach((x,i)=>{
       h+='<div class="row-c"><div class="info"><div class="nm">'+(i+1)+'. '+esc(x.c.code)+' '+esc(x.c.name)+'</div>'
         +'<div class="sub">FS→DEP '+(x.prep!=null?Math.round(x.prep/60000)+' น.':'—')+' • Stem '+(x.stem!=null?Math.round(x.stem/60000)+' น.':'—')
@@ -305,12 +340,111 @@ function render(){
     h+='</div>';
   }
 
+  } /* end per-2 */
+
   /* ---- Export ---- */
   h+='<button class="btn btn-o btn-block" onclick="expCSV()">⬇ Export CSV (สรุปสาขา + รายบุคคล)</button>'
     +'<div class="small" style="text-align:center;margin-top:8px;">DHL Manager Dashboard • ข้อมูล '+thD(mFrom)+' → '+thD(mTo)+'</div>';
   el.innerHTML=h;
   window._S=S; window._names=names;
+  drawCharts(S,names,{onPct,on:g.on,late:g.late});
 }
+
+/* ================= CHARTS (canvas ล้วน ไม่ใช้ library) ================= */
+const PAL=['#D40511','#1565c0','#2e7d32','#b58900','#7a3b8f','#00838f','#e64a19'];
+function cvx(id,hpx){
+  const c=document.getElementById(id); if(!c) return null;
+  const dpr=window.devicePixelRatio||1, w=c.clientWidth, hh=hpx||parseInt(c.style.height)||120;
+  c.width=w*dpr; c.height=hh*dpr; c.style.height=hh+'px';
+  const x=c.getContext('2d'); x.scale(dpr,dpr);
+  return {x,w,h:hh};
+}
+function drawCharts(S,names,g){
+  /* --- โดนัท Ontime รวม --- */
+  let d=cvx('cvDonut',128);
+  if(d){
+    const {x}=d, cx=64, cy=64, R=52, r=36;
+    const tot=g.on+g.late, frac=tot? g.on/tot : 0;
+    x.beginPath(); x.arc(cx,cy,R,0,Math.PI*2); x.arc(cx,cy,r,0,Math.PI*2,true); x.fillStyle='#f0ead9'; x.fill('evenodd');
+    if(tot){
+      const a0=-Math.PI/2, a1=a0+Math.PI*2*frac;
+      x.beginPath(); x.arc(cx,cy,R,a0,a1); x.arc(cx,cy,r,a1,a0,true); x.closePath();
+      x.fillStyle=frac>=.95?'#2e7d32':(frac>=.85?'#FFCC00':'#D40511'); x.fill();
+    }
+    x.fillStyle='#1a1a1a'; x.font='800 24px Segoe UI'; x.textAlign='center'; x.textBaseline='middle';
+    x.fillText(g.onPct+'%',cx,cy-6);
+    x.font='600 10px Segoe UI'; x.fillStyle='#a09884'; x.fillText('Ontime',cx,cy+14);
+  }
+  /* --- แท่งนอน Ontime% รายสาขา --- */
+  const rowH=30, bh=names.length*rowH+4;
+  d=cvx('cvBars',bh);
+  if(d){
+    const {x,w}=d, LX=52, BW=w-LX-44;
+    names.forEach((n,i)=>{
+      const st=S[n], t=st.on+st.late, pc=t?Math.round(st.on/t*100):0, y=i*rowH+6;
+      x.font='700 12px Segoe UI'; x.fillStyle='#3a3428'; x.textAlign='left'; x.textBaseline='middle';
+      x.fillText(n, 0, y+9);
+      x.fillStyle='#f0ead9'; rr(x,LX,y,BW,17,9); x.fill();
+      const col=pc>=95?'#2e7d32':(pc>=85?'#FFCC00':'#D40511');
+      if(pc>0){ x.fillStyle=col; rr(x,LX,y,Math.max(BW*pc/100,17),17,9); x.fill(); }
+      x.fillStyle='#3a3428'; x.font='800 12px Segoe UI';
+      x.fillText(pc+'%', LX+BW+6, y+9);
+    });
+  }
+  /* --- เทรนด์ Ontime% รายวัน --- */
+  const dayAgg={};
+  names.forEach(n=>S[n].recs.forEach(r=>{ const o=dayAgg[r.date]=dayAgg[r.date]||{on:0,late:0}; r.status==='late'?o.late++:o.on++; }));
+  const dks=Object.keys(dayAgg).sort();
+  d=cvx('cvTrend',120);
+  if(d && dks.length){
+    const {x,w,h}=d, PB=18, PT=8, PLX=30, PRX=8;
+    const X=i=> dks.length===1? w/2 : PLX+(w-PLX-PRX)*i/(dks.length-1);
+    const Y=v=> PT+(h-PT-PB)*(1-v/100);
+    x.strokeStyle='#f0ead9'; x.lineWidth=1;
+    [0,50,100].forEach(v=>{ x.beginPath(); x.moveTo(PLX,Y(v)); x.lineTo(w-PRX,Y(v)); x.stroke();
+      x.fillStyle='#c4bca6'; x.font='9px Segoe UI'; x.textAlign='right'; x.textBaseline='middle'; x.fillText(v,PLX-4,Y(v)); });
+    x.setLineDash([4,4]); x.strokeStyle='#2e7d32'; x.beginPath(); x.moveTo(PLX,Y(95)); x.lineTo(w-PRX,Y(95)); x.stroke(); x.setLineDash([]);
+    const pts=dks.map((k,i)=>{ const o=dayAgg[k],t=o.on+o.late; return {x:X(i), y:Y(t?o.on/t*100:0), v:t?Math.round(o.on/t*100):0}; });
+    if(pts.length>1){
+      x.beginPath(); x.moveTo(pts[0].x,h-PB);
+      pts.forEach(p=>x.lineTo(p.x,p.y)); x.lineTo(pts[pts.length-1].x,h-PB); x.closePath();
+      const gr=x.createLinearGradient(0,0,0,h); gr.addColorStop(0,'rgba(255,204,0,.4)'); gr.addColorStop(1,'rgba(255,204,0,.02)');
+      x.fillStyle=gr; x.fill();
+      x.beginPath(); pts.forEach((p,i)=> i?x.lineTo(p.x,p.y):x.moveTo(p.x,p.y));
+      x.strokeStyle='#e0a800'; x.lineWidth=2.5; x.stroke();
+    }
+    pts.forEach(p=>{ x.beginPath(); x.arc(p.x,p.y,4,0,Math.PI*2); x.fillStyle='#fff'; x.fill(); x.lineWidth=2.5; x.strokeStyle='#e0a800'; x.stroke(); });
+    x.fillStyle='#a09884'; x.font='9.5px Segoe UI'; x.textAlign='center'; x.textBaseline='top';
+    dks.forEach((k,i)=>{ if(dks.length<=8 || i%Math.ceil(dks.length/8)===0){ const[,m,dd]=k.split('-'); x.fillText(+dd+'/'+ +m, X(i), h-PB+4); }});
+  }
+  /* --- PPH Route รายวัน ต่อสาขา --- */
+  const rdks=[...new Set(names.flatMap(n=>S[n].route.map(o=>o.date)))].sort();
+  d=cvx('cvPph',140);
+  const lg=document.getElementById('pphLegend');
+  if(d && rdks.length){
+    const {x,w,h}=d, PB=18, PT=8, PLX=34, PRX=8;
+    let vals=names.flatMap(n=>S[n].route.map(o=>o.v)).concat([165]);
+    const vmin=Math.max(0,Math.min(...vals)-25), vmax=Math.max(...vals)+25;
+    const X=i=> rdks.length===1? w/2 : PLX+(w-PLX-PRX)*i/(rdks.length-1);
+    const Y=v=> PT+(h-PT-PB)*(1-(v-vmin)/(vmax-vmin));
+    x.strokeStyle='#f0ead9'; x.beginPath(); x.moveTo(PLX,h-PB); x.lineTo(w-PRX,h-PB); x.stroke();
+    x.setLineDash([4,4]); x.strokeStyle='#2e7d32'; x.lineWidth=1.5;
+    x.beginPath(); x.moveTo(PLX,Y(165)); x.lineTo(w-PRX,Y(165)); x.stroke(); x.setLineDash([]);
+    x.fillStyle='#2e7d32'; x.font='700 9.5px Segoe UI'; x.textAlign='left'; x.textBaseline='bottom'; x.fillText('165',2,Y(165)+4);
+    names.forEach((n,ni)=>{
+      const m={}; S[n].route.forEach(o=>m[o.date]=o.v);
+      const pts=rdks.map((k,i)=> m[k]!=null? {x:X(i),y:Y(m[k])}:null).filter(Boolean);
+      if(!pts.length) return;
+      x.beginPath(); pts.forEach((p,i)=> i?x.lineTo(p.x,p.y):x.moveTo(p.x,p.y));
+      x.strokeStyle=PAL[ni%PAL.length]; x.lineWidth=2; x.stroke();
+      pts.forEach(p=>{ x.beginPath(); x.arc(p.x,p.y,3.5,0,Math.PI*2); x.fillStyle=PAL[ni%PAL.length]; x.fill(); });
+    });
+    x.fillStyle='#a09884'; x.font='9.5px Segoe UI'; x.textAlign='center'; x.textBaseline='top';
+    rdks.forEach((k,i)=>{ if(rdks.length<=8 || i%Math.ceil(rdks.length/8)===0){ const[,m,dd]=k.split('-'); x.fillText(+dd+'/'+ +m, X(i), h-PB+4); }});
+    if(lg) lg.innerHTML=names.map((n,i)=>'<span style="font-size:11px;font-weight:700;color:'+PAL[i%PAL.length]+';">● '+esc(n)+'</span>').join('');
+  } else if(lg) lg.innerHTML='<span class="small">ยังไม่มีข้อมูล Route prep ในช่วงนี้</span>';
+}
+function rr(x,X,Y,W,H,R){ x.beginPath(); x.moveTo(X+R,Y); x.arcTo(X+W,Y,X+W,Y+H,R); x.arcTo(X+W,Y+H,X,Y+H,R); x.arcTo(X,Y+H,X,Y,R); x.arcTo(X,Y,X+W,Y,R); x.closePath(); }
 
 /* ================= CSV ================= */
 function expCSV(){

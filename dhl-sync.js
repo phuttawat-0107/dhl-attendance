@@ -418,6 +418,37 @@ window.__dsAck=async id=>{
 };
 window.dsOpenComments=openComments;
 
+/* ============ LOGOUT ============ */
+window.dsLogout=async ()=>{
+  if(!confirm('ออกจากระบบ?\n\nข้อมูลที่บันทึกไว้ยังอยู่ครบทั้งในเครื่องและบนคลาวด์\nครั้งหน้าต้องใส่ PIN และเลือกชื่อใหม่')) return;
+  try{ if(S.depot&&S.staff) await deleteDoc(doc(sesCol(S.depot),S.staff)); }catch(e){}
+  try{ if(S.unsubDay)S.unsubDay(); if(S.unsubCom)S.unsubCom(); if(S._hb)clearInterval(S._hb); }catch(e){}
+  S.ready=false; S.depot=null; S.staff=null; S.pin=null; S.comments=[];
+  try{ localStorage.removeItem('dsStaff'); localStorage.removeItem('dsPin'); }catch(e){}
+  const bell=document.getElementById('dsBell'); if(bell) bell.classList.remove('on');
+  location.reload();
+};
+/* ปุ่มออกจากระบบในหน้า "จัดการ" + แตะแถบสถานะ */
+function mountLogout(){
+  const badge=document.getElementById('dsBadge');
+  if(badge && S.ready) badge.onclick=()=>window.dsLogout();
+  const mv=document.getElementById('view-manage');
+  if(mv && !document.getElementById('dsLogoutCard')){
+    const div=document.createElement('div');
+    div.id='dsLogoutCard'; div.className='card';
+    div.innerHTML='<h2>☁ บัญชีผู้ใช้</h2>'
+      +'<div class="small" id="dsWho" style="margin-bottom:9px;"></div>'
+      +'<button class="btn btn-o btn-block" style="color:var(--r);border-color:var(--r);" onclick="dsLogout()">🚪 ออกจากระบบ</button>'
+      +'<div class="small" style="margin-top:7px;">ใช้เมื่อเปลี่ยนคนใช้เครื่องนี้ หรือย้ายไปเครื่องอื่น</div>';
+    mv.appendChild(div);
+  }
+  const who=document.getElementById('dsWho');
+  if(who) who.innerHTML = S.ready
+    ? 'เข้าใช้งานอยู่: <b>'+S.staff+'</b> • สาขา <b>'+S.depot+'</b> • ☁ ซิงค์อัตโนมัติ'
+    : '<span style="color:var(--r);font-weight:700;">⚠ ยังไม่ได้เข้าระบบ — ข้อมูลจะไม่ขึ้นคลาวด์</span>';
+}
+setInterval(mountLogout,2000);
+
 /* ============ WRAP ฟังก์ชันเดิม ============ */
 function wrap(){
   if(window.putCheckin && !window.putCheckin.__ds){
@@ -461,7 +492,7 @@ function boot(){
   /* เตือนถ้ายังไม่ได้ล็อกอิน = ข้อมูลจะไม่ขึ้นคลาวด์ */
   setInterval(()=>{
     const b=document.getElementById('dsBadge'); if(!b) return;
-    if(S.ready){ b.style.background='#1a1a1a'; b.style.color='#FFCC00'; b.onclick=null; return; }
+    if(S.ready){ b.style.background='#1a1a1a'; b.style.color='#FFCC00'; return; }
     b.classList.add('on'); b.style.background='#D40511'; b.style.color='#fff';
     b.textContent='⚠ ยังไม่ได้เข้าระบบ — แตะเพื่อล็อกอิน';
     b.onclick=()=>document.getElementById('dsLogin').classList.add('show');

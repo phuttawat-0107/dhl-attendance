@@ -93,6 +93,31 @@ textarea:focus{outline:2px solid var(--y);}
 .stepbar{display:flex;gap:3px;margin-top:8px;}
 .stepbar i{flex:1;height:7px;border-radius:99px;background:#ece5d5;font-style:normal;}
 .stepbar i.ok{background:var(--g);} .stepbar i.bad{background:var(--r);} .stepbar i.wait{background:var(--y);}
+/* ---- ตัวเลือกช่วงวัน + ปุ่มสาขา (ดีไซน์ใหม่) ---- */
+.rangebar{background:linear-gradient(135deg,#1a1a1a,#2e2e2e);border-radius:24px;padding:16px;margin-bottom:11px;
+  box-shadow:0 6px 22px rgba(0,0,0,.18);color:#fff;animation:fadeUp .3s ease;}
+.rangebar .lab{font-size:10.5px;font-weight:700;color:#8f8677;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px;}
+.dfield{flex:1;min-width:0;}
+.dfield input{width:100%;padding:11px 12px;border:none;border-radius:14px;background:rgba(255,255,255,.1);
+  color:#fff;font-size:14px;font-weight:700;font-family:inherit;-webkit-appearance:none;}
+.dfield input::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.7);cursor:pointer;}
+.dfield input:focus{outline:2px solid var(--y);background:rgba(255,255,255,.16);}
+.dsep{align-self:flex-end;padding-bottom:12px;color:#8f8677;font-weight:800;}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px;}
+.qbtn{border:none;border-radius:99px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
+  background:rgba(255,255,255,.1);color:#cfc8bb;transition:all .2s cubic-bezier(.34,1.56,.64,1);}
+.qbtn:active{transform:scale(.93);}
+.qbtn.on{background:var(--y);color:#1a1a1a;box-shadow:0 3px 10px rgba(255,204,0,.35);}
+.rsum{margin-top:11px;font-size:12px;color:#b8b0a2;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.rsum b{color:var(--y);}
+.depbar{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12);}
+.dbtn{border:none;border-radius:99px;padding:9px 15px 9px 12px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;
+  background:rgba(255,255,255,.09);color:#cfc8bb;display:inline-flex;align-items:center;gap:7px;
+  transition:all .2s cubic-bezier(.34,1.56,.64,1);}
+.dbtn:active{transform:scale(.92);}
+.dbtn i{width:9px;height:9px;border-radius:50%;font-style:normal;flex-shrink:0;}
+.dbtn.on{background:#fff;color:#1a1a1a;box-shadow:0 3px 12px rgba(0,0,0,.3);}
+.dbtn.all.on{background:var(--y);color:#1a1a1a;}
 </style>
 </head>
 <body>
@@ -433,8 +458,8 @@ function findIssues(){
 
 async function loadHist(){
   histLoading=true;
-  const days=[];
-  for(let i=1;i<=7;i++){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  if(MTAB==='ch') renderCh(); if(MTAB==='ins') renderIns();
+  const days=chDates().filter(k=>k!==DATE);
   const H={};
   for(const dep of DEPOTS){
     H[dep]=[];
@@ -450,7 +475,8 @@ async function loadHist(){
 function renderIns(){
   const iss=findIssues();
   const crit=iss.filter(x=>x.lv==='crit').length, warn=iss.length-crit;
-  let h='<div class="kpis" style="grid-template-columns:repeat(3,1fr);">'
+  let h=rangeBarHTML(false)
+    +'<div class="kpis" style="grid-template-columns:repeat(3,1fr);">'
     +'<div class="kpi '+(crit?'red':'green')+'"><div class="v">'+crit+'</div><div class="l">ปัญหาเร่งด่วน</div></div>'
     +'<div class="kpi '+(warn?'am':'green')+'"><div class="v">'+warn+'</div><div class="l">ต้องเฝ้าระวัง</div></div>'
     +'<div class="kpi '+(iss.length?'':'green')+'"><div class="v">'+DEPOTS.filter(d=>!iss.some(x=>x.dep===d)).length+'/'+DEPOTS.length+'</div><div class="l">สาขาไม่มีปัญหา</div></div>'
@@ -481,11 +507,11 @@ function renderIns(){
   h+='</div></div>';
 
   /* ---- ปัญหาซ้ำซาก 7 วัน ---- */
-  h+='<div class="card"><h2>🔁 ปัญหาซ้ำซาก 7 วันย้อนหลัง</h2>';
+  h+='<div class="card"><h2>🔁 ปัญหาสะสมในช่วงที่เลือก <span class="small">'+rangeDays()+' วัน</span></h2>';
   if(!HIST) h+='<div class="small">'+(histLoading?'กำลังโหลดข้อมูลย้อนหลัง...':'—')+'</div>';
   else {
     const rows=DEPOTS.map(dep=>{
-      const ds=HIST[dep]||[]; if(!ds.length) return null;
+      const ds=chDates().map(k=>dayDoc(dep,k)).filter(Boolean); if(!ds.length) return null;
       let late=0,pdLate=0,depLate=0,fdLate=0,n=ds.length;
       ds.forEach(d=>{
         const ck=Object.values(d.checkins||{}), p=d.pph||{}, rp=Object.values(p.rp||{});
@@ -551,10 +577,55 @@ function metricOf(d,k){
   if(k==='fdel'){ const a=rp.map(x=>x.fdel).filter(Boolean); return a.length? av(a.map(secOf)):null; }
   return null;
 }
+/* ---- ช่วงวันที่ ---- */
+const dKey=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const addD=(k,n)=>{ const d=new Date(k+'T00:00:00'); d.setDate(d.getDate()+n); return dKey(d); };
+let RFROM=(()=>{ const d=new Date(); d.setDate(d.getDate()-6); return dKey(d); })(), RTO=todayKey();
 function chDates(){
-  const out=[];
-  for(let i=7;i>=1;i--){ const d=new Date(); d.setDate(d.getDate()-i); out.push(d.toISOString().slice(0,10)); }
-  out.push(todayKey()); return out;
+  const out=[]; let k=RFROM, guard=0;
+  while(k<=RTO && guard++<95){ out.push(k); k=addD(k,1); }
+  return out.length? out : [todayKey()];
+}
+function rangeDays(){ return chDates().length; }
+window.__setRange=(f,t)=>{
+  if(f) RFROM=f; if(t) RTO=t;
+  if(RFROM>RTO){ const x=RFROM; RFROM=RTO; RTO=x; }
+  if(rangeDays()>92) RFROM=addD(RTO,-91);
+  HIST=null; loadHist();
+  if(MTAB==='ch') renderCh(); if(MTAB==='ins') renderIns();
+};
+window.__quick=n=>{
+  const t=todayKey();
+  if(n==='month'){ const d=new Date(); RFROM=dKey(new Date(d.getFullYear(),d.getMonth(),1)); RTO=t; }
+  else if(n==='prevmonth'){ const d=new Date();
+    RFROM=dKey(new Date(d.getFullYear(),d.getMonth()-1,1)); RTO=dKey(new Date(d.getFullYear(),d.getMonth(),0)); }
+  else { RTO=t; RFROM=addD(t,-(n-1)); }
+  HIST=null; loadHist();
+  if(MTAB==='ch') renderCh(); if(MTAB==='ins') renderIns();
+};
+function rangeBarHTML(withDeps){
+  const days=rangeDays(), t=todayKey();
+  const isQ=n=>{ if(n==='month'){ const d=new Date(); return RFROM===dKey(new Date(d.getFullYear(),d.getMonth(),1))&&RTO===t; }
+    return RTO===t && RFROM===addD(t,-(n-1)); };
+  const q=(v,l)=>'<button class="qbtn'+(isQ(v)?' on':'')+'" onclick="window.__quick('+(typeof v==='number'?v:"'"+v+"'")+')">'+l+'</button>';
+  let h='<div class="rangebar">'
+    +'<div style="display:flex;gap:9px;align-items:flex-end;">'
+    +'<div class="dfield"><div class="lab">📅 จากวันที่</div>'
+    +'<input type="date" value="'+RFROM+'" max="'+t+'" onchange="window.__setRange(this.value,null)"></div>'
+    +'<div class="dsep">→</div>'
+    +'<div class="dfield"><div class="lab">ถึงวันที่</div>'
+    +'<input type="date" value="'+RTO+'" max="'+t+'" onchange="window.__setRange(null,this.value)"></div></div>'
+    +'<div class="quick">'+q(1,'วันนี้')+q(7,'7 วัน')+q(14,'14 วัน')+q(30,'30 วัน')+q('month','เดือนนี้')+q('prevmonth','เดือนที่แล้ว')+'</div>'
+    +'<div class="rsum">📊 <b>'+days+' วัน</b> • '+thD(RFROM)+(RFROM===RTO?'':' → '+thD(RTO))
+    +(histLoading?' • <span style="color:#FFCC00;">กำลังโหลด...</span>':'')+'</div>';
+  if(withDeps){
+    h+='<div class="depbar">'
+      +'<button class="dbtn all'+(CHDEP==='all'?' on':'')+'" onclick="window.__chDep(\'all\')">👥 ทุกสาขา</button>'
+      + DEPOTS.map((d,i)=>'<button class="dbtn'+(CHDEP===d?' on':'')+'" onclick="window.__chDep(\''+d+'\')">'
+        +'<i style="background:'+PAL[i%PAL.length]+'"></i>'+d+'</button>').join('')
+      +'</div>';
+  }
+  return h+'</div>';
 }
 function dayDoc(dep,dk){
   if(dk===DATE) return DATA[dep];
@@ -564,11 +635,7 @@ function dayDoc(dep,dk){
 function renderCh(){
   if(MTAB!=='ch') return;                       // วาดเฉพาะตอนที่แท็บกราฟเปิดอยู่
   const deps= CHDEP==='all'? DEPOTS : [CHDEP];
-  let h='<div class="card"><h2>📊 กราฟย้อนหลัง 8 วัน <span class="small">รวมวันนี้</span></h2>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-    +'<button class="mini" style="'+(CHDEP==='all'?'':'background:#f2ede2;color:#5a5140;')+'" onclick="window.__chDep(\'all\')">ทุกสาขา</button>'
-    + DEPOTS.map((d,i)=>'<button class="mini" style="'+(CHDEP===d?'background:'+PAL[i%PAL.length]+';color:#fff;':'background:#f2ede2;color:#5a5140;')+'" onclick="window.__chDep(\''+d+'\')">'+d+'</button>').join('')
-    +'</div>'+(HIST?'':'<div class="small" style="margin-top:8px;">'+(histLoading?'กำลังโหลดข้อมูลย้อนหลัง...':'')+'</div>')+'</div>';
+  let h=rangeBarHTML(true);
   METRICS.forEach(m=>{
     h+='<div class="card"><h2>'+m.l+' <span class="small">'
       +(m.k==='late'?'ยิ่งน้อยยิ่งดี':(m.hi?'เป้า ≥ '+(m.unit==='%'?m.tgt+'%':m.tgt):'เป้า ก่อน '+hmOf(m.tgt)))+'</span></h2>'

@@ -243,25 +243,39 @@ async function afterLogin(){
 }
 
 /* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */
+/* เขียนแบบ field-level (dot path) — ไม่ทับข้อมูลของเครื่องอื่น และไม่ล้างด้วยค่าว่าง */
 async function pushAll(){
   if(!S.ready||S.busy) return; S.busy=true;
   try{
     const date=tKey();
     const recs = window.getByDate? await getByDate(date) : [];
     const pph  = window.getPPH?    await getPPH(date)    : null;
-    const ck={};
-    recs.forEach(r=>{ ck[r.courierId]={ ts:r.ts, status:r.status, buffer:!!r.buffer,
-      uniform:r.uniform!==false, manualEdit:!!r.manualEdit, staff:r.staff||S.staff,
-      hasPhoto:!!r.photo }; });
-    const pp = pph? { staffN:+pph.staffN||0, sorterN:+pph.sorterN||0, courierN:+pph.courierN||0,
-      pNew:+pph.pNew||0, pOld:+pph.pOld||0, inboundTs:pph.inboundTs||null,
-      lastInboundTs:pph.lastInboundTs||null, rp:pph.rp||{},
-      pd: pph.pd? { ts:pph.pd.ts||null, manualEdit:!!pph.pd.manualEdit, hasPhoto:!!pph.pd.photo } : null } : null;
-    const couriers = (window.couriers||[]).filter(c=>c.active!==false)
+    const hasPph = pph && ((+pph.pNew||0)+(+pph.pOld||0) > 0 || pph.inboundTs || pph.lastInboundTs
+                    || (pph.pd&&pph.pd.ts) || Object.keys(pph.rp||{}).length);
+    /* ⛔ ไม่มีอะไรจะส่ง = ไม่แตะคลาวด์เลย (กันเครื่องเปล่าเขียนทับข้อมูลสาขา) */
+    if(!recs.length && !hasPph){ S.busy=false; return; }
+
+    const ref=dayRef(S.depot,date);
+    await setDoc(ref,{ depot:S.depot, date, by:S.staff, updatedAt:Date.now() },{ merge:true });
+
+    const up={};
+    recs.forEach(r=>{ up['checkins.'+r.courierId]={ ts:r.ts, status:r.status, buffer:!!r.buffer,
+      uniform:r.uniform!==false, manualEdit:!!r.manualEdit, staff:r.staff||S.staff, hasPhoto:!!r.photo }; });
+    if(pph){
+      ['staffN','sorterN','courierN','pNew','pOld'].forEach(k=>{ if(pph[k]!=null) up['pph.'+k]=+pph[k]||0; });
+      if(pph.inboundTs)     up['pph.inboundTs']=pph.inboundTs;
+      if(pph.lastInboundTs) up['pph.lastInboundTs']=pph.lastInboundTs;
+      if(pph.pd&&pph.pd.ts) up['pph.pd']={ ts:pph.pd.ts, manualEdit:!!pph.pd.manualEdit, hasPhoto:!!pph.pd.photo };
+      Object.entries(pph.rp||{}).forEach(([cid,q])=>{
+        const o={}; if(q.fs)o.fs=q.fs; if(q.dep)o.dep=q.dep; if(q.fdel)o.fdel=q.fdel;
+        if(Object.keys(o).length) up['pph.rp.'+cid]=o;
+      });
+    }
+    const couriers=(window.couriers||[]).filter(c=>c.active!==false)
       .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'' }));
-    await setDoc(dayRef(S.depot,date),
-      { depot:S.depot, date, checkins:ck, pph:pp, couriers, by:S.staff, updatedAt:Date.now() },
-      { merge:true });
+    if(couriers.length) up['couriers']=couriers;
+
+    if(Object.keys(up).length) await updateDoc(ref,up);
   }catch(e){ console.warn('sync push',e); }
   S.busy=false;
 }

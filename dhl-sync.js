@@ -165,17 +165,20 @@ async function doLogin(force){
   const staff=document.getElementById('dsStaff').value;
   const err=document.getElementById('dsErr');
   err.textContent='';
-  if(!/^\d{4,6}$/.test(pin)){ err.textContent='PIN ต้องเป็นตัวเลข 4–6 หลัก'; return; }
-  if(!staff){ err.textContent='เลือกชื่อผู้บันทึกก่อน'; return; }
+  const fail=m=>{ err.textContent=m; document.getElementById('dsLogin').classList.add('show'); return false; };
+  if(!/^\d{4,6}$/.test(pin)) return fail('PIN ต้องเป็นตัวเลข 4–6 หลัก');
+  if(!staff) return fail('เลือกชื่อผู้บันทึกก่อน');
   err.textContent='กำลังตรวจสอบ...';
   try{
     const snap=await getDoc(depRef(dep));
-    if(!snap.exists()){ err.textContent='สาขานี้ยังไม่ถูกตั้งค่า — แจ้งผู้จัดการ'; return; }
+    if(!snap.exists()) return fail('สาขานี้ยังไม่ถูกตั้งค่า — แจ้งผู้จัดการ');
     const d=snap.data();
-    if(!d.pin){ err.textContent='สาขานี้ยังไม่ตั้ง PIN — แจ้งผู้จัดการ'; return; }
-    if(d.pin!==pin){ err.textContent='PIN ไม่ถูกต้อง'; return; }
+    if(!d.pin) return fail('สาขานี้ยังไม่ตั้ง PIN — แจ้งผู้จัดการ');
+    if(d.pin!==pin){ try{ localStorage.removeItem('dsPin'); }catch(e){}
+      document.getElementById('dsPin').value='';
+      return fail('PIN ไม่ถูกต้อง'); }
     const names=d.staffNames||[];
-    if(!names.includes(staff)){ err.textContent='ไม่พบชื่อนี้ในสาขา '+dep+' — แจ้งผู้จัดการ'; return; }
+    if(!names.includes(staff)) return fail('ไม่พบชื่อนี้ในสาขา '+dep+' — แจ้งผู้จัดการ');
 
     /* ---- ตรวจการเข้าซ้ำซ้อน ---- */
     const now=Date.now();
@@ -184,25 +187,28 @@ async function doLogin(force){
       .filter(x=> now-(x.at||0) < SES_TIMEOUT);
     const mine=active.find(x=>x.name===staff);
     if(mine && mine.uid!==S.uid && !force){
+      document.getElementById('dsLogin').classList.add('show');
       err.innerHTML='⚠ ชื่อ "'+staff+'" กำลังใช้งานอยู่บนอีกเครื่อง<br>'
         +'<span style="font-weight:400;color:#a09884;">ถ้าเป็นเครื่องเก่าของคุณเอง กดปุ่มด้านล่างเพื่อย้ายมาเครื่องนี้</span>';
       const b=document.getElementById('dsGo');
       b.textContent='เข้าแทนที่เครื่องเดิม'; b.dataset.force='1';
-      return;
+      return false;
     }
     const maxN = (+d.maxStaff)|| (dep==='BPE'?4:3);
     const others=active.filter(x=>x.name!==staff).length;
     if(others+1 > maxN){
+      document.getElementById('dsLogin').classList.add('show');
       err.innerHTML='⛔ สาขา '+dep+' เข้าใช้ได้สูงสุด '+maxN+' เครื่อง<br>'
         +'<span style="font-weight:400;color:#a09884;">กำลังใช้อยู่: '+active.map(x=>x.name).join(', ')+'</span>';
-      return;
+      return false;
     }
     await setDoc(doc(sesCol(dep),staff),{ uid:S.uid, at:now, ua:navigator.userAgent.slice(0,90) });
-  }catch(e){ err.textContent='เชื่อมต่อไม่ได้: '+e.message; return; }
+  }catch(e){ return fail('เชื่อมต่อไม่ได้: '+e.message); }
   S.depot=dep; S.staff=staff; S.pin=pin;
   lsSet('dsDepot',dep); lsSet('dsStaff',staff); lsSet('dsPin',pin);
   document.getElementById('dsLogin').classList.remove('show');
   await afterLogin();
+  return true;
 }
 
 /* heartbeat + ตรวจว่าถูกเครื่องอื่นแทนที่ */
@@ -452,6 +458,15 @@ function boot(){
     }
     else document.getElementById('dsLogin').classList.add('show');
   });
+  /* เตือนถ้ายังไม่ได้ล็อกอิน = ข้อมูลจะไม่ขึ้นคลาวด์ */
+  setInterval(()=>{
+    const b=document.getElementById('dsBadge'); if(!b) return;
+    if(S.ready){ b.style.background='#1a1a1a'; b.style.color='#FFCC00'; b.onclick=null; return; }
+    b.classList.add('on'); b.style.background='#D40511'; b.style.color='#fff';
+    b.textContent='⚠ ยังไม่ได้เข้าระบบ — แตะเพื่อล็อกอิน';
+    b.onclick=()=>document.getElementById('dsLogin').classList.add('show');
+  },5000);
+
   /* ข้ามวัน → ย้าย listener */
   let cur=tKey();
   setInterval(()=>{ const k=tKey(); if(k!==cur){ cur=k; if(S.ready){ listenDay(); pushAll(); } } },60000);

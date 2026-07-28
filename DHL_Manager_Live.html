@@ -460,13 +460,13 @@ async function loadHist(){
   histLoading=true;
   if(MTAB==='ch') renderCh(); if(MTAB==='ins') renderIns();
   const days=chDates().filter(k=>k!==DATE);
-  const H={};
-  for(const dep of DEPOTS){
-    H[dep]=[];
-    for(const dk of days){
-      try{ const s=await getDoc(doc(db,'depots',dep,'days',dk)); if(s.exists()) H[dep].push(s.data()); }catch(e){}
-    }
-  }
+  const H={}; DEPOTS.forEach(d=>H[d]=[]);
+  const jobs=[];
+  DEPOTS.forEach(dep=> days.forEach(dk=> jobs.push(
+    getDoc(doc(db,'depots',dep,'days',dk)).then(s=>{ if(s.exists()) H[dep].push(s.data()); }).catch(()=>{})
+  )));
+  /* โหลดขนานทีละ 40 คำขอ — เร็วกว่าเรียงกันมาก */
+  for(let i=0;i<jobs.length;i+=40) await Promise.all(jobs.slice(i,i+40));
   HIST=H; histLoading=false;
   if(MTAB==='ins') renderIns();
   if(MTAB==='ch') renderCh();

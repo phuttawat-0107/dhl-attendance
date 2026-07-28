@@ -736,13 +736,14 @@ window.__open=async (dep,task)=>{
 
   if(!d){ b+='<div class="empty">สาขานี้ยังไม่ส่งข้อมูลวันนี้</div>'; }
   else if(task==='checkin'){
-    const rows=Object.entries(d.checkins||{}).map(([cid,r])=>({c:cmap[cid]||{code:cid,name:''},r}))
+    const rows=Object.entries(d.checkins||{}).map(([cid,r])=>({cid,c:cmap[cid]||{code:cid,name:''},r}))
       .sort((a,b2)=>a.r.ts-b2.r.ts);
     b+= rows.length? rows.map(x=>'<div class="row-c">'
       +'<div class="info"><div class="nm">'+esc(x.c.code)+' <span style="font-weight:400;">'+esc(x.c.name)+'</span></div>'
       +'<div class="sub2">'+esc(x.c.type||'')+' '+esc(x.c.vendor||'')+(x.r.manualEdit?' • แก้เวลา *':'')+(x.r.uniform===false?' • ไม่ใส่ยูนิฟอร์ม':'')+'</div></div>'
       +'<span class="chip '+(x.r.status==='late'?'no':'ok')+'">'+(x.r.status==='late'?'✖ ':'✔ ')+fmtT(x.r.ts)+'</span>'
-      +(x.r.hasPhoto?'<img class="thumb" data-ph="ci_'+x.c.id+'_'+DATE+'" data-dep="'+dep+'">':'')
+      +(x.r.hasPhoto?'<img class="thumb" data-ph="ci_'+x.cid+'_'+DATE+'" data-dep="'+dep+'" '
+        +'onclick="window.__zoom(this.src)" style="cursor:zoom-in;">':'')
       +'</div>').join('') : '<div class="empty">ยังไม่มีการเช็คอิน</div>';
   }
   else if(task==='pd'){
@@ -797,6 +798,13 @@ window.__open=async (dep,task)=>{
   loadPhotos();
 };
 
+window.__zoom=src=>{
+  if(!src||!src.startsWith('data:')) return;
+  const o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out';
+  o.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:100%;border-radius:12px;">';
+  o.onclick=()=>o.remove(); document.body.appendChild(o);
+};
 async function loadPhotos(){
   const els=[...document.querySelectorAll('[data-ph]')];
   for(const el of els){

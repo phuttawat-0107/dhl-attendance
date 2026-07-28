@@ -562,6 +562,7 @@ function dayDoc(dep,dk){
   return HIST[dep].find(x=>x.date===dk)||null;
 }
 function renderCh(){
+  if(MTAB!=='ch') return;                       // วาดเฉพาะตอนที่แท็บกราฟเปิดอยู่
   const deps= CHDEP==='all'? DEPOTS : [CHDEP];
   let h='<div class="card"><h2>📊 กราฟย้อนหลัง 8 วัน <span class="small">รวมวันนี้</span></h2>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
@@ -575,7 +576,7 @@ function renderCh(){
       +'<div class="small" id="lg_'+m.k+'" style="margin-top:6px;"></div></div>';
   });
   document.getElementById('viewCh').innerHTML=h;
-  requestAnimationFrame(()=>METRICS.forEach(m=>drawMetric(m,deps)));
+  METRICS.forEach(m=>drawMetric(m,deps));       // วาดทันที (DOM พร้อมแล้ว)
 }
 window.__chDep=d=>{ CHDEP=d; renderCh(); };
 function cvx(id,hpx){

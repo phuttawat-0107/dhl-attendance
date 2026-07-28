@@ -73,6 +73,26 @@ textarea:focus{outline:2px solid var(--y);}
 #login .yb{height:5px;background:linear-gradient(90deg,#FFCC00,#ffb700);border-radius:99px;margin-bottom:16px;}
 #login .err{color:var(--r);font-size:12.5px;font-weight:700;min-height:18px;margin-bottom:6px;}
 .empty{text-align:center;color:#b0a892;padding:40px 10px;font-size:13px;}
+.mtabs{display:flex;gap:5px;background:#fff;border-radius:99px;padding:5px;box-shadow:0 1px 6px rgba(60,50,20,.08);margin-bottom:11px;}
+.mtab{flex:1;border:none;border-radius:99px;padding:11px 4px;font-weight:800;font-size:13px;background:none;color:#a09884;
+  cursor:pointer;transition:all .25s cubic-bezier(.34,1.56,.64,1);font-family:inherit;}
+.mtab.on{background:#1a1a1a;color:var(--y);transform:scale(1.03);}
+.iss{display:flex;gap:11px;align-items:flex-start;border-radius:16px;padding:12px 13px;margin-bottom:8px;background:#fbf9f4;cursor:pointer;transition:transform .16s;}
+.iss:active{transform:scale(.99);}
+.iss.crit{background:#fff1f0;box-shadow:inset 3.5px 0 0 var(--r);}
+.iss.warn{background:#fff8e0;box-shadow:inset 3.5px 0 0 var(--y);}
+.iss .ic{font-size:20px;line-height:1;flex-shrink:0;margin-top:1px;}
+.iss .bd{flex:1;min-width:0;} .iss .ti{font-weight:800;font-size:13.5px;}
+.iss .de{font-size:11.5px;color:#8a8272;margin-top:2px;line-height:1.45;}
+.iss .go{font-size:11px;font-weight:800;color:var(--r);white-space:nowrap;align-self:center;}
+.stepgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;}
+.stepcard{background:#fbf9f4;border-radius:16px;padding:12px;cursor:pointer;}
+.stepcard .h{font-weight:800;font-size:12.5px;margin-bottom:3px;}
+.stepcard .n{font-size:21px;font-weight:800;line-height:1.1;}
+.stepcard .s{font-size:10.5px;color:#8a8272;font-weight:600;margin-top:2px;}
+.stepbar{display:flex;gap:3px;margin-top:8px;}
+.stepbar i{flex:1;height:7px;border-radius:99px;background:#ece5d5;font-style:normal;}
+.stepbar i.ok{background:var(--g);} .stepbar i.bad{background:var(--r);} .stepbar i.wait{background:var(--y);}
 </style>
 </head>
 <body>
@@ -95,6 +115,11 @@ textarea:focus{outline:2px solid var(--y);}
 </div>
 
 <div class="wrap">
+  <div class="mtabs">
+    <button class="mtab on" id="tb_live" onclick="window.__tab('live')">🔴 Live</button>
+    <button class="mtab" id="tb_ins" onclick="window.__tab('ins')">📈 อินไซต์</button>
+  </div>
+  <div id="viewLive">
   <div id="kpis"></div>
   <div class="card">
     <h2>🗓 <span id="dTitle">วันนี้</span> <span class="small" id="dSub"></span></h2>
@@ -109,6 +134,8 @@ textarea:focus{outline:2px solid var(--y);}
     <div class="small" style="margin-top:8px;">แตะช่องใดก็ได้เพื่อดูรายละเอียด รูปถ่าย และส่งคอมเมนต์</div>
   </div>
   <div id="side"></div>
+  </div>
+  <div id="viewIns" style="display:none;"></div>
 </div>
 
 <div class="modal" id="mdl"><div class="sheet" id="mdlBody"></div></div>
@@ -276,7 +303,219 @@ function render(){
         +'<div class="x">'+esc(c.text)+'</div></div>').join('')
       +'</div>'
     : '';
+  if(MTAB==='ins') renderIns();
 }
+
+/* ================= 📈 INSIGHT: วิเคราะห์ปัญหา ================= */
+let MTAB='live', HIST=null, histLoading=false;
+window.__tab=t=>{
+  MTAB=t;
+  document.getElementById('tb_live').classList.toggle('on',t==='live');
+  document.getElementById('tb_ins').classList.toggle('on',t==='ins');
+  document.getElementById('viewLive').style.display= t==='live'?'':'none';
+  document.getElementById('viewIns').style.display= t==='ins'?'':'none';
+  if(t==='ins'){ renderIns(); if(!HIST&&!histLoading) loadHist(); }
+};
+
+function nowSec(){ const d=new Date(); return d.getHours()*3600+d.getMinutes()*60; }
+function pphOf(p,n){
+  const totalP=(+p.pNew||0)+(+p.pOld||0), people=(+p.staffN||0)+(+p.sorterN||0)+(+p.courierN||0);
+  const rps=Object.values(p.rp||{}), fs=rps.filter(x=>x.fs).map(x=>x.fs);
+  let sort=null,route=null;
+  if(p.inboundTs&&n>0&&fs.length>=n&&people>0){
+    const avgFs=av(fs); if(avgFs>p.inboundTs){ const hrs=(avgFs-p.inboundTs)/3600000; sort=totalP/(people*hrs); }
+  }
+  const pr=rps.filter(x=>x.fs&&x.dep&&x.dep>x.fs);
+  if(pr.length){ const mh=pr.reduce((a,x)=>a+(x.dep-x.fs),0)/3600000; if(mh>0) route=totalP/mh; }
+  return {sort,route,totalP,people};
+}
+
+/* กติกาตรวจปัญหา — คืน array ของ issue */
+function findIssues(){
+  const out=[], t=nowSec(), isToday = DATE===todayKey();
+  DEPOTS.forEach(dep=>{
+    const d=DATA[dep];
+    if(!d){
+      if(!isToday||t>=7*3600+30*60)
+        out.push({dep,task:'checkin',lv:'crit',ic:'📵',ti:dep+' ยังไม่ส่งข้อมูลเลย',
+          de:'ไม่พบการเช็คอินหรือบันทึกใดๆ ของวันนี้ — ตรวจว่าสาขาเปิดแอปและล็อกอินแล้วหรือยัง'});
+      return;
+    }
+    const ck=Object.values(d.checkins||{}), p=d.pph||{}, rp=Object.values(p.rp||{});
+    const nC=(+p.courierN)||ck.length||0;
+
+    /* 1) เช็คอิน */
+    const lateArr=Object.entries(d.checkins||{}).filter(([,r])=>r.status==='late');
+    if(lateArr.length){
+      const mins=lateArr.map(([,r])=>Math.max(1,Math.round((secOf(r.ts)-CUT)/60)));
+      const worst=Math.max(...mins), sum=mins.reduce((a,b)=>a+b,0);
+      out.push({dep,task:'checkin',lv:lateArr.length>=3?'crit':'warn',ic:'⏰',
+        ti:dep+' มาสาย '+lateArr.length+' คน',
+        de:'รวม '+sum+' นาที • สายสุด '+worst+' นาที — แตะดูรายชื่อและส่งคอมเมนต์'});
+    }
+    const noUni=ck.filter(r=>r.uniform===false).length;
+    if(noUni) out.push({dep,task:'checkin',lv:'warn',ic:'👕',ti:dep+' ไม่ใส่ยูนิฟอร์ม '+noUni+' คน',
+      de:'ตรวจสอบและเตือนก่อนออกวิ่งงาน'});
+    const edits=ck.filter(r=>r.manualEdit).length;
+    if(edits>=2) out.push({dep,task:'checkin',lv:'warn',ic:'✏️',ti:dep+' แก้เวลาเข้างาน '+edits+' ครั้ง',
+      de:'แก้หลายครั้งผิดปกติ — ตรวจว่าเป็นเหตุผลอะไร (กล้องเสีย/ลืมกด)'});
+
+    /* 2) PD */
+    const pdTs=p.pd&&p.pd.ts;
+    if(pdTs && secOf(pdTs)>PD_END)
+      out.push({dep,task:'pd',lv:'crit',ic:'📸',ti:dep+' PD เกินเวลา ('+fmtT(pdTs)+')',
+        de:'เป้าคือก่อน 07:15 — เลยมา '+Math.round((secOf(pdTs)-PD_END)/60)+' นาที'});
+    if(!pdTs && ck.length && (!isToday || t>7*3600+20*60))
+      out.push({dep,task:'pd',lv:'crit',ic:'📸',ti:dep+' ยังไม่ถ่าย PD',
+        de:'เช็คอินแล้ว '+ck.length+' คน แต่ยังไม่มีภาพ PD — เลยเวลา 07:15 ไปแล้ว'});
+
+    /* 3) Inbound / Sort */
+    if(!p.inboundTs && ck.length && (!isToday || t>7*3600))
+      out.push({dep,task:'fib',lv:'warn',ic:'📥',ti:dep+' ยังไม่กด First Inbound',
+        de:'ระบบจะคำนวณ PPH Sort ไม่ได้จนกว่าจะกดจุดนี้'});
+    const fsDone=rp.filter(x=>x.fs).length;
+    if(p.inboundTs && nC && fsDone<nC && (!isToday || t>8*3600))
+      out.push({dep,task:'fib',lv:'warn',ic:'🔀',ti:dep+' กด FS ไม่ครบ ('+fsDone+'/'+nC+')',
+        de:'PPH Sort จะยังไม่ถูกคำนวณจนกว่าจะกด First Scan ครบทุกคน'});
+    const P=pphOf(p,nC);
+    if(P.sort!=null && P.sort<49)
+      out.push({dep,task:'fib',lv:'warn',ic:'📉',ti:dep+' PPH Sort ต่ำกว่าเป้า ('+(Math.round(P.sort*10)/10)+')',
+        de:'เป้า ≥ 49 • พัสดุ '+P.totalP+' ชิ้น ใช้คน '+P.people+' คน — ลองลดคนหรือลดเวลา Inbound→FS'});
+
+    /* 4) Route prep / DEP */
+    const deps=rp.map(x=>x.dep).filter(Boolean);
+    if(deps.length){
+      const a=av(deps.map(secOf));
+      if(deps.length>=nC && a>=T_DEP)
+        out.push({dep,task:'dep',lv:'crit',ic:'🚚',ti:dep+' Departure เฉลี่ยเกิน 08:30 ('+hmOf(a)+')',
+          de:'ออกช้า '+Math.round((a-T_DEP)/60)+' นาที — กระทบ First Del ต่อเนื่อง'});
+      const slow=Object.entries(p.rp||{}).filter(([,q])=>q.dep&&secOf(q.dep)>=T_DEP);
+      if(slow.length && slow.length<nC)
+        out.push({dep,task:'dep',lv:'warn',ic:'🐢',ti:dep+' ออกช้าเป็นรายคน '+slow.length+' คน',
+          de:'บางคนออกเกิน 08:30 — แตะดูว่าใครและช้าที่ขั้นตอนไหน'});
+    } else if(p.inboundTs && (!isToday || t>8*3600+30*60))
+      out.push({dep,task:'dep',lv:'crit',ic:'🚚',ti:dep+' ยังไม่มีใครกด DEP',
+        de:'เลย 08:30 แล้วแต่ยังไม่มีการบันทึกเวลาออก'});
+    if(P.route!=null && P.route<165)
+      out.push({dep,task:'dep',lv:'warn',ic:'📦',ti:dep+' PPH Route prep ต่ำกว่าเป้า ('+Math.round(P.route)+')',
+        de:'เป้า ≥ 165 — เวลาที่ใช้ FS→DEP นานเกินไปเทียบกับปริมาณพัสดุ'});
+
+    /* 5) First Del */
+    const fd=rp.map(x=>x.fdel).filter(Boolean);
+    if(fd.length){
+      const a=av(fd.map(secOf));
+      if(fd.length>=nC && a>=T_FDEL)
+        out.push({dep,task:'fdel',lv:'crit',ic:'🎯',ti:dep+' First Del เฉลี่ยเกิน 09:00 ('+hmOf(a)+')',
+          de:'ช้ากว่าเป้า '+Math.round((a-T_FDEL)/60)+' นาที — ตรวจ Stem Out และเส้นทางแรก'});
+      const bigStem=Object.entries(p.rp||{}).filter(([,q])=>q.dep&&q.fdel&&(q.fdel-q.dep)/60000>35);
+      if(bigStem.length)
+        out.push({dep,task:'fdel',lv:'warn',ic:'⏱',ti:dep+' Stem Out นานผิดปกติ '+bigStem.length+' คน',
+          de:'ใช้เวลาจาก DEP→จุดส่งแรกเกิน 35 นาที — อาจเป็นเส้นทางไกลหรือหลงทาง'});
+    } else if(deps.length && (!isToday || t>9*3600))
+      out.push({dep,task:'fdel',lv:'crit',ic:'🎯',ti:dep+' ยังไม่มีใครกด First Del',
+        de:'ออกไปแล้วแต่ยังไม่บันทึกการส่งชิ้นแรก — เลย 09:00 แล้ว'});
+
+    /* 6) คอมเมนต์ค้าง */
+    const pend=(COM[dep]||[]).filter(c=>!c.ackAt).length;
+    if(pend) out.push({dep,task:(COM[dep].find(c=>!c.ackAt)||{}).task||'checkin',lv:'warn',ic:'💬',
+      ti:dep+' ยังไม่รับทราบคอมเมนต์ '+pend+' รายการ', de:'ส่งไปแล้วแต่สาขายังไม่กดรับทราบ'});
+  });
+  const rank={crit:0,warn:1};
+  return out.sort((a,b)=>rank[a.lv]-rank[b.lv]);
+}
+
+async function loadHist(){
+  histLoading=true;
+  const days=[];
+  for(let i=1;i<=7;i++){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  const H={};
+  for(const dep of DEPOTS){
+    H[dep]=[];
+    for(const dk of days){
+      try{ const s=await getDoc(doc(db,'depots',dep,'days',dk)); if(s.exists()) H[dep].push(s.data()); }catch(e){}
+    }
+  }
+  HIST=H; histLoading=false; if(MTAB==='ins') renderIns();
+}
+
+function renderIns(){
+  const iss=findIssues();
+  const crit=iss.filter(x=>x.lv==='crit').length, warn=iss.length-crit;
+  let h='<div class="kpis" style="grid-template-columns:repeat(3,1fr);">'
+    +'<div class="kpi '+(crit?'red':'green')+'"><div class="v">'+crit+'</div><div class="l">ปัญหาเร่งด่วน</div></div>'
+    +'<div class="kpi '+(warn?'am':'green')+'"><div class="v">'+warn+'</div><div class="l">ต้องเฝ้าระวัง</div></div>'
+    +'<div class="kpi '+(iss.length?'':'green')+'"><div class="v">'+DEPOTS.filter(d=>!iss.some(x=>x.dep===d)).length+'/'+DEPOTS.length+'</div><div class="l">สาขาไม่มีปัญหา</div></div>'
+    +'</div>';
+
+  /* ---- ภาพรวมปัญหา ---- */
+  h+='<div class="card"><h2>🚨 ปัญหาที่ต้องแก้ <span class="small">เรียงตามความเร่งด่วน • แตะเพื่อเจาะดูและส่งคอมเมนต์</span></h2>';
+  h+= iss.length? iss.map(x=>'<div class="iss '+x.lv+'" onclick="window.__open(\''+x.dep+'\',\''+x.task+'\')">'
+      +'<div class="ic">'+x.ic+'</div><div class="bd"><div class="ti">'+esc(x.ti)+'</div><div class="de">'+esc(x.de)+'</div></div>'
+      +'<div class="go">ดู ›</div></div>').join('')
+    : '<div class="empty">✅ ไม่พบปัญหา ทุกสาขาทำได้ตามเป้า</div>';
+  h+='</div>';
+
+  /* ---- เจาะลึกรายขั้นตอน ---- */
+  h+='<div class="card"><h2>🔍 เจาะลึกรายขั้นตอน <span class="small">แตะการ์ดเพื่อดูสาขาที่มีปัญหา</span></h2><div class="stepgrid">';
+  TASKS.forEach(t=>{
+    const per=DEPOTS.map(dep=>({dep,s:taskState(dep,t.k)}));
+    const ok=per.filter(x=>x.s.st==='ok').length, bad=per.filter(x=>x.s.st==='bad').length;
+    const wait=per.filter(x=>x.s.st==='wait').length;
+    const badDeps=per.filter(x=>x.s.st==='bad').map(x=>x.dep);
+    h+='<div class="stepcard" onclick="window.__step(\''+t.k+'\')">'
+      +'<div class="h">'+t.l+(t.tg?' <span style="color:#D40511;font-size:10px;">'+t.tg+'</span>':'')+'</div>'
+      +'<div class="n" style="color:'+(bad?'var(--r)':(ok?'var(--g)':'#b0a892'))+'">'+ok+'/'+DEPOTS.length+'</div>'
+      +'<div class="s">'+(bad? 'เกินเป้า: '+badDeps.join(', ') : (wait? 'กำลังทำ '+wait+' สาขา':'ผ่านทั้งหมด'))+'</div>'
+      +'<div class="stepbar">'+per.map(x=>'<i class="'+(x.s.st==='none'?'':x.s.st)+'"></i>').join('')+'</div>'
+      +'</div>';
+  });
+  h+='</div></div>';
+
+  /* ---- ปัญหาซ้ำซาก 7 วัน ---- */
+  h+='<div class="card"><h2>🔁 ปัญหาซ้ำซาก 7 วันย้อนหลัง</h2>';
+  if(!HIST) h+='<div class="small">'+(histLoading?'กำลังโหลดข้อมูลย้อนหลัง...':'—')+'</div>';
+  else {
+    const rows=DEPOTS.map(dep=>{
+      const ds=HIST[dep]||[]; if(!ds.length) return null;
+      let late=0,pdLate=0,depLate=0,fdLate=0,n=ds.length;
+      ds.forEach(d=>{
+        const ck=Object.values(d.checkins||{}), p=d.pph||{}, rp=Object.values(p.rp||{});
+        late+=ck.filter(r=>r.status==='late').length;
+        if(p.pd&&p.pd.ts&&secOf(p.pd.ts)>PD_END) pdLate++;
+        const dp=rp.map(x=>x.dep).filter(Boolean); if(dp.length&&av(dp.map(secOf))>=T_DEP) depLate++;
+        const fd=rp.map(x=>x.fdel).filter(Boolean); if(fd.length&&av(fd.map(secOf))>=T_FDEL) fdLate++;
+      });
+      return {dep,n,late,pdLate,depLate,fdLate,score:late+pdLate*2+depLate*2+fdLate*3};
+    }).filter(Boolean).sort((a,b)=>b.score-a.score);
+    h+= rows.length? rows.map(r=>'<div class="row-c"><div class="info"><div class="nm">'+r.dep
+        +(r.score>=6?' <span class="chip no">ต้องแก้ด่วน</span>':(r.score>=3?' <span class="chip" style="background:#fff3c2;color:#7a5c00;">เฝ้าระวัง</span>':''))+'</div>'
+        +'<div class="sub2">'+r.n+' วัน • สายรวม '+r.late+' ครั้ง • PD เกิน '+r.pdLate+' วัน • DEP ช้า '+r.depLate+' วัน • F.Del ช้า '+r.fdLate+' วัน</div></div>'
+        +'<button class="btn btn-o" style="min-height:34px;padding:7px 12px;font-size:11.5px;" onclick="window.__open(\''+r.dep+'\',\'checkin\')">ดู</button></div>').join('')
+      : '<div class="small">ยังไม่มีข้อมูลย้อนหลัง</div>';
+  }
+  h+='</div>';
+  document.getElementById('viewIns').innerHTML=h;
+}
+
+window.__step=k=>{
+  const bad=DEPOTS.filter(dep=>taskState(dep,k).st==='bad');
+  const wait=DEPOTS.filter(dep=>taskState(dep,k).st==='wait');
+  const T=TASKS.find(t=>t.k===k);
+  let b='<h3>🔍 '+T.l+'</h3><div class="sub">'+thD(DATE)+(T.tg?' • เป้า '+T.tg:'')+'</div>';
+  const mk=(list,label,cls)=> list.length? '<div style="font-weight:800;font-size:13px;margin:10px 0 6px;">'+label+'</div>'
+    + list.map(dep=>{ const s=taskState(dep,k);
+      return '<div class="row-c" onclick="window.__open(\''+dep+'\',\''+k+'\')" style="cursor:pointer;">'
+        +'<div class="info"><div class="nm">'+dep+'</div><div class="sub2">'+(s.s2||'')+'</div></div>'
+        +'<span class="chip '+cls+'">'+(s.v||'—')+'</span></div>'; }).join('') : '';
+  b+=mk(bad,'❌ เกินเป้า','no')+mk(wait,'⏳ กำลังทำ','');
+  const ok=DEPOTS.filter(dep=>taskState(dep,k).st==='ok');
+  b+=mk(ok,'✅ ผ่านเป้า','ok');
+  const none=DEPOTS.filter(dep=>taskState(dep,k).st==='none');
+  if(none.length) b+='<div class="small" style="margin-top:10px;">ยังไม่เริ่ม: '+none.join(', ')+'</div>';
+  b+='<button class="btn btn-o btn-block" style="margin-top:14px;" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button>';
+  document.getElementById('mdlBody').innerHTML=b;
+  document.getElementById('mdl').classList.add('show');
+};
 
 /* ---------- DETAIL + COMMENT ---------- */
 window.__open=async (dep,task)=>{

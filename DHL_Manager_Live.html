@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>DHL Manager Live</title>
+<style>
+:root{--y:#FFCC00;--r:#D40511;--k:#1a1a1a;--g:#2e7d32;--am:#b58900;--muted:#a09884;--bg:#f7f4ee;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Segoe UI','Noto Sans Thai',Tahoma,sans-serif;background:var(--bg);min-height:100vh;color:var(--k);padding-bottom:40px;-webkit-font-smoothing:antialiased;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(247,244,238,.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.ybar{height:6px;background:linear-gradient(90deg,#FFCC00,#ffb700);}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;}
+.mlogo{font-size:22px;font-weight:900;font-style:italic;} .mlogo span{color:var(--r);}
+.live{font-size:10.5px;font-weight:800;color:var(--g);display:flex;align-items:center;gap:5px;justify-content:flex-end;}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--g);animation:blink 1.6s infinite;font-style:normal;}
+.hd .meta{text-align:right;font-size:11px;color:var(--muted);}
+.wrap{max-width:900px;margin:0 auto;padding:12px;}
+.card{background:#fff;border-radius:22px;box-shadow:0 1px 6px rgba(60,50,20,.07);padding:15px;margin-bottom:11px;animation:fadeUp .3s ease;}
+h2{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.small{font-size:11.5px;color:var(--muted);}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:11px;}
+.kpi{background:#fff;border-radius:18px;padding:11px;box-shadow:0 1px 5px rgba(60,50,20,.06);position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:#e9e2d2;}
+.kpi.red::before{background:var(--r);} .kpi.green::before{background:var(--g);} .kpi.am::before{background:var(--y);}
+.kpi .v{font-size:23px;font-weight:800;line-height:1;} .kpi .l{font-size:10px;color:#8a8272;font-weight:600;margin-top:3px;}
+.gridwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -6px;padding:0 6px;}
+table.grid{width:100%;border-collapse:separate;border-spacing:4px;font-size:12px;}
+table.grid th{font-size:9.5px;color:#a09884;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:2px;text-align:center;white-space:nowrap;}
+table.grid th.tg{color:var(--r);font-size:8.5px;display:block;font-weight:700;}
+td.dep{font-weight:900;font-size:14px;text-align:left;padding-right:6px;white-space:nowrap;}
+td.dep small{display:block;font-size:9.5px;color:#a09884;font-weight:600;}
+td.cell{border-radius:13px;text-align:center;padding:9px 5px;cursor:pointer;background:#f2ede2;color:#b0a892;
+  transition:transform .16s cubic-bezier(.34,1.56,.64,1);min-width:62px;}
+td.cell:active{transform:scale(.93);}
+td.cell b{display:block;font-size:14px;font-weight:800;line-height:1.15;}
+td.cell span{font-size:9px;font-weight:700;opacity:.85;}
+td.cell.ok{background:#e6f5eb;color:#1c7a4d;} td.cell.bad{background:#fdeaea;color:#b3121d;}
+td.cell.wait{background:#fff6d6;color:#8a6d00;}
+td.cell.hascom{box-shadow:inset 0 0 0 2.5px var(--r);}
+.dot{position:absolute;} .cellwrap{position:relative;}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:#8a8272;margin-top:9px;font-weight:600;}
+.legend i{width:11px;height:11px;border-radius:4px;display:inline-block;vertical-align:-1px;margin-right:4px;font-style:normal;}
+.btn{border:none;border-radius:99px;padding:12px 15px;font-size:13.5px;font-weight:800;cursor:pointer;
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1);font-family:inherit;}
+.btn:active{transform:scale(.93);}
+.btn-y{background:#1a1a1a;color:var(--y);} .btn-o{background:#f2ede2;color:#5a5140;}
+.btn-r{background:linear-gradient(135deg,#e6212e,#D40511);color:#fff;} .btn-block{width:100%;}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:90;display:none;align-items:flex-end;justify-content:center;}
+.modal.show{display:flex;}
+.sheet{background:#fff;border-radius:26px 26px 0 0;width:100%;max-width:640px;max-height:88vh;overflow:auto;padding:20px;animation:fadeUp .28s ease;}
+.sheet h3{font-size:18px;margin-bottom:3px;} .sheet .sub{font-size:12px;color:var(--muted);margin-bottom:14px;}
+.row-c{display:flex;align-items:center;gap:10px;background:#fbf9f4;border-radius:16px;padding:9px 12px;margin-bottom:6px;}
+.row-c .info{flex:1;min-width:0;} .row-c .nm{font-weight:700;font-size:13px;}
+.row-c .sub2{font-size:10.5px;color:#a09884;}
+.chip{font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px;white-space:nowrap;}
+.chip.ok{background:#dff3e6;color:#1c7a4d;} .chip.no{background:#fbdfdd;color:#b3261e;}
+textarea{width:100%;border:none;background:#f2ede2;border-radius:16px;padding:13px;font-size:14px;
+  font-family:inherit;min-height:88px;resize:vertical;color:#3a3428;}
+textarea:focus{outline:2px solid var(--y);}
+.cm{background:#fff8d9;border-radius:15px;padding:12px;margin-bottom:8px;}
+.cm.done{background:#f3faf5;} .cm .t{font-size:10.5px;color:#a09884;font-weight:700;margin-bottom:3px;}
+.cm .x{font-size:13.5px;line-height:1.5;} .cm .ok2{font-size:11px;color:#1c7a4d;font-weight:800;margin-top:5px;}
+.photo{width:100%;border-radius:14px;margin-top:8px;}
+.thumb{width:52px;height:52px;border-radius:11px;object-fit:cover;background:#eee;flex-shrink:0;}
+#login{position:fixed;inset:0;z-index:9999;background:linear-gradient(165deg,#1a1a1a,#2a2a2a);display:flex;align-items:center;justify-content:center;padding:24px;}
+#login .box{background:#fff;border-radius:28px;padding:26px 22px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+#login h3{font-size:21px;font-weight:800;margin-bottom:3px;} #login p{font-size:12.5px;color:#a09884;margin-bottom:16px;}
+#login input{width:100%;padding:13px;border:none;border-radius:14px;background:#f2ede2;font-size:22px;
+  letter-spacing:6px;text-align:center;font-weight:700;margin-bottom:12px;font-family:inherit;}
+#login .yb{height:5px;background:linear-gradient(90deg,#FFCC00,#ffb700);border-radius:99px;margin-bottom:16px;}
+#login .err{color:var(--r);font-size:12.5px;font-weight:700;min-height:18px;margin-bottom:6px;}
+.empty{text-align:center;color:#b0a892;padding:40px 10px;font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="login"><div class="box"><div class="yb"></div>
+  <h3>DHL Manager</h3><p>ใส่ PIN ผู้จัดการเพื่อดูภาพรวมสด 7 สาขา</p>
+  <input id="mgPin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••••">
+  <div class="err" id="mgErr"></div>
+  <button class="btn btn-y btn-block" id="mgGo">เข้าใช้งาน</button>
+</div></div>
+
+<div class="topbar"><div class="ybar"></div>
+  <div class="hd">
+    <div class="mlogo">DHL <span>Live</span></div>
+    <div class="meta"><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="kpis"></div>
+  <div class="card">
+    <h2>🗓 <span id="dTitle">วันนี้</span> <span class="small" id="dSub"></span></h2>
+    <div class="gridwrap"><table class="grid" id="grid"></table></div>
+    <div class="legend">
+      <span><i style="background:#e6f5eb"></i>ทันเป้า</span>
+      <span><i style="background:#fdeaea"></i>เกินเป้า</span>
+      <span><i style="background:#fff6d6"></i>กำลังทำ</span>
+      <span><i style="background:#f2ede2"></i>ยังไม่เริ่ม</span>
+      <span><i style="box-shadow:inset 0 0 0 2.5px #D40511;background:#fff"></i>มีคอมเมนต์</span>
+    </div>
+    <div class="small" style="margin-top:8px;">แตะช่องใดก็ได้เพื่อดูรายละเอียด รูปถ่าย และส่งคอมเมนต์</div>
+  </div>
+  <div id="side"></div>
+</div>
+
+<div class="modal" id="mdl"><div class="sheet" id="mdlBody"></div></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, updateDoc,
+         query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAtPH24o4_Iaj81xD6lg5FGjDU9XIzKUAo",
+  authDomain: "dhl-attendance-747ba.firebaseapp.com",
+  projectId: "dhl-attendance-747ba",
+  storageBucket: "dhl-attendance-747ba.firebasestorage.app",
+  messagingSenderId: "32188572532",
+  appId: "1:32188572532:web:17c975530ba03ab1574221"
+};
+const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
+
+const DEPOTS=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
+const TASKS=[
+  {k:'checkin',l:'เข้างาน',tg:'07:00'},
+  {k:'pd',     l:'PD',     tg:'<07:15'},
+  {k:'fib',    l:'First IB',tg:''},
+  {k:'lib',    l:'Last IB', tg:''},
+  {k:'dep',    l:'Departure',tg:'<08:30'},
+  {k:'fdel',   l:'First Del',tg:'<09:00'}
+];
+const CUT=25200, GRACE=25800, PD_END=7*3600+15*60, T_DEP=8*3600+1800, T_FDEL=9*3600;
+const pad=n=>String(n).padStart(2,'0');
+const secOf=ts=>{const d=new Date(ts);return d.getHours()*3600+d.getMinutes()*60+d.getSeconds();};
+const fmtT=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes());};
+const hmOf=s=>{const m=Math.round(s/60);return pad(Math.floor(m/60))+':'+pad(m%60);};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const av=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const todayKey=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+const thD=k=>{const[y,m,d]=k.split('-').map(Number);const mo=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return d+' '+mo[m-1]+' '+(y+543);};
+
+const DATA={}, COM={};
+let DATE=todayKey(), unsubs=[];
+
+/* ---------- LOGIN ---------- */
+document.getElementById('mgGo').onclick=login;
+document.getElementById('mgPin').addEventListener('keydown',e=>{ if(e.key==='Enter') login(); });
+async function login(){
+  const pin=document.getElementById('mgPin').value.trim(), err=document.getElementById('mgErr');
+  if(!/^\d{4,6}$/.test(pin)){ err.textContent='PIN ต้องเป็นตัวเลข 4–6 หลัก'; return; }
+  err.textContent='กำลังตรวจสอบ...';
+  try{
+    const ref=doc(db,'config','manager'), snap=await getDoc(ref);
+    if(snap.exists()){
+      if(snap.data().pin!==pin){ err.textContent='PIN ไม่ถูกต้อง'; return; }
+    } else await setDoc(ref,{pin, createdAt:Date.now()});   // ครั้งแรก = ตั้ง PIN
+    try{ localStorage.setItem('mgPin',pin); }catch(e){}
+    document.getElementById('login').style.display='none';
+    start();
+  }catch(e){ err.textContent='เชื่อมต่อไม่ได้: '+e.message; }
+}
+
+/* ---------- START LISTENERS ---------- */
+function start(){
+  unsubs.forEach(u=>u()); unsubs=[];
+  DEPOTS.forEach(dep=>{
+    unsubs.push(onSnapshot(doc(db,'depots',dep,'days',DATE), s=>{
+      DATA[dep]= s.exists()? s.data() : null; render();
+    }, e=>console.warn(dep,e)));
+    unsubs.push(onSnapshot(query(collection(db,'depots',dep,'comments'), where('date','==',DATE)), s=>{
+      COM[dep]=s.docs.map(d=>({id:d.id,...d.data()})); render();
+    }, e=>console.warn(dep+' com',e)));
+  });
+  render();
+}
+
+/* ---------- คำนวณสถานะแต่ละ Task ---------- */
+function taskState(dep,k){
+  const d=DATA[dep];
+  if(!d) return {st:'none'};
+  const ck=Object.values(d.checkins||{}), p=d.pph||{};
+  const rp=Object.values(p.rp||{});
+  if(k==='checkin'){
+    if(!ck.length) return {st:'none'};
+    const late=ck.filter(r=>r.status==='late').length;
+    return {st: late? 'bad':'ok', v:(ck.length-late)+'/'+ck.length, s2: late? late+' สาย':'ตรงเวลา'};
+  }
+  if(k==='pd'){
+    const ts=p.pd&&p.pd.ts;
+    if(!ts) return {st: ck.length?'wait':'none'};
+    return {st: secOf(ts)<=PD_END?'ok':'bad', v:fmtT(ts), s2:'PD'};
+  }
+  if(k==='fib'){
+    if(!p.inboundTs) return {st: ck.length?'wait':'none'};
+    return {st:'ok', v:fmtT(p.inboundTs), s2:'First IB'};
+  }
+  if(k==='lib'){
+    if(!p.lastInboundTs) return {st: p.inboundTs?'wait':'none'};
+    return {st:'ok', v:fmtT(p.lastInboundTs), s2:'Last IB'};
+  }
+  if(k==='dep'){
+    const deps=rp.map(x=>x.dep).filter(Boolean);
+    if(!deps.length) return {st: p.inboundTs?'wait':'none'};
+    const a=av(deps.map(secOf));
+    const done=deps.length, tot=(+p.courierN)||ck.length||done;
+    return {st: done<tot? 'wait' : (a<T_DEP?'ok':'bad'), v:hmOf(a), s2:done+'/'+tot+' คน'};
+  }
+  if(k==='fdel'){
+    const fd=rp.map(x=>x.fdel).filter(Boolean);
+    if(!fd.length) return {st: rp.some(x=>x.dep)?'wait':'none'};
+    const a=av(fd.map(secOf));
+    const done=fd.length, tot=(+p.courierN)||ck.length||done;
+    return {st: done<tot? 'wait' : (a<T_FDEL?'ok':'bad'), v:hmOf(a), s2:done+'/'+tot+' คน'};
+  }
+  return {st:'none'};
+}
+
+/* ---------- RENDER ---------- */
+function render(){
+  document.getElementById('dTitle').textContent = DATE===todayKey()? 'วันนี้ '+thD(DATE) : thD(DATE);
+  const live=DEPOTS.filter(d=>DATA[d]).length;
+  document.getElementById('dSub').textContent = '• มีข้อมูล '+live+'/'+DEPOTS.length+' สาขา';
+
+  /* KPI */
+  let on=0,late=0,pdOk=0,pdAll=0,fdOk=0,fdAll=0,comOpen=0;
+  DEPOTS.forEach(dep=>{
+    const d=DATA[dep]; if(d){
+      Object.values(d.checkins||{}).forEach(r=> r.status==='late'? late++ : on++);
+      const p=d.pph||{};
+      if(p.pd&&p.pd.ts){ pdAll++; if(secOf(p.pd.ts)<=PD_END) pdOk++; }
+      const fd=Object.values(p.rp||{}).map(x=>x.fdel).filter(Boolean);
+      if(fd.length){ fdAll++; if(av(fd.map(secOf))<T_FDEL) fdOk++; }
+    }
+    comOpen += (COM[dep]||[]).filter(c=>!c.ackAt).length;
+  });
+  const tot=on+late, pct=tot?Math.round(on/tot*100):0;
+  document.getElementById('kpis').innerHTML='<div class="kpis">'
+    +'<div class="kpi '+(pct>=95?'green':(pct>=85?'am':(tot?'red':'')))+'"><div class="v">'+(tot?pct+'%':'—')+'</div><div class="l">Ontime รวม</div></div>'
+    +'<div class="kpi '+(late?'red':'green')+'"><div class="v">'+late+'</div><div class="l">สายวันนี้</div></div>'
+    +'<div class="kpi '+(pdAll&&pdOk===pdAll?'green':(pdAll?'red':''))+'"><div class="v">'+pdOk+'/'+pdAll+'</div><div class="l">PD ทันเวลา</div></div>'
+    +'<div class="kpi '+(comOpen?'red':'green')+'"><div class="v">'+comOpen+'</div><div class="l">คอมเมนต์รอรับทราบ</div></div>'
+    +'</div>';
+
+  /* GRID */
+  let h='<tr><th></th>'+TASKS.map(t=>'<th>'+t.l+(t.tg?'<span class="tg">'+t.tg+'</span>':'')+'</th>').join('')+'</tr>';
+  DEPOTS.forEach(dep=>{
+    const d=DATA[dep];
+    const n=d? Object.keys(d.checkins||{}).length : 0;
+    h+='<tr><td class="dep">'+dep+'<small>'+(d? n+' คน':'ไม่มีข้อมูล')+'</small></td>';
+    TASKS.forEach(t=>{
+      const s=taskState(dep,t.k);
+      const hasCom=(COM[dep]||[]).some(c=>c.task===t.k&&!c.ackAt);
+      h+='<td class="cell '+(s.st==='none'?'':s.st)+(hasCom?' hascom':'')+'" onclick="window.__open(\''+dep+'\',\''+t.k+'\')">'
+        +'<b>'+(s.v||'—')+'</b><span>'+(s.s2||'')+'</span></td>';
+    });
+    h+='</tr>';
+  });
+  document.getElementById('grid').innerHTML=h;
+
+  /* คอมเมนต์ที่ยังไม่รับทราบ */
+  const open=[];
+  DEPOTS.forEach(dep=>(COM[dep]||[]).forEach(c=>{ if(!c.ackAt) open.push({dep,...c}); }));
+  document.getElementById('side').innerHTML = open.length
+    ? '<div class="card"><h2>💬 คอมเมนต์ที่รอสาขารับทราบ</h2>'
+      +open.sort((a,b)=>(b.at||0)-(a.at||0)).map(c=>
+        '<div class="cm"><div class="t">'+esc(c.dep)+' • '+(TASKS.find(t=>t.k===c.task)||{l:c.task}).l+' • '+fmtT(c.at||Date.now())+'</div>'
+        +'<div class="x">'+esc(c.text)+'</div></div>').join('')
+      +'</div>'
+    : '';
+}
+
+/* ---------- DETAIL + COMMENT ---------- */
+window.__open=async (dep,task)=>{
+  const d=DATA[dep], p=(d&&d.pph)||{}, cmap={};
+  (d&&d.couriers||[]).forEach(c=>cmap[c.id]=c);
+  const T=TASKS.find(t=>t.k===task)||{l:task};
+  const s=taskState(dep,task);
+  let b='<h3>'+dep+' — '+T.l+'</h3><div class="sub">'+thD(DATE)+(T.tg?' • เป้า '+T.tg:'')+(d&&d.by?' • บันทึกโดย '+esc(d.by):'')+'</div>';
+
+  if(!d){ b+='<div class="empty">สาขานี้ยังไม่ส่งข้อมูลวันนี้</div>'; }
+  else if(task==='checkin'){
+    const rows=Object.entries(d.checkins||{}).map(([cid,r])=>({c:cmap[cid]||{code:cid,name:''},r}))
+      .sort((a,b2)=>a.r.ts-b2.r.ts);
+    b+= rows.length? rows.map(x=>'<div class="row-c">'
+      +'<div class="info"><div class="nm">'+esc(x.c.code)+' <span style="font-weight:400;">'+esc(x.c.name)+'</span></div>'
+      +'<div class="sub2">'+esc(x.c.type||'')+' '+esc(x.c.vendor||'')+(x.r.manualEdit?' • แก้เวลา *':'')+(x.r.uniform===false?' • ไม่ใส่ยูนิฟอร์ม':'')+'</div></div>'
+      +'<span class="chip '+(x.r.status==='late'?'no':'ok')+'">'+(x.r.status==='late'?'✖ ':'✔ ')+fmtT(x.r.ts)+'</span>'
+      +(x.r.hasPhoto?'<img class="thumb" data-ph="ci_'+x.c.id+'_'+DATE+'" data-dep="'+dep+'">':'')
+      +'</div>').join('') : '<div class="empty">ยังไม่มีการเช็คอิน</div>';
+  }
+  else if(task==='pd'){
+    b+= p.pd&&p.pd.ts
+      ? '<div class="row-c"><div class="info"><div class="nm">ถ่ายเมื่อ '+fmtT(p.pd.ts)+(p.pd.manualEdit?' *':'')+'</div>'
+        +'<div class="sub2">เป้า ก่อน 07:15</div></div>'
+        +'<span class="chip '+(secOf(p.pd.ts)<=PD_END?'ok':'no')+'">'+(secOf(p.pd.ts)<=PD_END?'✔ ในเวลา':'✖ เกินเวลา')+'</span></div>'
+        +(p.pd.hasPhoto? '<img class="photo" data-ph="pd_pd_'+DATE+'" data-dep="'+dep+'">':'<div class="small">ไม่มีรูปบนคลาวด์</div>')
+      : '<div class="empty">ยังไม่ได้ถ่าย PD</div>';
+  }
+  else if(task==='fib'||task==='lib'){
+    const ts= task==='fib'? p.inboundTs : p.lastInboundTs;
+    b+= ts? '<div class="row-c"><div class="info"><div class="nm">'+(task==='fib'?'First Inbound':'Last Inbound')+' '+fmtT(ts)+'</div>'
+        +'<div class="sub2">พัสดุ '+((+p.pNew||0)+(+p.pOld||0))+' ชิ้น • Staff '+(p.staffN||0)+' Sorter '+(p.sorterN||0)+' Courier '+(p.courierN||0)+'</div></div></div>'
+      : '<div class="empty">ยังไม่ได้บันทึกเวลานี้</div>';
+    if(task==='fib'&&p.inboundTs){
+      const fs=Object.values(p.rp||{}).map(x=>x.fs).filter(Boolean);
+      if(fs.length) b+='<div class="row-c"><div class="info"><div class="nm">Avg First Scan '+hmOf(av(fs.map(secOf)))+'</div>'
+        +'<div class="sub2">กด FS แล้ว '+fs.length+'/'+((+p.courierN)||fs.length)+' คน</div></div></div>';
+    }
+  }
+  else {
+    const key= task==='dep'? 'dep':'fdel';
+    const rows=Object.entries(p.rp||{}).filter(([,q])=>q[key])
+      .map(([cid,q])=>({c:cmap[cid]||{code:cid,name:''},q})).sort((a,b2)=>a.q[key]-b2.q[key]);
+    const lim= task==='dep'? T_DEP : T_FDEL;
+    b+= rows.length? rows.map(x=>{
+      const stem=(x.q.dep&&x.q.fdel&&x.q.fdel>x.q.dep)? Math.round((x.q.fdel-x.q.dep)/60000):null;
+      return '<div class="row-c"><div class="info"><div class="nm">'+esc(x.c.code)+' <span style="font-weight:400;">'+esc(x.c.name)+'</span></div>'
+        +'<div class="sub2">FS '+(x.q.fs?fmtT(x.q.fs):'—')+' • DEP '+(x.q.dep?fmtT(x.q.dep):'—')
+        +(stem!=null?' • Stem '+stem+' น.':'')+'</div></div>'
+        +'<span class="chip '+(secOf(x.q[key])<lim?'ok':'no')+'">'+fmtT(x.q[key])+'</span></div>';
+    }).join('') : '<div class="empty">ยังไม่มีข้อมูล</div>';
+  }
+
+  /* คอมเมนต์ของ Task นี้ */
+  const cs=(COM[dep]||[]).filter(c=>c.task===task).sort((a,b2)=>(b2.at||0)-(a.at||0));
+  if(cs.length) b+='<div style="margin-top:14px;font-weight:800;font-size:13px;">💬 คอมเมนต์</div>'
+    +cs.map(c=>'<div class="cm'+(c.ackAt?' done':'')+'"><div class="t">'+fmtT(c.at||Date.now())+'</div>'
+      +'<div class="x">'+esc(c.text)+'</div>'
+      +(c.ackAt? '<div class="ok2">✔ สาขารับทราบแล้วโดย '+esc(c.ackBy)+' เวลา '+fmtT(c.ackAt)+'</div>'
+               : '<div class="t" style="color:#b3121d;margin-top:4px;">⏳ ยังไม่รับทราบ</div>')+'</div>').join('');
+
+  b+='<div style="margin-top:14px;font-weight:800;font-size:13px;margin-bottom:6px;">✍️ ส่งคอมเมนต์ถึงสาขานี้</div>'
+    +'<textarea id="cmTxt" placeholder="พิมพ์ข้อความถึง '+dep+' เรื่อง '+T.l+'..."></textarea>'
+    +'<div style="display:flex;gap:8px;margin-top:10px;">'
+    +'<button class="btn btn-r" style="flex:1;" onclick="window.__send(\''+dep+'\',\''+task+'\')">📨 ส่งคอมเมนต์</button>'
+    +'<button class="btn btn-o" style="flex:1;" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
+
+  document.getElementById('mdlBody').innerHTML=b;
+  document.getElementById('mdl').classList.add('show');
+  loadPhotos();
+};
+
+async function loadPhotos(){
+  const els=[...document.querySelectorAll('[data-ph]')];
+  for(const el of els){
+    try{
+      const s=await getDoc(doc(db,'depots',el.dataset.dep,'photos',el.dataset.ph));
+      if(s.exists()&&s.data().d) el.src=s.data().d;
+      else el.style.display='none';
+    }catch(e){ el.style.display='none'; }
+  }
+}
+
+window.__send=async (dep,task)=>{
+  const t=document.getElementById('cmTxt').value.trim();
+  if(!t) return;
+  try{
+    await addDoc(collection(db,'depots',dep,'comments'),
+      { task, date:DATE, text:t, at:Date.now(), by:'Manager', ackAt:null, ackBy:null });
+    document.getElementById('mdl').classList.remove('show');
+  }catch(e){ alert('ส่งไม่สำเร็จ: '+e.message); }
+};
+
+document.getElementById('mdl').addEventListener('click',e=>{
+  if(e.target.id==='mdl') e.currentTarget.classList.remove('show');
+});
+
+setInterval(()=>{ const d=new Date();
+  document.getElementById('clk').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  const k=todayKey(); if(k!==DATE){ DATE=k; start(); }
+},1000);
+
+signInAnonymously(auth).catch(e=>console.warn(e));
+onAuthStateChanged(auth,u=>{
+  if(!u) return;
+  const saved=(()=>{try{return localStorage.getItem('mgPin');}catch(e){return null;}})();
+  if(saved){ document.getElementById('mgPin').value=saved; login(); }
+});
+</script>
+</body>
+</html>

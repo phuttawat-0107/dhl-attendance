@@ -144,7 +144,7 @@ textarea:focus{outline:2px solid var(--y);}
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, updateDoc,
-         query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+         query, where, getDocs, deleteDoc } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAtPH24o4_Iaj81xD6lg5FGjDU9XIzKUAo",
@@ -608,27 +608,77 @@ window.__settings=async ()=>{
     +'style="flex:1;padding:12px;border:none;border-radius:14px;background:#f2ede2;font-size:16px;font-weight:700;text-align:center;letter-spacing:3px;font-family:inherit;">'
     +'<button class="btn btn-y" onclick="window.__savePin(\'__manager__\')">บันทึก</button></div>';
   b+='<div style="font-weight:800;font-size:13.5px;margin-bottom:7px;">🏢 PIN ของแต่ละสาขา</div>'
-    +'<div class="small" style="margin-bottom:9px;">ตั้งไว้ให้ครบก่อนแจก Staff • เว้นว่าง = ยังไม่ตั้ง (ใครล็อกอินคนแรกจะเป็นคนตั้ง)</div>'
+    +'<div class="small" style="margin-bottom:9px;">Staff จะล็อกอินได้เฉพาะชื่อที่เพิ่มไว้ที่นี่เท่านั้น • 🟢 = กำลังออนไลน์ • จำกัดจำนวนเครื่องต่อสาขาได้</div>'
     +'<div id="pinList"><div class="small">กำลังโหลด...</div></div>';
   b+='<div style="display:flex;gap:8px;margin-top:16px;">'
     +'<button class="btn btn-o btn-block" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
   document.getElementById('mdlBody').innerHTML=b;
   document.getElementById('mdl').classList.add('show');
 
-  const rows=[];
+  const rows=[]; const now=Date.now();
   for(const dep of DEPOTS){
-    let pin='', staff=[];
+    let pin='', staff=[], maxN=(dep==='BPE'?4:3);
     try{ const s=await getDoc(doc(db,'depots',dep));
-      if(s.exists()){ pin=s.data().pin||''; staff=s.data().staffNames||[]; } }catch(e){}
-    rows.push('<div class="row-c"><div class="info"><div class="nm">'+dep
-      +(pin?' <span class="chip ok">ตั้งแล้ว</span>':' <span class="chip no">ยังไม่ตั้ง</span>')+'</div>'
-      +'<div class="sub2">'+(staff.length? 'Staff: '+staff.map(esc).join(', ') : 'ยังไม่มี Staff ล็อกอิน')+'</div></div>'
+      if(s.exists()){ pin=s.data().pin||''; staff=s.data().staffNames||[]; maxN=(+s.data().maxStaff)||maxN; } }catch(e){}
+    let act=[];
+    try{ const ss=await getDocs(collection(db,'depots',dep,'sessions'));
+      act=ss.docs.map(x=>({n:x.id,at:x.data().at||0})).filter(x=>now-x.at<6*60*1000).map(x=>x.n); }catch(e){}
+    rows.push('<div style="background:#fbf9f4;border-radius:18px;padding:13px;margin-bottom:9px;">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+      +'<b style="font-size:15px;">'+dep+'</b>'
+      +(pin?'<span class="chip ok">PIN ตั้งแล้ว</span>':'<span class="chip no">ยังไม่ตั้ง PIN</span>')
+      +'<span class="chip" style="background:#ece5d5;color:#5a5140;">'+staff.length+'/'+maxN+' คน</span>'
+      +(act.length?'<span class="chip ok">🟢 ออนไลน์ '+act.length+'</span>':'')
+      +'<span style="flex:1"></span>'
       +'<input id="pin_'+dep+'" type="tel" inputmode="numeric" maxlength="6" value="'+esc(pin)+'" placeholder="PIN"'
-      +' style="width:96px;padding:9px;border:none;border-radius:12px;background:#fff;font-size:15px;font-weight:800;'
-      +'text-align:center;letter-spacing:2px;font-family:inherit;">'
-      +'<button class="btn btn-y" style="min-height:38px;padding:8px 12px;font-size:12px;" onclick="window.__savePin(\''+dep+'\')">บันทึก</button></div>');
+      +' style="width:92px;padding:8px;border:none;border-radius:11px;background:#fff;font-size:14px;font-weight:800;text-align:center;letter-spacing:2px;font-family:inherit;">'
+      +'<button class="mini" onclick="window.__savePin(\''+dep+'\')">บันทึก</button></div>'
+      +'<div style="margin-top:9px;">'
+      + (staff.length? staff.map(n=>'<span style="display:inline-flex;align-items:center;gap:5px;background:#fff;border-radius:99px;'
+          +'padding:5px 6px 5px 11px;margin:0 5px 5px 0;font-size:12.5px;font-weight:700;">'
+          +(act.includes(n)?'🟢 ':'')+esc(n)
+          +'<button class="mini" style="background:#fbdfdd;color:#b3261e;padding:2px 7px;font-size:11px;" '
+          +'onclick="window.__delStaff(\''+dep+'\',\''+esc(n).replace(/'/g,"\\'")+'\')">✕</button></span>').join('')
+        : '<span class="small">ยังไม่มีรายชื่อ — Staff จะล็อกอินไม่ได้จนกว่าจะเพิ่มชื่อ</span>')
+      +'</div>'
+      +'<div style="display:flex;gap:7px;margin-top:8px;">'
+      +'<input id="ns_'+dep+'" placeholder="ชื่อ Staff ใหม่" '+(staff.length>=maxN?'disabled':'')
+      +' style="flex:1;padding:9px;border:none;border-radius:11px;background:#fff;font-size:13px;font-family:inherit;'
+      +(staff.length>=maxN?'opacity:.45;':'')+'">'
+      +'<button class="mini" '+(staff.length>=maxN?'disabled style="opacity:.4;"':'')
+      +' onclick="window.__addStaff(\''+dep+'\')">+ เพิ่ม</button>'
+      +'<select onchange="window.__setMax(\''+dep+'\',this.value)" style="width:96px;padding:8px;border:none;border-radius:11px;background:#fff;font-size:12px;font-weight:700;font-family:inherit;">'
+      + [1,2,3,4,5,6].map(v=>'<option value="'+v+'"'+(v===maxN?' selected':'')+'>สูงสุด '+v+'</option>').join('')
+      +'</select></div></div>');
   }
   const el=document.getElementById('pinList'); if(el) el.innerHTML=rows.join('');
+};
+window.__addStaff=async dep=>{
+  const inp=document.getElementById('ns_'+dep), v=(inp.value||'').trim();
+  if(!v){ return; }
+  try{
+    const s=await getDoc(doc(db,'depots',dep));
+    const cur=(s.exists()&&s.data().staffNames)||[];
+    const maxN=(s.exists()&&+s.data().maxStaff)||(dep==='BPE'?4:3);
+    if(cur.includes(v)){ alert('มีชื่อนี้อยู่แล้ว'); return; }
+    if(cur.length>=maxN){ alert('สาขา '+dep+' ครบ '+maxN+' คนแล้ว — ลบชื่อเดิมก่อนหรือเพิ่มจำนวนสูงสุด'); return; }
+    await setDoc(doc(db,'depots',dep),{depot:dep, staffNames:[...cur,v]},{merge:true});
+    window.__settings();
+  }catch(e){ alert('เพิ่มไม่สำเร็จ: '+e.message); }
+};
+window.__delStaff=async (dep,name)=>{
+  if(!confirm('ลบ "'+name+'" ออกจากสาขา '+dep+'?\nเครื่องที่ล็อกอินด้วยชื่อนี้จะใช้งานต่อไม่ได้')) return;
+  try{
+    const s=await getDoc(doc(db,'depots',dep));
+    const cur=(s.exists()&&s.data().staffNames)||[];
+    await setDoc(doc(db,'depots',dep),{staffNames:cur.filter(x=>x!==name)},{merge:true});
+    try{ await deleteDoc(doc(db,'depots',dep,'sessions',name)); }catch(e){}
+    window.__settings();
+  }catch(e){ alert('ลบไม่สำเร็จ: '+e.message); }
+};
+window.__setMax=async (dep,v)=>{
+  try{ await setDoc(doc(db,'depots',dep),{depot:dep, maxStaff:+v},{merge:true}); window.__settings(); }
+  catch(e){ alert('บันทึกไม่สำเร็จ'); }
 };
 window.__savePin=async dep=>{
   const isMg = dep==='__manager__';

@@ -125,53 +125,105 @@ function injectUI(){
   document.getElementById('dsDep').innerHTML=deps.map(x=>'<option>'+x+'</option>').join('');
   const cur=(window.settings&&settings.depot)||lsGet('dsDepot');
   if(cur) document.getElementById('dsDep').value=cur;
-  document.getElementById('dsDep').onchange=loadStaffList;
-  document.getElementById('dsGo').onclick=doLogin;
+  document.getElementById('dsDep').onchange=()=>{
+    const b=document.getElementById('dsGo'); b.textContent='เข้าใช้งาน'; delete b.dataset.force;
+    loadStaffList();
+  };
+  document.getElementById('dsStaff').onchange=()=>{
+    const b=document.getElementById('dsGo'); b.textContent='เข้าใช้งาน'; delete b.dataset.force;
+    document.getElementById('dsErr').textContent='';
+  };
+  document.getElementById('dsGo').onclick=function(){ doLogin(this.dataset.force==='1'); };
   loadStaffList();
 }
+
+const sesCol = dep => collection(dbF,'depots',dep,'sessions');
+const SES_TIMEOUT = 6*60*1000;       // ไม่ heartbeat เกิน 6 นาที = ถือว่าออกแล้ว
 
 async function loadStaffList(){
   const dep=document.getElementById('dsDep').value;
   const sel=document.getElementById('dsStaff');
+  const err=document.getElementById('dsErr');
   sel.innerHTML='<option value="">— กำลังโหลด —</option>';
   try{
     const snap=await getDoc(depRef(dep));
     const names=(snap.exists()&&snap.data().staffNames)||[];
-    sel.innerHTML='<option value="">— เลือกชื่อ —</option>'
-      +names.map(n=>'<option>'+n+'</option>').join('')
-      +'<option value="__new">+ เพิ่มชื่อใหม่…</option>';
+    if(!names.length){
+      sel.innerHTML='<option value="">— ยังไม่มีรายชื่อ —</option>';
+      err.textContent='สาขานี้ยังไม่มีรายชื่อ — แจ้งผู้จัดการเพิ่มชื่อให้ก่อน';
+      return;
+    }
+    err.textContent='';
+    sel.innerHTML='<option value="">— เลือกชื่อ —</option>'+names.map(n=>'<option>'+n+'</option>').join('');
     const last=lsGet('dsStaff'); if(last&&names.includes(last)) sel.value=last;
-  }catch(e){ sel.innerHTML='<option value="">— เลือกชื่อ —</option><option value="__new">+ เพิ่มชื่อใหม่…</option>'; }
+  }catch(e){ sel.innerHTML='<option value="">— เลือกชื่อ —</option>'; }
 }
 
-async function doLogin(){
+async function doLogin(force){
   const dep=document.getElementById('dsDep').value;
   const pin=document.getElementById('dsPin').value.trim();
-  let staff=document.getElementById('dsStaff').value;
+  const staff=document.getElementById('dsStaff').value;
   const err=document.getElementById('dsErr');
   err.textContent='';
   if(!/^\d{4,6}$/.test(pin)){ err.textContent='PIN ต้องเป็นตัวเลข 4–6 หลัก'; return; }
-  if(staff==='__new'){
-    staff=prompt('พิมพ์ชื่อผู้บันทึก'); if(!staff) return; staff=staff.trim();
-  }
   if(!staff){ err.textContent='เลือกชื่อผู้บันทึกก่อน'; return; }
   err.textContent='กำลังตรวจสอบ...';
   try{
     const snap=await getDoc(depRef(dep));
-    if(snap.exists()){
-      const d=snap.data();
-      if(d.pin && d.pin!==pin){ err.textContent='PIN ไม่ถูกต้อง'; return; }
-      const names=d.staffNames||[];
-      if(!names.includes(staff)) await updateDoc(depRef(dep),{ staffNames:[...names,staff] });
-    } else {
-      /* สาขาแรกที่เข้ามา = ตั้ง PIN ให้สาขานั้น */
-      await setDoc(depRef(dep),{ depot:dep, pin, staffNames:[staff], createdAt:serverTimestamp() });
+    if(!snap.exists()){ err.textContent='สาขานี้ยังไม่ถูกตั้งค่า — แจ้งผู้จัดการ'; return; }
+    const d=snap.data();
+    if(!d.pin){ err.textContent='สาขานี้ยังไม่ตั้ง PIN — แจ้งผู้จัดการ'; return; }
+    if(d.pin!==pin){ err.textContent='PIN ไม่ถูกต้อง'; return; }
+    const names=d.staffNames||[];
+    if(!names.includes(staff)){ err.textContent='ไม่พบชื่อนี้ในสาขา '+dep+' — แจ้งผู้จัดการ'; return; }
+
+    /* ---- ตรวจการเข้าซ้ำซ้อน ---- */
+    const now=Date.now();
+    const ss=await getDocs(sesCol(dep));
+    const active=ss.docs.map(x=>({name:x.id,...x.data()}))
+      .filter(x=> now-(x.at||0) < SES_TIMEOUT);
+    const mine=active.find(x=>x.name===staff);
+    if(mine && mine.uid!==S.uid && !force){
+      err.innerHTML='⚠ ชื่อ "'+staff+'" กำลังใช้งานอยู่บนอีกเครื่อง<br>'
+        +'<span style="font-weight:400;color:#a09884;">ถ้าเป็นเครื่องเก่าของคุณเอง กดปุ่มด้านล่างเพื่อย้ายมาเครื่องนี้</span>';
+      const b=document.getElementById('dsGo');
+      b.textContent='เข้าแทนที่เครื่องเดิม'; b.dataset.force='1';
+      return;
     }
+    const maxN = (+d.maxStaff)|| (dep==='BPE'?4:3);
+    const others=active.filter(x=>x.name!==staff).length;
+    if(others+1 > maxN){
+      err.innerHTML='⛔ สาขา '+dep+' เข้าใช้ได้สูงสุด '+maxN+' เครื่อง<br>'
+        +'<span style="font-weight:400;color:#a09884;">กำลังใช้อยู่: '+active.map(x=>x.name).join(', ')+'</span>';
+      return;
+    }
+    await setDoc(doc(sesCol(dep),staff),{ uid:S.uid, at:now, ua:navigator.userAgent.slice(0,90) });
   }catch(e){ err.textContent='เชื่อมต่อไม่ได้: '+e.message; return; }
   S.depot=dep; S.staff=staff; S.pin=pin;
   lsSet('dsDepot',dep); lsSet('dsStaff',staff); lsSet('dsPin',pin);
   document.getElementById('dsLogin').classList.remove('show');
   await afterLogin();
+}
+
+/* heartbeat + ตรวจว่าถูกเครื่องอื่นแทนที่ */
+function startHeartbeat(){
+  if(S._hb) clearInterval(S._hb);
+  const beat=async ()=>{
+    if(!S.ready||!S.depot||!S.staff) return;
+    try{
+      const ref=doc(sesCol(S.depot),S.staff);
+      const s=await getDoc(ref);
+      if(s.exists() && s.data().uid && s.data().uid!==S.uid){
+        S.ready=false; if(S.unsubDay)S.unsubDay(); if(S.unsubCom)S.unsubCom();
+        document.getElementById('dsBadge').classList.remove('on');
+        alert('⚠ ชื่อ "'+S.staff+'" ถูกใช้เข้าระบบจากเครื่องอื่น\nเครื่องนี้จะออกจากระบบเพื่อป้องกันข้อมูลชนกัน');
+        try{ localStorage.removeItem('dsStaff'); }catch(e){}
+        location.reload(); return;
+      }
+      await setDoc(ref,{ uid:S.uid, at:Date.now() },{merge:true});
+    }catch(e){}
+  };
+  beat(); S._hb=setInterval(beat,120000);
 }
 
 async function afterLogin(){
@@ -186,6 +238,7 @@ async function afterLogin(){
   await pushAll();
   listenDay();
   listenComments();
+  startHeartbeat();
   purgeOldPhotos30();
 }
 
@@ -374,7 +427,15 @@ function boot(){
   onAuthStateChanged(auth, async u=>{
     if(!u) return; S.uid=u.uid;
     const dep=lsGet('dsDepot'), stf=lsGet('dsStaff'), pin=lsGet('dsPin');
-    if(dep&&stf&&pin){ S.depot=dep; S.staff=stf; S.pin=pin; await afterLogin(); }
+    if(dep&&stf&&pin){
+      /* เข้าอัตโนมัติ แต่ยังต้องผ่านการตรวจชื่อ/PIN/ซ้ำซ้อน */
+      document.getElementById('dsDep').value=dep;
+      await loadStaffList();
+      document.getElementById('dsPin').value=pin;
+      const sel=document.getElementById('dsStaff');
+      if([...sel.options].some(o=>o.value===stf)){ sel.value=stf; await doLogin(); }
+      else document.getElementById('dsLogin').classList.add('show');
+    }
     else document.getElementById('dsLogin').classList.add('show');
   });
   /* ข้ามวัน → ย้าย listener */

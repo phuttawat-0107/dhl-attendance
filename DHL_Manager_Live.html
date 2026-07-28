@@ -87,7 +87,10 @@ textarea:focus{outline:2px solid var(--y);}
 <div class="topbar"><div class="ybar"></div>
   <div class="hd">
     <div class="mlogo">DHL <span>Live</span></div>
-    <div class="meta"><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
+    <div class="meta" style="display:flex;align-items:center;gap:10px;">
+      <div><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
+      <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__settings()">⚙️</button>
+    </div>
   </div>
 </div>
 
@@ -356,6 +359,55 @@ async function loadPhotos(){
     }catch(e){ el.style.display='none'; }
   }
 }
+
+/* ---------- ⚙️ ตั้งค่า: PIN Manager + PIN สาขา ---------- */
+window.__settings=async ()=>{
+  let b='<h3>⚙️ ตั้งค่าระบบ</h3><div class="sub">จัดการ PIN และรายชื่อ Staff</div>';
+  b+='<div style="font-weight:800;font-size:13.5px;margin-bottom:7px;">🔑 PIN ผู้จัดการ (หน้านี้)</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px;">'
+    +'<input id="pinMg" type="tel" inputmode="numeric" maxlength="6" placeholder="PIN ใหม่ 4–6 หลัก" '
+    +'style="flex:1;padding:12px;border:none;border-radius:14px;background:#f2ede2;font-size:16px;font-weight:700;text-align:center;letter-spacing:3px;font-family:inherit;">'
+    +'<button class="btn btn-y" onclick="window.__savePin(\'__manager__\')">บันทึก</button></div>';
+  b+='<div style="font-weight:800;font-size:13.5px;margin-bottom:7px;">🏢 PIN ของแต่ละสาขา</div>'
+    +'<div class="small" style="margin-bottom:9px;">ตั้งไว้ให้ครบก่อนแจก Staff • เว้นว่าง = ยังไม่ตั้ง (ใครล็อกอินคนแรกจะเป็นคนตั้ง)</div>'
+    +'<div id="pinList"><div class="small">กำลังโหลด...</div></div>';
+  b+='<div style="display:flex;gap:8px;margin-top:16px;">'
+    +'<button class="btn btn-o btn-block" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
+  document.getElementById('mdlBody').innerHTML=b;
+  document.getElementById('mdl').classList.add('show');
+
+  const rows=[];
+  for(const dep of DEPOTS){
+    let pin='', staff=[];
+    try{ const s=await getDoc(doc(db,'depots',dep));
+      if(s.exists()){ pin=s.data().pin||''; staff=s.data().staffNames||[]; } }catch(e){}
+    rows.push('<div class="row-c"><div class="info"><div class="nm">'+dep
+      +(pin?' <span class="chip ok">ตั้งแล้ว</span>':' <span class="chip no">ยังไม่ตั้ง</span>')+'</div>'
+      +'<div class="sub2">'+(staff.length? 'Staff: '+staff.map(esc).join(', ') : 'ยังไม่มี Staff ล็อกอิน')+'</div></div>'
+      +'<input id="pin_'+dep+'" type="tel" inputmode="numeric" maxlength="6" value="'+esc(pin)+'" placeholder="PIN"'
+      +' style="width:96px;padding:9px;border:none;border-radius:12px;background:#fff;font-size:15px;font-weight:800;'
+      +'text-align:center;letter-spacing:2px;font-family:inherit;">'
+      +'<button class="btn btn-y" style="min-height:38px;padding:8px 12px;font-size:12px;" onclick="window.__savePin(\''+dep+'\')">บันทึก</button></div>');
+  }
+  const el=document.getElementById('pinList'); if(el) el.innerHTML=rows.join('');
+};
+window.__savePin=async dep=>{
+  const isMg = dep==='__manager__';
+  const inp=document.getElementById(isMg? 'pinMg':'pin_'+dep);
+  const v=(inp.value||'').trim();
+  if(!/^\d{4,6}$/.test(v)){ alert('PIN ต้องเป็นตัวเลข 4–6 หลัก'); return; }
+  try{
+    if(isMg){
+      await setDoc(doc(db,'config','manager'),{pin:v, updatedAt:Date.now()},{merge:true});
+      try{ localStorage.setItem('mgPin',v); }catch(e){}
+      alert('✔ เปลี่ยน PIN ผู้จัดการเป็น '+v+' แล้ว');
+    } else {
+      await setDoc(doc(db,'depots',dep),{depot:dep, pin:v, updatedAt:Date.now()},{merge:true});
+      alert('✔ ตั้ง PIN ของสาขา '+dep+' = '+v+' แล้ว');
+      window.__settings();
+    }
+  }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
+};
 
 window.__send=async (dep,task)=>{
   const t=document.getElementById('cmTxt').value.trim();

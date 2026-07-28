@@ -2170,6 +2170,6 @@ function renderThemeRow(){
   else { applyHeader(); await renderCheckin(); await renderPDCard(); }
 })();
 </script>
-  <script type="module" src="dhl-sync.js?v=1"></script>
+  <script type="module">import('./dhl-sync.js?b='+Date.now());</script>
 </body>
 </html>

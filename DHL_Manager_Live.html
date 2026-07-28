@@ -118,6 +118,7 @@ textarea:focus{outline:2px solid var(--y);}
   <div class="mtabs">
     <button class="mtab on" id="tb_live" onclick="window.__tab('live')">🔴 Live</button>
     <button class="mtab" id="tb_ins" onclick="window.__tab('ins')">📈 อินไซต์</button>
+    <button class="mtab" id="tb_ch" onclick="window.__tab('ch')">📊 กราฟ</button>
   </div>
   <div id="viewLive">
   <div id="kpis"></div>
@@ -136,6 +137,7 @@ textarea:focus{outline:2px solid var(--y);}
   <div id="side"></div>
   </div>
   <div id="viewIns" style="display:none;"></div>
+  <div id="viewCh" style="display:none;"></div>
 </div>
 
 <div class="modal" id="mdl"><div class="sheet" id="mdlBody"></div></div>
@@ -304,17 +306,22 @@ function render(){
       +'</div>'
     : '';
   if(MTAB==='ins') renderIns();
+  if(MTAB==='ch') renderCh();
 }
 
 /* ================= 📈 INSIGHT: วิเคราะห์ปัญหา ================= */
 let MTAB='live', HIST=null, histLoading=false;
 window.__tab=t=>{
   MTAB=t;
-  document.getElementById('tb_live').classList.toggle('on',t==='live');
-  document.getElementById('tb_ins').classList.toggle('on',t==='ins');
+  ['live','ins','ch'].forEach(k=>{
+    const b=document.getElementById('tb_'+(k==='live'?'live':k));
+    if(b) b.classList.toggle('on',t===k);
+  });
   document.getElementById('viewLive').style.display= t==='live'?'':'none';
-  document.getElementById('viewIns').style.display= t==='ins'?'':'none';
+  document.getElementById('viewIns').style.display = t==='ins'?'':'none';
+  document.getElementById('viewCh').style.display  = t==='ch'?'':'none';
   if(t==='ins'){ renderIns(); if(!HIST&&!histLoading) loadHist(); }
+  if(t==='ch'){ renderCh(); if(!HIST&&!histLoading) loadHist(); }
 };
 
 function nowSec(){ const d=new Date(); return d.getHours()*3600+d.getMinutes()*60; }
@@ -435,7 +442,9 @@ async function loadHist(){
       try{ const s=await getDoc(doc(db,'depots',dep,'days',dk)); if(s.exists()) H[dep].push(s.data()); }catch(e){}
     }
   }
-  HIST=H; histLoading=false; if(MTAB==='ins') renderIns();
+  HIST=H; histLoading=false;
+  if(MTAB==='ins') renderIns();
+  if(MTAB==='ch') renderCh();
 }
 
 function renderIns(){
@@ -516,6 +525,138 @@ window.__step=k=>{
   document.getElementById('mdlBody').innerHTML=b;
   document.getElementById('mdl').classList.add('show');
 };
+
+/* ================= 📊 CHARTS ================= */
+let CHDEP='all';
+const PAL=['#D40511','#1565c0','#2e7d32','#b58900','#7a3b8f','#00838f','#e64a19'];
+const METRICS=[
+  {k:'ontime',l:'Ontime %',       unit:'%', tgt:95,    fmt:v=>Math.round(v)+'%',  hi:true},
+  {k:'pd',    l:'เวลาถ่าย PD',     unit:'t', tgt:PD_END,fmt:v=>hmOf(v),           hi:false},
+  {k:'sort',  l:'PPH Sort time',   unit:'n', tgt:49,   fmt:v=>Math.round(v*10)/10,hi:true},
+  {k:'route', l:'PPH Route prep',  unit:'n', tgt:165,  fmt:v=>Math.round(v),      hi:true},
+  {k:'dep',   l:'Departure เฉลี่ย', unit:'t', tgt:T_DEP,fmt:v=>hmOf(v),           hi:false},
+  {k:'fdel',  l:'First Del เฉลี่ย', unit:'t', tgt:T_FDEL,fmt:v=>hmOf(v),          hi:false},
+  {k:'late',  l:'จำนวนคนมาสาย',    unit:'n', tgt:0,    fmt:v=>Math.round(v)+' คน',hi:false}
+];
+function metricOf(d,k){
+  if(!d) return null;
+  const ck=Object.values(d.checkins||{}), p=d.pph||{}, rp=Object.values(p.rp||{});
+  const nC=(+p.courierN)||ck.length||0;
+  if(k==='ontime'){ if(!ck.length) return null; return ck.filter(r=>r.status!=='late').length/ck.length*100; }
+  if(k==='late'){ if(!ck.length) return null; return ck.filter(r=>r.status==='late').length; }
+  if(k==='pd'){ return (p.pd&&p.pd.ts)? secOf(p.pd.ts):null; }
+  if(k==='sort'){ return pphOf(p,nC).sort; }
+  if(k==='route'){ return pphOf(p,nC).route; }
+  if(k==='dep'){ const a=rp.map(x=>x.dep).filter(Boolean); return a.length? av(a.map(secOf)):null; }
+  if(k==='fdel'){ const a=rp.map(x=>x.fdel).filter(Boolean); return a.length? av(a.map(secOf)):null; }
+  return null;
+}
+function chDates(){
+  const out=[];
+  for(let i=7;i>=1;i--){ const d=new Date(); d.setDate(d.getDate()-i); out.push(d.toISOString().slice(0,10)); }
+  out.push(todayKey()); return out;
+}
+function dayDoc(dep,dk){
+  if(dk===DATE) return DATA[dep];
+  if(!HIST||!HIST[dep]) return null;
+  return HIST[dep].find(x=>x.date===dk)||null;
+}
+function renderCh(){
+  const deps= CHDEP==='all'? DEPOTS : [CHDEP];
+  let h='<div class="card"><h2>📊 กราฟย้อนหลัง 8 วัน <span class="small">รวมวันนี้</span></h2>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+    +'<button class="mini" style="'+(CHDEP==='all'?'':'background:#f2ede2;color:#5a5140;')+'" onclick="window.__chDep(\'all\')">ทุกสาขา</button>'
+    + DEPOTS.map((d,i)=>'<button class="mini" style="'+(CHDEP===d?'background:'+PAL[i%PAL.length]+';color:#fff;':'background:#f2ede2;color:#5a5140;')+'" onclick="window.__chDep(\''+d+'\')">'+d+'</button>').join('')
+    +'</div>'+(HIST?'':'<div class="small" style="margin-top:8px;">'+(histLoading?'กำลังโหลดข้อมูลย้อนหลัง...':'')+'</div>')+'</div>';
+  METRICS.forEach(m=>{
+    h+='<div class="card"><h2>'+m.l+' <span class="small">'
+      +(m.k==='late'?'ยิ่งน้อยยิ่งดี':(m.hi?'เป้า ≥ '+(m.unit==='%'?m.tgt+'%':m.tgt):'เป้า ก่อน '+hmOf(m.tgt)))+'</span></h2>'
+      +'<canvas id="ch_'+m.k+'" style="width:100%;height:150px;"></canvas>'
+      +'<div class="small" id="lg_'+m.k+'" style="margin-top:6px;"></div></div>';
+  });
+  document.getElementById('viewCh').innerHTML=h;
+  requestAnimationFrame(()=>METRICS.forEach(m=>drawMetric(m,deps)));
+}
+window.__chDep=d=>{ CHDEP=d; renderCh(); };
+function cvx(id,hpx){
+  const c=document.getElementById(id); if(!c) return null;
+  const dpr=window.devicePixelRatio||1, w=c.clientWidth||600, hh=hpx||150;
+  c.width=w*dpr; c.height=hh*dpr; c.style.height=hh+'px';
+  const x=c.getContext('2d'); x.scale(dpr,dpr); return {x,w,h:hh};
+}
+function drawMetric(m,deps){
+  const cv=cvx('ch_'+m.k,150); if(!cv) return;
+  const {x,w,h}=cv, dks=chDates(), PB=20,PT=10,PL=44,PR=10;
+  const series=deps.map((dep,i)=>({dep,col:PAL[DEPOTS.indexOf(dep)%PAL.length],
+    pts:dks.map(dk=>metricOf(dayDoc(dep,dk),m.k))}));
+  const vals=series.flatMap(s=>s.pts).filter(v=>v!=null);
+  const lg=document.getElementById('lg_'+m.k);
+  if(!vals.length){
+    x.fillStyle='#c4bca6'; x.font='13px Segoe UI'; x.textAlign='center';
+    x.fillText('ยังไม่มีข้อมูลในช่วงนี้', w/2, h/2);
+    if(lg) lg.textContent=''; return;
+  }
+  let vmin=Math.min(...vals,m.k==='late'?0:m.tgt), vmax=Math.max(...vals,m.k==='late'?1:m.tgt);
+  const padv=(vmax-vmin)*0.18||1; vmin-=padv; vmax+=padv;
+  if(m.unit==='%'){ vmin=Math.max(0,vmin); vmax=Math.min(100,vmax+2); }
+  const X=i=> dks.length===1? w/2 : PL+(w-PL-PR)*i/(dks.length-1);
+  const Y=v=> PT+(h-PT-PB)*(1-(v-vmin)/(vmax-vmin));
+  /* grid + แกน */
+  x.strokeStyle='#f0ead9'; x.lineWidth=1;
+  [0,.5,1].forEach(f=>{ const v=vmin+(vmax-vmin)*f;
+    x.beginPath(); x.moveTo(PL,Y(v)); x.lineTo(w-PR,Y(v)); x.stroke();
+    x.fillStyle='#c4bca6'; x.font='9.5px Segoe UI'; x.textAlign='right'; x.textBaseline='middle';
+    x.fillText(m.unit==='t'? hmOf(v) : (Math.round(v*10)/10), PL-5, Y(v)); });
+  /* เส้นเป้า */
+  if(m.k!=='late'){
+    x.setLineDash([5,4]); x.strokeStyle='#2e7d32'; x.lineWidth=1.5;
+    x.beginPath(); x.moveTo(PL,Y(m.tgt)); x.lineTo(w-PR,Y(m.tgt)); x.stroke(); x.setLineDash([]);
+    x.fillStyle='#2e7d32'; x.font='700 9.5px Segoe UI'; x.textAlign='left'; x.textBaseline='bottom';
+    x.fillText('เป้า', PL+2, Y(m.tgt)-2);
+  }
+  /* พื้นไล่เฉด (เฉพาะสาขาเดียว) */
+  if(series.length===1){
+    const s=series[0], pts=s.pts.map((v,i)=>v==null?null:{x:X(i),y:Y(v)}).filter(Boolean);
+    if(pts.length>1){
+      x.beginPath(); x.moveTo(pts[0].x,h-PB); pts.forEach(p=>x.lineTo(p.x,p.y));
+      x.lineTo(pts[pts.length-1].x,h-PB); x.closePath();
+      const gr=x.createLinearGradient(0,0,0,h);
+      gr.addColorStop(0,s.col+'55'); gr.addColorStop(1,s.col+'05');
+      x.fillStyle=gr; x.fill();
+    }
+  }
+  /* เส้นข้อมูล */
+  series.forEach(s=>{
+    const pts=s.pts.map((v,i)=>v==null?null:{x:X(i),y:Y(v),v});
+    x.strokeStyle=s.col; x.lineWidth=series.length===1?2.8:2;
+    x.beginPath(); let started=false;
+    pts.forEach(p=>{ if(!p){started=false;return;} started? x.lineTo(p.x,p.y):x.moveTo(p.x,p.y); started=true; });
+    x.stroke();
+    pts.forEach(p=>{ if(!p) return;
+      const good = m.k==='late'? p.v===0 : (m.hi? p.v>=m.tgt : p.v<m.tgt);
+      x.beginPath(); x.arc(p.x,p.y,series.length===1?4.5:3.5,0,Math.PI*2);
+      x.fillStyle='#fff'; x.fill(); x.lineWidth=2.5;
+      x.strokeStyle= series.length===1? (good?'#2e7d32':'#D40511') : s.col; x.stroke(); });
+    if(series.length===1){
+      x.font='700 10px Segoe UI'; x.textAlign='center'; x.textBaseline='bottom';
+      pts.forEach(p=>{ if(!p) return;
+        const good= m.k==='late'? p.v===0 : (m.hi? p.v>=m.tgt : p.v<m.tgt);
+        x.fillStyle= good?'#1c7a4d':'#b3121d'; x.fillText(m.fmt(p.v), p.x, p.y-8); });
+    }
+  });
+  /* แกนวันที่ */
+  x.fillStyle='#a09884'; x.font='9.5px Segoe UI'; x.textAlign='center'; x.textBaseline='top';
+  dks.forEach((k,i)=>{ const[,mm,dd]=k.split('-');
+    x.fillText((k===todayKey()?'วันนี้':(+dd)+'/'+(+mm)), X(i), h-PB+4); });
+  /* legend + สรุป */
+  if(lg){
+    if(series.length===1){
+      const v=series[0].pts.filter(p=>p!=null);
+      const avg=av(v), last=v[v.length-1];
+      lg.innerHTML= v.length? '<b>'+CHDEP+'</b> • เฉลี่ย '+m.fmt(avg)+' • ล่าสุด '+m.fmt(last) : '';
+    } else lg.innerHTML=series.map(s=>'<span style="font-weight:700;color:'+s.col+';margin-right:9px;">● '+s.dep+'</span>').join('');
+  }
+}
 
 /* ---------- DETAIL + COMMENT ---------- */
 window.__open=async (dep,task)=>{

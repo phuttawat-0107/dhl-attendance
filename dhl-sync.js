@@ -256,17 +256,39 @@ function startHeartbeat(){
   beat(); S._hb=setInterval(beat,120000);
 }
 
+/* เครื่องที่เพิ่งเข้าใช้ครั้งแรกจะยังไม่มี dhl_settings → หน้า "จัดการ"/Dashboard จะพัง
+   ฟังก์ชันนี้สร้างให้อัตโนมัติ แล้วรีโหลดหนึ่งครั้งเพื่อให้แอปอ่านค่าใหม่
+   คืน true = กำลังรีโหลด (ให้หยุดทำงานต่อ) */
+function ensureAppSettings(){
+  const live=getSettings();
+  if(live){                                   // มีอยู่แล้ว → อัปเดตให้ตรงกับที่ล็อกอิน
+    live.depot=S.depot; live.staff=S.staff;
+    try{ localStorage.setItem('dhl_settings',JSON.stringify(live)); }catch(e){}
+    if(window.applyHeader) try{ applyHeader(); }catch(e){}
+    return false;
+  }
+  let base={};
+  try{ base=JSON.parse(localStorage.getItem('dhl_settings')||'{}')||{}; }catch(e){ base={}; }
+  base.depot=S.depot; base.staff=S.staff;
+  try{ localStorage.setItem('dhl_settings',JSON.stringify(base)); }catch(e){}
+  let done=false; try{ done=sessionStorage.getItem('dsInitReload')==='1'; }catch(e){}
+  if(!done){
+    try{ sessionStorage.setItem('dsInitReload','1'); }catch(e){}
+    const b=document.getElementById('dsBadge');
+    if(b) b.textContent='⏳ กำลังเริ่มระบบ...';
+    setTimeout(()=>location.reload(),600);
+    return true;
+  }
+  return false;
+}
+
 async function afterLogin(){
   await waitDB();                       // ⏳ รอฐานข้อมูลในเครื่องพร้อมก่อนเสมอ
   S.ready=true;
   document.getElementById('dsBadge').classList.add('on');
   document.getElementById('dsBadge').textContent='☁ '+S.depot+' · '+S.staff;
-  /* ให้แอปเดิมใช้ค่าตรงกัน */
-  const st=getSettings();
-  if(st){ st.depot=S.depot; st.staff=S.staff;
-    try{ localStorage.setItem('settings',JSON.stringify(st)); }catch(e){}
-    if(window.applyHeader) applyHeader();
-  }
+  /* ให้แอปเดิมใช้ค่าตรงกัน (คีย์จริงคือ dhl_settings) */
+  if(ensureAppSettings()) return;      // เครื่องใหม่: สร้างค่าตั้งต้นแล้วรีโหลด 1 ครั้ง
   /* 1) ดึงของสาขาลงมาก่อน (สำคัญมากสำหรับเครื่องที่ยังไม่มีข้อมูล/รายชื่อ) */
   await pullOnce();
   /* 2) แล้วค่อยส่งของเราขึ้นไปเสริม */

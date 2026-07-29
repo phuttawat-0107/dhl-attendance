@@ -7,7 +7,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebas
 import { getAuth, signInAnonymously, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection,
-         query, where, getDocs, deleteDoc, serverTimestamp, addDoc, orderBy, arrayUnion }
+         query, where, getDocs, deleteDoc, serverTimestamp, addDoc, orderBy, arrayUnion, arrayRemove, deleteField }
   from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -459,6 +459,28 @@ async function backfill(){
 }
 
 /* ============ PHOTOS: ย่อ + อัปขึ้น Firestore ============ */
+/* ยกเลิก tombstone (กรณีลบแล้วบันทึกใหม่) */
+async function unTomb(cid){
+  if(!S.ready||cid==null) return;
+  try{
+    await updateDoc(dayRef(S.depot,tKey()),{ deletedCheckins: arrayRemove(String(cid)) });
+  }catch(e){}
+  if(S.delCk) S.delCk=S.delCk.filter(x=>x!==String(cid));
+}
+
+/* ลบเช็คอินคนหนึ่งออกจากคลาวด์ (พร้อมรูป) — ใช้ตอน Staff กด "บันทึกใหม่/ลบ" */
+async function removeCloudCheckin(cid){
+  if(!S.ready||cid==null) return;
+  const date=tKey();
+  try{
+    await updateDoc(dayRef(S.depot,date),{ ['checkins.'+cid]: deleteField(),
+      deletedCheckins: arrayUnion(String(cid)), updatedAt:Date.now() });
+    if(!S.delCk) S.delCk=[];
+    if(!S.delCk.includes(String(cid))) S.delCk.push(String(cid));
+  }catch(e){ console.warn('rm checkin',e); }
+  try{ await deleteDoc(doc(phoCol(S.depot),'ci_'+cid+'_'+date)); }catch(e){}
+}
+
 async function pushPhoto(kind, cid, dataUrl){
   if(!S.ready||!dataUrl) return;
   try{
@@ -568,7 +590,19 @@ async function mergeRemote(d){
     /* --- เช็คอิน --- */
     const local = window.getByDate? await getByDate(date) : [];
     const lmap={}; local.forEach(r=>lmap[r.courierId]=r);
+    /* --- เช็คอินที่ถูกลบไปแล้ว (tombstone) → ลบออกจากเครื่องนี้ด้วย --- */
+    const dead=(d.deletedCheckins||[]).map(String);
+    if(date===tKey()) S.delCk=dead;
+    if(dead.length && S._rawDel){
+      for(const r of local){
+        if(dead.includes(String(r.courierId))){
+          try{ await S._rawDel(r.id); changed=true; }catch(e){}
+          delete lmap[r.courierId];
+        }
+      }
+    }
     for(const [cid,rc] of Object.entries(d.checkins||{})){
+      if(dead.includes(String(cid))) continue;      // 🚫 ไม่ดึงคนที่ลบแล้วกลับมา
       const id=+cid, cur=lmap[id];
       if(!cur){
         await putCk({ courierId:id, date, ts:rc.ts, status:rc.status, buffer:!!rc.buffer,
@@ -862,7 +896,11 @@ function wrap(){
   if(window.putCheckin && !window.putCheckin.__ds){
     const o=window.putCheckin; S._rawPutCheckin=o;
     const f=async function(rec){ const r=await o(rec);
-      if(!S.merging){ pushSoon(); if(rec&&rec.photo) pushPhoto('ci',rec.courierId,rec.photo); }
+      if(!S.merging){
+        /* ถ้าเคยถูกลบไว้ แล้วบันทึกใหม่ → ยกเลิก tombstone ก่อน ไม่งั้นจะโดนลบซ้ำ */
+        if(rec && S.delCk && S.delCk.includes(String(rec.courierId))) await unTomb(rec.courierId);
+        pushSoon(); if(rec&&rec.photo) pushPhoto('ci',rec.courierId,rec.photo);
+      }
       return r; };
     f.__ds=true; window.putCheckin=f;
   }
@@ -875,7 +913,20 @@ function wrap(){
   }
   if(window.delCheckin && !window.delCheckin.__ds){
     const o=window.delCheckin; S._rawDel=o;
-    const f=async function(id){ const r=await o(id); if(!S.merging) pushSoon(); return r; };
+    const f=async function(id){
+      /* จำรายชื่อก่อนลบ เพื่อรู้ว่าใครถูกลบ แล้วลบออกจากคลาวด์ด้วย */
+      let before=[]; try{ before=await getByDate(tKey()); }catch(e){}
+      const r=await o(id);
+      if(!S.merging){
+        try{
+          const after=await getByDate(tKey());
+          const gone=before.filter(b=>!after.some(a=>String(a.courierId)===String(b.courierId)));
+          for(const g of gone) await removeCloudCheckin(g.courierId);
+        }catch(e){ console.warn('del cloud',e); }
+        pushSoon();
+      }
+      return r;
+    };
     f.__ds=true; window.delCheckin=f;
   }
 }

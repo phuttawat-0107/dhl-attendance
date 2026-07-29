@@ -347,8 +347,15 @@ async function pullOnce(){
     const dep0=await getDoc(depRef(S.depot));
     if(dep0.exists()){
       S.removed = Array.isArray(dep0.data().removedIds)? dep0.data().removedIds.map(Number) : [];
-      if(dep0.data().couriers) mergeCouriers(dep0.data().couriers);
+      const cloudList=dep0.data().couriers;
+      /* 🔒 ครั้งแรกหลังล็อกอิน: ตัดรายชื่อที่ไม่ใช่ของสาขานี้ทิ้ง (กันข้อมูลข้ามสาขาค้างในเครื่อง)
+         ทำเฉพาะตอนล็อกอินครั้งแรก เพื่อไม่ให้ไปลบคนที่ Staff เพิ่งเพิ่มแล้วยังไม่ทันซิงค์ */
+      if(!S.firstPullDone && Array.isArray(cloudList) && cloudList.length){
+        purgeForeignCouriers(cloudList);
+      }
+      if(cloudList) mergeCouriers(cloudList);
       purgeRemovedLocal();
+      S.firstPullDone=true;
     }
     const snap=await getDoc(dayRef(S.depot,tKey()));
     if(snap.exists()){ await mergeRemote(snap.data()); }
@@ -536,6 +543,23 @@ async function selfHeal(cloud){
 }
 
 /* ซิงค์รายชื่อ Courier ลงเครื่อง — สำคัญมากสำหรับเครื่องที่เพิ่งเข้าใช้ครั้งแรก */
+/* 🔒 ตัดรายชื่อที่ไม่ได้อยู่ในทะเบียนของสาขานี้ออก (ข้อมูลข้ามสาขาที่ค้างในเครื่อง)
+   เรียกเฉพาะตอน pull ครั้งแรกหลังล็อกอินเท่านั้น */
+function purgeForeignCouriers(cloudList){
+  const arr=getCouriers(); if(!Array.isArray(arr)||!arr.length) return false;
+  const ok={}; cloudList.forEach(c=>{ if(c&&c.id!=null) ok[Number(c.id)]=1; });
+  const foreign=arr.filter(c=>!ok[Number(c.id)]);
+  if(!foreign.length) return false;
+  console.warn('[ds] ตัดรายชื่อข้ามสาขา '+foreign.length+' คน:', foreign.map(c=>c.code));
+  for(let i=arr.length-1;i>=0;i--) if(!ok[Number(arr[i].id)]) arr.splice(i,1);
+  try{ localStorage.setItem('dhl_couriers',JSON.stringify(arr)); }catch(e){}
+  try{ if(window.saveCouriers) saveCouriers(); }catch(e){}
+  try{ if(window.renderManage) renderManage(); }catch(e){}
+  try{ if(window.renderCheckin) renderCheckin(); }catch(e){}
+  toast('🧹 ตัดรายชื่อที่ไม่ใช่ของสาขานี้ออก '+foreign.length+' คน');
+  return true;
+}
+
 /* ลบพนักงานที่ถูกลบทิ้ง (tombstone) ออกจากรายชื่อในเครื่อง */
 function purgeRemovedLocal(){
   const rm=S.removed||[]; if(!rm.length) return false;

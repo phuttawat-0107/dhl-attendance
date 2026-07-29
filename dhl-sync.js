@@ -28,7 +28,7 @@ const PHOTO_QUALITY   = 0.55;        // ~60-90KB/รูป
 
 const S = {
   uid:null, depot:null, staff:null, pin:null,
-  unsubDay:null, unsubCom:null, comments:[], busy:false, ready:false, removed:[]
+  unsubDay:null, unsubCom:null, comments:[], busy:false, ready:false, removed:[], ckDel:{}
 };
 window.DHLSync = S;
 
@@ -373,7 +373,17 @@ async function pushAll(){
   S.busy=true;
   try{
     const date=tKey();
-    const recs = window.getByDate? await getByDate(date) : [];
+    let recs = window.getByDate? await getByDate(date) : [];
+    /* 🚫 ไม่ส่งระเบียนที่ถูกลบไปแล้ว (และลบทิ้งจากเครื่องนี้ให้ด้วย) */
+    const ckDel=S.ckDel||{};
+    if(Object.keys(ckDel).length){
+      const dead=recs.filter(r=>{ const t=ckDel[String(r.courierId)]; return t && r.ts<=t; });
+      if(dead.length){
+        for(const r of dead){ try{ if(S._rawDel) await S._rawDel(r.id); }catch(e){} }
+        recs=recs.filter(r=>!dead.some(x=>x.id===r.id));
+        repaintSoon();
+      }
+    }
     const pph  = window.getPPH?    await getPPH(date)    : null;
     const hasPph = pph && ((+pph.pNew||0)+(+pph.pOld||0) > 0 || pph.inboundTs || pph.lastInboundTs
                     || (pph.pd&&pph.pd.ts) || Object.keys(pph.rp||{}).length);
@@ -459,24 +469,16 @@ async function backfill(){
 }
 
 /* ============ PHOTOS: ย่อ + อัปขึ้น Firestore ============ */
-/* ยกเลิก tombstone (กรณีลบแล้วบันทึกใหม่) */
-async function unTomb(cid){
-  if(!S.ready||cid==null) return;
-  try{
-    await updateDoc(dayRef(S.depot,tKey()),{ deletedCheckins: arrayRemove(String(cid)) });
-  }catch(e){}
-  if(S.delCk) S.delCk=S.delCk.filter(x=>x!==String(cid));
-}
-
-/* ลบเช็คอินคนหนึ่งออกจากคลาวด์ (พร้อมรูป) — ใช้ตอน Staff กด "บันทึกใหม่/ลบ" */
+/* ลบเช็คอินคนหนึ่งออกจากคลาวด์ (พร้อมรูป) — ใช้ตอน Staff กด "บันทึกใหม่/ลบ"
+   จด ckDel[cid] = เวลาที่ลบ  → ทุกเครื่องจะลบเฉพาะระเบียนที่เก่ากว่าเวลานี้
+   ถ้าเช็คอินใหม่ทีหลัง (ts ใหม่กว่า) จะไม่โดนลบ ไม่ต้องยกเลิก tombstone เอง */
 async function removeCloudCheckin(cid){
   if(!S.ready||cid==null) return;
-  const date=tKey();
+  const date=tKey(), now=Date.now();
   try{
     await updateDoc(dayRef(S.depot,date),{ ['checkins.'+cid]: deleteField(),
-      deletedCheckins: arrayUnion(String(cid)), updatedAt:Date.now() });
-    if(!S.delCk) S.delCk=[];
-    if(!S.delCk.includes(String(cid))) S.delCk.push(String(cid));
+      ['ckDel.'+cid]: now, updatedAt:now });
+    S.ckDel=S.ckDel||{}; S.ckDel[String(cid)]=now;
   }catch(e){ console.warn('rm checkin',e); }
   try{ await deleteDoc(doc(phoCol(S.depot),'ci_'+cid+'_'+date)); }catch(e){}
 }
@@ -590,19 +592,21 @@ async function mergeRemote(d){
     /* --- เช็คอิน --- */
     const local = window.getByDate? await getByDate(date) : [];
     const lmap={}; local.forEach(r=>lmap[r.courierId]=r);
-    /* --- เช็คอินที่ถูกลบไปแล้ว (tombstone) → ลบออกจากเครื่องนี้ด้วย --- */
-    const dead=(d.deletedCheckins||[]).map(String);
-    if(date===tKey()) S.delCk=dead;
-    if(dead.length && S._rawDel){
+    /* --- เช็คอินที่ถูกลบไปแล้ว → ลบออกจากเครื่องนี้ด้วย (เฉพาะระเบียนที่เก่ากว่าเวลาที่ลบ) --- */
+    const ckDel=d.ckDel||{};
+    if(date===tKey()) S.ckDel=ckDel;
+    if(Object.keys(ckDel).length && S._rawDel){
       for(const r of local){
-        if(dead.includes(String(r.courierId))){
+        const t=ckDel[String(r.courierId)];
+        if(t && r.ts<=t){
           try{ await S._rawDel(r.id); changed=true; }catch(e){}
           delete lmap[r.courierId];
         }
       }
     }
     for(const [cid,rc] of Object.entries(d.checkins||{})){
-      if(dead.includes(String(cid))) continue;      // 🚫 ไม่ดึงคนที่ลบแล้วกลับมา
+      const td=ckDel[String(cid)];
+      if(td && rc.ts<=td) continue;                 // 🚫 ไม่ดึงระเบียนที่ถูกลบแล้วกลับมา
       const id=+cid, cur=lmap[id];
       if(!cur){
         await putCk({ courierId:id, date, ts:rc.ts, status:rc.status, buffer:!!rc.buffer,
@@ -897,8 +901,6 @@ function wrap(){
     const o=window.putCheckin; S._rawPutCheckin=o;
     const f=async function(rec){ const r=await o(rec);
       if(!S.merging){
-        /* ถ้าเคยถูกลบไว้ แล้วบันทึกใหม่ → ยกเลิก tombstone ก่อน ไม่งั้นจะโดนลบซ้ำ */
-        if(rec && S.delCk && S.delCk.includes(String(rec.courierId))) await unTomb(rec.courierId);
         pushSoon(); if(rec&&rec.photo) pushPhoto('ci',rec.courierId,rec.photo);
       }
       return r; };

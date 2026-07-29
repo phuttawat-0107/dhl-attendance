@@ -144,7 +144,9 @@ function injectUI(){
     +'style="width:100%;border:none;border-radius:99px;padding:13px;font-weight:800;background:#f2ede2;color:#5a5140;margin-top:6px;cursor:pointer;font-family:inherit;">ปิด</button></div>';
   document.body.appendChild(cm);
 
+  /* สาขา TEST จะโผล่เฉพาะเมื่อเปิดลิงก์ด้วย ?test=1 — Staff ทั่วไปไม่เห็น */
   const deps=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
+  if(/[?&]test=1/.test(location.search)) deps.push('TEST');
   document.getElementById('dsDep').innerHTML=deps.map(x=>'<option>'+x+'</option>').join('');
   const st0=getSettings();
   const cur=(st0&&st0.depot)||lsGet('dsDepot');

@@ -236,6 +236,8 @@ const firebaseConfig = {
 const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
 
 const DEPOTS=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
+/* สาขา TEST สำหรับ Run test — โผล่เฉพาะเมื่อเปิดด้วย ?test=1 */
+if(/[?&]test=1/.test(location.search)) DEPOTS.push('TEST');
 const TASKS=[
   {k:'checkin',l:'เข้างาน',tg:'07:00'},
   {k:'pd',     l:'PD',     tg:'<07:15'},

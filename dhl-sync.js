@@ -365,12 +365,31 @@ async function purgeOldPhotos30(){
 function listenDay(){
   if(S.unsubDay) S.unsubDay();
   const date=tKey();
-  S.unsubDay=onSnapshot(dayRef(S.depot,date), snap=>{
-    if(!snap.exists()||!snap.metadata.hasPendingWrites===false) {}
-    if(!snap.exists()) return;
+  S.unsubDay=onSnapshot(dayRef(S.depot,date), async snap=>{
     if(snap.metadata.hasPendingWrites) return;      // การเขียนของเราเอง
-    mergeRemote(snap.data());
+    if(!snap.exists()){ await selfHeal(null); return; }   // 🛟 คลาวด์ว่าง → ส่งของเราขึ้นไปคืน
+    await mergeRemote(snap.data());
+    await selfHeal(snap.data());
   }, e=>console.warn('listen day',e));
+}
+
+/* 🛟 SELF-HEAL: ถ้าคลาวด์มีข้อมูลน้อยกว่าในเครื่อง (ถูกลบ/หาย) → ส่งขึ้นไปคืนอัตโนมัติ */
+async function selfHeal(cloud){
+  if(!S.ready||S.merging) return;
+  try{
+    const date=tKey();
+    const local=await getByDate(date);
+    const lp=await getPPH(date);
+    const cN=cloud? Object.keys(cloud.checkins||{}).length : 0;
+    const cRp=cloud&&cloud.pph? Object.keys(cloud.pph.rp||{}).length : 0;
+    const lRp=lp? Object.keys(lp.rp||{}).length : 0;
+    const cPd=!!(cloud&&cloud.pph&&cloud.pph.pd&&cloud.pph.pd.ts);
+    const lPd=!!(lp&&lp.pd&&lp.pd.ts);
+    if(local.length>cN || lRp>cRp || (lPd&&!cPd)){
+      console.log('self-heal: คืนข้อมูลขึ้นคลาวด์', {local:local.length, cloud:cN});
+      await pushAll();
+    }
+  }catch(e){}
 }
 
 /* ซิงค์รายชื่อ Courier ลงเครื่อง — สำคัญมากสำหรับเครื่องที่เพิ่งเข้าใช้ครั้งแรก */
@@ -608,6 +627,9 @@ function boot(){
     if(!document.hidden && S.ready) pullOnce();
   });
   window.addEventListener('online',()=>{ if(S.ready){ pullOnce(); pushAll(); } });
+
+  /* 🛟 ส่งข้อมูลขึ้นคลาวด์ซ้ำทุก 3 นาที — ประกันว่าข้อมูลไม่มีวันหายจากคลาวด์ */
+  setInterval(()=>{ if(S.ready&&!S.merging) pushAll(); },180000);
 
   /* ข้ามวัน → ย้าย listener */
   let cur=tKey();

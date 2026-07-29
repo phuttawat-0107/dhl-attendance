@@ -279,7 +279,11 @@ async function pushAll(){
     }
     const couriers=(window.couriers||[]).filter(c=>c.active!==false)
       .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'' }));
-    if(couriers.length) up['couriers']=couriers;
+    if(couriers.length){
+      up['couriers']=couriers;
+      /* เก็บ master list ไว้ที่สาขาด้วย — Manager ใช้เป็นตัวสำรองถ้าวันไหนไม่มี */
+      try{ await setDoc(depRef(S.depot),{ couriers, couriersAt:Date.now() },{merge:true}); }catch(e){}
+    }
 
     if(Object.keys(up).length) await updateDoc(ref,up);
   }catch(e){ console.warn('sync push',e); }

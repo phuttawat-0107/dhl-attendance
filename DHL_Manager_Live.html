@@ -202,8 +202,18 @@ const av=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
 const todayKey=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
 const thD=k=>{const[y,m,d]=k.split('-').map(Number);const mo=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return d+' '+mo[m-1]+' '+(y+543);};
 
-const DATA={}, COM={};
+const DATA={}, COM={}, META={};      // META = ข้อมูลสาขา (รายชื่อ Courier ตัวสำรอง)
 let DATE=todayKey(), unsubs=[];
+/* รวมรายชื่อ Courier จาก: วันนั้น → วันอื่นในช่วง → master ของสาขา */
+function courierMap(dep,d){
+  const m={};
+  const add=list=>(list||[]).forEach(c=>{ if(c&&c.id!=null&&!m[c.id]) m[c.id]=c; });
+  add(d&&d.couriers);
+  if(HIST&&HIST[dep]) HIST[dep].forEach(x=>add(x.couriers));
+  DEPOTS.forEach(()=>{}); add(DATA[dep]&&DATA[dep].couriers);
+  add(META[dep]&&META[dep].couriers);
+  return m;
+}
 
 /* ---------- LOGIN ---------- */
 document.getElementById('mgGo').onclick=login;
@@ -227,6 +237,8 @@ async function login(){
 function start(){
   unsubs.forEach(u=>u()); unsubs=[];
   DEPOTS.forEach(dep=>{
+    unsubs.push(onSnapshot(doc(db,'depots',dep), s=>{ META[dep]= s.exists()? s.data():null; render(); },
+      e=>console.warn(dep+' meta',e)));
     unsubs.push(onSnapshot(doc(db,'depots',dep,'days',DATE), s=>{
       DATA[dep]= s.exists()? s.data() : null; render();
     }, e=>console.warn(dep,e)));
@@ -728,8 +740,8 @@ function drawMetric(m,deps){
 
 /* ---------- DETAIL + COMMENT ---------- */
 window.__open=async (dep,task)=>{
-  const d=DATA[dep], p=(d&&d.pph)||{}, cmap={};
-  (d&&d.couriers||[]).forEach(c=>cmap[c.id]=c);
+  const d=DATA[dep], p=(d&&d.pph)||{};
+  const cmap=courierMap(dep,d);
   const T=TASKS.find(t=>t.k===task)||{l:task};
   const s=taskState(dep,task);
   let b='<h3>'+dep+' — '+T.l+'</h3><div class="sub">'+thD(DATE)+(T.tg?' • เป้า '+T.tg:'')+(d&&d.by?' • บันทึกโดย '+esc(d.by):'')+'</div>';
@@ -739,8 +751,10 @@ window.__open=async (dep,task)=>{
     const rows=Object.entries(d.checkins||{}).map(([cid,r])=>({cid,c:cmap[cid]||{code:cid,name:''},r}))
       .sort((a,b2)=>a.r.ts-b2.r.ts);
     b+= rows.length? rows.map(x=>'<div class="row-c">'
-      +'<div class="info"><div class="nm">'+esc(x.c.code)+' <span style="font-weight:400;">'+esc(x.c.name)+'</span></div>'
-      +'<div class="sub2">'+esc(x.c.type||'')+' '+esc(x.c.vendor||'')+(x.r.manualEdit?' • แก้เวลา *':'')+(x.r.uniform===false?' • ไม่ใส่ยูนิฟอร์ม':'')+'</div></div>'
+      +'<div class="info"><div class="nm">'+esc(x.c.code||('#'+x.cid))+' <span style="font-weight:400;">'+esc(x.c.name||'')+'</span></div>'
+      +'<div class="sub2">'+[x.c.type,x.c.vendor].filter(Boolean).map(esc).join(' • ')
+        +(x.r.manualEdit?' • แก้เวลา *':'')+(x.r.uniform===false?' • ไม่ใส่ยูนิฟอร์ม':'')
+        +(!x.c.code?' • (ยังไม่ได้ซิงค์รายชื่อ)':'')+'</div></div>'
       +'<span class="chip '+(x.r.status==='late'?'no':'ok')+'">'+(x.r.status==='late'?'✖ ':'✔ ')+fmtT(x.r.ts)+'</span>'
       +(x.r.hasPhoto?'<img class="thumb" data-ph="ci_'+x.cid+'_'+DATE+'" data-dep="'+dep+'" '
         +'onclick="window.__zoom(this.src)" style="cursor:zoom-in;">':'')
@@ -768,12 +782,13 @@ window.__open=async (dep,task)=>{
   else {
     const key= task==='dep'? 'dep':'fdel';
     const rows=Object.entries(p.rp||{}).filter(([,q])=>q[key])
-      .map(([cid,q])=>({c:cmap[cid]||{code:cid,name:''},q})).sort((a,b2)=>a.q[key]-b2.q[key]);
+      .map(([cid,q])=>({cid,c:cmap[cid]||{},q})).sort((a,b2)=>a.q[key]-b2.q[key]);
     const lim= task==='dep'? T_DEP : T_FDEL;
     b+= rows.length? rows.map(x=>{
       const stem=(x.q.dep&&x.q.fdel&&x.q.fdel>x.q.dep)? Math.round((x.q.fdel-x.q.dep)/60000):null;
-      return '<div class="row-c"><div class="info"><div class="nm">'+esc(x.c.code)+' <span style="font-weight:400;">'+esc(x.c.name)+'</span></div>'
-        +'<div class="sub2">FS '+(x.q.fs?fmtT(x.q.fs):'—')+' • DEP '+(x.q.dep?fmtT(x.q.dep):'—')
+      return '<div class="row-c"><div class="info"><div class="nm">'+esc(x.c.code||('#'+x.cid))+' <span style="font-weight:400;">'+esc(x.c.name||'')+'</span>'
+        +(x.c.vendor?' <span style="font-weight:400;font-size:11px;color:#a09884;">'+esc(x.c.vendor)+'</span>':'')+'</div>'
+        +'<div class="sub2">'+(x.c.type?esc(x.c.type)+' • ':'')+'FS '+(x.q.fs?fmtT(x.q.fs):'—')+' • DEP '+(x.q.dep?fmtT(x.q.dep):'—')
         +(stem!=null?' • Stem '+stem+' น.':'')+'</div></div>'
         +'<span class="chip '+(secOf(x.q[key])<lim?'ok':'no')+'">'+fmtT(x.q[key])+'</span></div>';
     }).join('') : '<div class="empty">ยังไม่มีข้อมูล</div>';

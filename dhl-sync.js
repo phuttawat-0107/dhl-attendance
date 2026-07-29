@@ -7,7 +7,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebas
 import { getAuth, signInAnonymously, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection,
-         query, where, getDocs, deleteDoc, serverTimestamp, addDoc, orderBy }
+         query, where, getDocs, deleteDoc, serverTimestamp, addDoc, orderBy, arrayUnion }
   from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -28,7 +28,7 @@ const PHOTO_QUALITY   = 0.55;        // ~60-90KB/รูป
 
 const S = {
   uid:null, depot:null, staff:null, pin:null,
-  unsubDay:null, unsubCom:null, comments:[], busy:false, ready:false
+  unsubDay:null, unsubCom:null, comments:[], busy:false, ready:false, removed:[]
 };
 window.DHLSync = S;
 
@@ -343,7 +343,11 @@ async function pullOnce(){
   try{
     await waitDB();
     const dep0=await getDoc(depRef(S.depot));
-    if(dep0.exists() && dep0.data().couriers) mergeCouriers(dep0.data().couriers);
+    if(dep0.exists()){
+      S.removed = Array.isArray(dep0.data().removedIds)? dep0.data().removedIds.map(Number) : [];
+      if(dep0.data().couriers) mergeCouriers(dep0.data().couriers);
+      purgeRemovedLocal();
+    }
     const snap=await getDoc(dayRef(S.depot,tKey()));
     if(snap.exists()){ await mergeRemote(snap.data()); }
     else repaintSoon();
@@ -392,7 +396,7 @@ async function pushAll(){
         if(Object.keys(o).length) up['pph.rp.'+cid]=o;
       });
     }
-    const couriers=getCouriers().filter(c=>c.active!==false)
+    const couriers=getCouriers().filter(c=>c.active!==false && !(S.removed||[]).includes(Number(c.id)))
       .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'' }));
     if(couriers.length){
       up['couriers']=couriers;
@@ -444,7 +448,7 @@ async function backfill(){
           if(Object.keys(o).length) up['pph.rp.'+cid]=o;
         });
       }
-      const cl=getCouriers().filter(c=>c.active!==false)
+      const cl=getCouriers().filter(c=>c.active!==false && !(S.removed||[]).includes(Number(c.id)))
         .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'' }));
       if(cl.length) up['couriers']=cl;
       if(Object.keys(up).length) await updateDoc(ref,up);
@@ -506,10 +510,30 @@ async function selfHeal(cloud){
 }
 
 /* ซิงค์รายชื่อ Courier ลงเครื่อง — สำคัญมากสำหรับเครื่องที่เพิ่งเข้าใช้ครั้งแรก */
+/* ลบพนักงานที่ถูกลบทิ้ง (tombstone) ออกจากรายชื่อในเครื่อง */
+function purgeRemovedLocal(){
+  const rm=S.removed||[]; if(!rm.length) return false;
+  const arr=getCouriers(); if(!Array.isArray(arr)) return false;
+  let changed=false;
+  for(let i=arr.length-1;i>=0;i--){
+    if(rm.includes(Number(arr[i].id))){ arr.splice(i,1); changed=true; }
+  }
+  if(changed){
+    try{ localStorage.setItem('dhl_couriers',JSON.stringify(arr)); }catch(e){}
+    try{ if(window.saveCouriers) saveCouriers(); }catch(e){}
+    try{ if(window.renderManage) renderManage(); }catch(e){}
+    try{ if(window.renderCheckin) renderCheckin(); }catch(e){}
+  }
+  return changed;
+}
+
 function mergeCouriers(list){
   if(!Array.isArray(list)||!list.length) return false;
   const arr=getCouriers();
   if(!Array.isArray(arr)) return false;
+  const rm=S.removed||[];
+  list=list.filter(c=>c && !rm.includes(Number(c.id)));   // 🚫 ไม่ดึงคนที่ถูกลบกลับมา
+  if(!list.length) return false;
   const have={}; arr.forEach(c=>have[c.id]=c);
   let changed=false;
   list.forEach(c=>{
@@ -662,6 +686,62 @@ window.dsLogout=async ()=>{
   const bell=document.getElementById('dsBell'); if(bell) bell.classList.remove('on');
   location.reload();
 };
+/* ============ 🗑 ลบพนักงานออกถาวร (ลาออก / เพิ่มผิด) ============
+   ลบทั้งในเครื่องและบนคลาวด์ พร้อมจดไว้ใน removedIds
+   กันไม่ให้เครื่องอื่นในสาขาเดียวกันดันชื่อกลับขึ้นมาอีก
+   ประวัติเก่า (เช็คอินย้อนหลัง) ยังอยู่ครบ ไม่ถูกลบ */
+window.dsDelCourier=async (id)=>{
+  id=Number(id);
+  const arr=getCouriers();
+  const c=arr.find(x=>Number(x.id)===id);
+  if(!c) return;
+  if(!S.ready){ alert('ต้องเข้าสู่ระบบก่อนจึงจะลบได้'); return; }
+  if(!confirm('ลบพนักงานคนนี้ออกถาวร?\n\n'
+    +(c.code||'')+' — '+(c.name||'')+'\n\n'
+    +'• จะหายจากรายชื่อและหน้าเช็คอินของทุกเครื่องในสาขา '+S.depot+'\n'
+    +'• ประวัติการเข้างานย้อนหลังยังอยู่ครบ ไม่ถูกลบ\n'
+    +'• ถ้าแค่หยุดงานชั่วคราว ให้กดปุ่ม "พัก" แทน')) return;
+
+  /* 1) ลบในเครื่อง */
+  const i=arr.findIndex(x=>Number(x.id)===id);
+  if(i>=0) arr.splice(i,1);
+  try{ localStorage.setItem('dhl_couriers',JSON.stringify(arr)); }catch(e){}
+  try{ if(window.saveCouriers) saveCouriers(); }catch(e){}
+  if(!S.removed.includes(id)) S.removed.push(id);
+
+  /* 2) ลบบนคลาวด์ + จด tombstone */
+  try{
+    const cl=arr.filter(x=>x.active!==false && !S.removed.includes(Number(x.id)))
+      .map(x=>({ id:x.id, code:x.code, name:x.name, vendor:x.vendor||'', type:x.type||'' }));
+    await setDoc(depRef(S.depot),{ couriers:cl, couriersAt:Date.now(), removedIds:arrayUnion(id) },{merge:true});
+    toast('🗑 ลบ '+(c.code||c.name)+' แล้ว');
+  }catch(e){ console.warn('del courier',e); alert('ลบในเครื่องแล้ว แต่ส่งขึ้นคลาวด์ไม่สำเร็จ — ลองใหม่เมื่อเน็ตกลับมา'); }
+
+  try{ if(window.renderManage) renderManage(); }catch(e){}
+  try{ if(window.renderCheckin) renderCheckin(); }catch(e){}
+};
+
+/* ใส่ปุ่ม 🗑 ต่อท้ายทุกแถวในรายชื่อพนักงาน */
+function mountDelButtons(){
+  const list=document.getElementById('mList'); if(!list) return;
+  list.querySelectorAll('.row-c').forEach(row=>{
+    if(row.querySelector('.dsDel')) return;
+    const ed=[...row.querySelectorAll('button')]
+      .find(b=>/editCourier\(/.test(b.getAttribute('onclick')||''));
+    if(!ed) return;
+    const m=(ed.getAttribute('onclick')||'').match(/editCourier\((\d+)\)/);
+    if(!m) return;
+    const b=document.createElement('button');
+    b.className='btn btn-o dsDel';
+    b.style.cssText='min-height:36px;padding:6px 9px;font-size:12px;color:var(--r);border-color:var(--r);';
+    b.textContent='🗑';
+    b.title='ลบออกถาวร';
+    b.onclick=()=>window.dsDelCourier(m[1]);
+    row.appendChild(b);
+  });
+}
+setInterval(mountDelButtons,1200);
+
 /* 🧹 ล้างข้อมูลในเครื่องแล้วดึงใหม่จากคลาวด์ (ใช้เมื่อมีข้อมูลสาขาอื่นปน) */
 window.dsResync=async ()=>{
   if(!S.ready){ alert('ต้องเข้าสู่ระบบก่อน'); return; }

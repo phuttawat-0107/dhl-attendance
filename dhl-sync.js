@@ -548,10 +548,22 @@ async function selfHeal(cloud){
 function purgeForeignCouriers(cloudList){
   const arr=getCouriers(); if(!Array.isArray(arr)||!arr.length) return false;
   const ok={}; cloudList.forEach(c=>{ if(c&&c.id!=null) ok[Number(c.id)]=1; });
-  const foreign=arr.filter(c=>!ok[Number(c.id)]);
+  /* 🛡 ตัดเฉพาะคนที่ "รหัสขึ้นต้นด้วยชื่อสาขาอื่น" เท่านั้น
+     คนที่รหัสเป็นของสาขานี้ หรือรหัสไม่มีรูปแบบชัดเจน จะไม่ถูกแตะ
+     (กันไม่ให้ลบพนักงานจริงที่ Staff เพิ่งเพิ่มแล้วยังไม่ทันซิงค์ขึ้นคลาวด์) */
+  const OTHERS=['PHI','BPE','PWT','PKS','DST','BPL','PWN','TST','TEST'].filter(p=>p!==S.depot && p!==(S.depot==='TEST'?'TST':''));
+  const isOther=c=>{
+    const code=String(c.code||'').toUpperCase();
+    if(!code) return false;
+    if(code.indexOf(String(S.depot).toUpperCase())===0) return false;      // รหัสของสาขานี้ → ไม่แตะ
+    if(S.depot==='TEST' && code.indexOf('TST')===0) return false;
+    return OTHERS.some(p=>code.indexOf(p)===0);                            // ขึ้นต้นด้วยสาขาอื่นเท่านั้น
+  };
+  const foreign=arr.filter(c=>!ok[Number(c.id)] && isOther(c));
   if(!foreign.length) return false;
   console.warn('[ds] ตัดรายชื่อข้ามสาขา '+foreign.length+' คน:', foreign.map(c=>c.code));
-  for(let i=arr.length-1;i>=0;i--) if(!ok[Number(arr[i].id)]) arr.splice(i,1);
+  const kill={}; foreign.forEach(c=>kill[Number(c.id)]=1);
+  for(let i=arr.length-1;i>=0;i--) if(kill[Number(arr[i].id)]) arr.splice(i,1);
   try{ localStorage.setItem('dhl_couriers',JSON.stringify(arr)); }catch(e){}
   try{ if(window.saveCouriers) saveCouriers(); }catch(e){}
   try{ if(window.renderManage) renderManage(); }catch(e){}

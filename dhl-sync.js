@@ -49,14 +49,20 @@ const tKey = ()=> (window.todayKey? todayKey() : new Date().toISOString().slice(
 function toast(msg){ if(window.flash) flash(msg); }
 
 /* รอให้ฐานข้อมูลในเครื่อง (IndexedDB) พร้อมก่อน — ไม่งั้น merge จะล้มเหลวเงียบๆ */
-async function waitDB(ms=15000){
+async function waitDB(ms=20000){
   const t0=Date.now();
   while(Date.now()-t0<ms){
     try{
-      if(window.getByDate){ await getByDate(tKey()); return true; }
+      if(window.getByDate){ await getByDate(tKey()); S.dbOK=true; return true; }
     }catch(e){}
     await new Promise(r=>setTimeout(r,300));
   }
+  /* ⚠ ฐานข้อมูลในเครื่องเปิดไม่ได้ — ต้องบอก Staff ให้รู้ ไม่ให้ทำงานต่อโดยข้อมูลไม่ถูกบันทึก */
+  S.dbOK=false;
+  const b=document.getElementById('dsBadge');
+  if(b){ b.classList.add('on'); b.style.background='#D40511'; b.style.color='#fff';
+    b.textContent='⛔ เปิดฐานข้อมูลไม่ได้ — ปิดแอปแล้วเปิดใหม่';
+    b.onclick=()=>alert('เครื่องนี้เปิดฐานข้อมูลในเครื่องไม่ได้\n\nวิธีแก้:\n1) ปิดแท็บ/แอปนี้ทุกหน้าต่าง\n2) เปิดใหม่อีกครั้ง\n\nถ้ายังไม่ได้ ให้ปิด-เปิดเบราว์เซอร์ใหม่ทั้งหมด'); }
   return false;
 }
 

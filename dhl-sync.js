@@ -130,7 +130,7 @@ function injectUI(){
   d.innerHTML=`<div class="box"><div class="yb"></div>
     <h3>เข้าสู่ระบบ</h3><p>ใส่ PIN ของสาขา แล้วเลือกชื่อของคุณ</p>
     <label>สาขา</label><select id="dsDep"></select>
-    <label>PIN สาขา (6 หลัก)</label><input id="dsPin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••••">
+    <label>PIN สาขา (4 หลัก)</label><input id="dsPin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••••">
     <label>ชื่อผู้บันทึก</label><select id="dsStaff"><option value="">— เลือกชื่อ —</option></select>
     <div class="err" id="dsErr"></div>
     <button id="dsGo">เข้าใช้งาน</button></div>`;

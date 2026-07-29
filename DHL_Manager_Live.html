@@ -93,6 +93,23 @@ textarea:focus{outline:2px solid var(--y);}
 .stepbar{display:flex;gap:3px;margin-top:8px;}
 .stepbar i{flex:1;height:7px;border-radius:99px;background:#ece5d5;font-style:normal;}
 .stepbar i.ok{background:var(--g);} .stepbar i.bad{background:var(--r);} .stepbar i.wait{background:var(--y);}
+/* ---- แจ้งเตือน ---- */
+#notiBtn{position:fixed;right:12px;bottom:14px;z-index:70;border:none;border-radius:99px;padding:12px 16px;
+  font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;background:#1a1a1a;color:var(--y);
+  box-shadow:0 5px 18px rgba(0,0,0,.3);transition:transform .18s cubic-bezier(.34,1.56,.64,1);}
+#notiBtn:active{transform:scale(.92);}
+#notiBtn.off{background:#f2ede2;color:#8a8272;}
+#feed{position:fixed;left:0;right:0;bottom:0;z-index:69;pointer-events:none;padding:0 12px 74px;
+  display:flex;flex-direction:column;align-items:center;gap:7px;}
+.fitem{pointer-events:auto;background:#1a1a1a;color:#fff;border-radius:16px;padding:11px 15px;max-width:420px;width:100%;
+  box-shadow:0 8px 26px rgba(0,0,0,.35);animation:fUp .35s cubic-bezier(.34,1.56,.64,1);font-size:13.5px;
+  display:flex;gap:10px;align-items:center;}
+@keyframes fUp{from{opacity:0;transform:translateY(22px) scale(.96);}to{opacity:1;transform:none;}}
+.fitem b{color:var(--y);} .fitem.ok b{color:#7fe0a8;} .fitem.bad b{color:#ff9a92;}
+.fitem .ic{font-size:20px;flex-shrink:0;}
+.fitem .tx{flex:1;line-height:1.4;} .fitem .tx small{display:block;color:#a09884;font-size:11px;margin-top:1px;}
+.fitem.done{background:linear-gradient(135deg,#1c7a4d,#2e7d32);}
+.fitem.done b{color:#fff;}
 /* ---- ตัวเลือกช่วงวัน + ปุ่มสาขา (ดีไซน์ใหม่) ---- */
 .rangebar{background:linear-gradient(135deg,#1a1a1a,#2e2e2e);border-radius:24px;padding:16px;margin-bottom:11px;
   box-shadow:0 6px 22px rgba(0,0,0,.18);color:#fff;animation:fadeUp .3s ease;}
@@ -166,6 +183,8 @@ textarea:focus{outline:2px solid var(--y);}
 </div>
 
 <div class="modal" id="mdl"><div class="sheet" id="mdlBody"></div></div>
+<div id="feed"></div>
+<button id="notiBtn" class="off" onclick="window.__noti()">🔔 เปิดแจ้งเตือน</button>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
@@ -290,6 +309,113 @@ function taskState(dep,k){
   return {st:'none'};
 }
 
+/* ================= 🔔 NOTIFICATIONS ================= */
+const PREV={};                 // สถานะ Task ก่อนหน้า เพื่อจับ "เพิ่งเสร็จ"
+let notiOn=false, notiReady=false;
+try{ notiOn = localStorage.getItem('mgNoti')==='1'; }catch(e){}
+
+window.__noti=async ()=>{
+  if(notiOn){ notiOn=false; try{localStorage.setItem('mgNoti','0');}catch(e){} updNotiBtn(); return; }
+  if('Notification' in window && Notification.permission!=='granted'){
+    try{ const p=await Notification.requestPermission();
+      if(p!=='granted'){ alert('เบราว์เซอร์ไม่อนุญาตแจ้งเตือน\nเปิดได้ที่ ตั้งค่าเบราว์เซอร์ → การแจ้งเตือน'); }
+    }catch(e){}
+  }
+  notiOn=true; try{ localStorage.setItem('mgNoti','1'); }catch(e){}
+  updNotiBtn();
+  toastFeed('🔔','<b>เปิดแจ้งเตือนแล้ว</b><small>จะแจ้งทุกครั้งที่สาขาทำ Task เสร็จ</small>','');
+  ding(1);
+};
+function updNotiBtn(){
+  const b=document.getElementById('notiBtn'); if(!b) return;
+  b.className = notiOn? '' : 'off';
+  b.textContent = notiOn? '🔔 แจ้งเตือน: เปิด' : '🔕 เปิดแจ้งเตือน';
+}
+function ding(kind){
+  if(!notiOn) return;
+  try{
+    const C=new (window.AudioContext||window.webkitAudioContext)();
+    const seq = kind===2? [[523,0],[659,.12],[784,.24],[1046,.36]] : [[784,0],[1046,.14]];
+    seq.forEach(([f,t])=>{
+      const o=C.createOscillator(), g=C.createGain();
+      o.connect(g); g.connect(C.destination); o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0.001,C.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.3,C.currentTime+t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,C.currentTime+t+0.16);
+      o.start(C.currentTime+t); o.stop(C.currentTime+t+0.18);
+    });
+  }catch(e){}
+  if(navigator.vibrate) navigator.vibrate(kind===2?[90,50,90,50,140]:[70]);
+}
+function toastFeed(ic,html,cls){
+  const f=document.getElementById('feed'); if(!f) return;
+  const d=document.createElement('div');
+  d.className='fitem '+(cls||'');
+  d.innerHTML='<div class="ic">'+ic+'</div><div class="tx">'+html+'</div>';
+  d.onclick=()=>d.remove();
+  f.appendChild(d);
+  while(f.children.length>4) f.removeChild(f.firstChild);
+  setTimeout(()=>{ d.style.transition='opacity .4s,transform .4s'; d.style.opacity='0';
+    d.style.transform='translateY(12px)'; setTimeout(()=>d.remove(),400); }, cls==='done'?12000:7000);
+}
+function pushNoti(title,body,tag){
+  if(!notiOn) return;
+  try{
+    if('Notification' in window && Notification.permission==='granted'){
+      const n=new Notification(title,{ body, tag, icon:'data:image/svg+xml,'+encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%23FFCC00"/><text x="32" y="44" font-size="34" font-weight="bold" text-anchor="middle" fill="%23D40511">D</text></svg>'),
+        badge:undefined, renotify:false });
+      n.onclick=()=>{ window.focus(); n.close(); };
+      setTimeout(()=>{ try{n.close();}catch(e){} }, 20000);
+    }
+  }catch(e){}
+}
+const TASK_ICON={checkin:'✅',pd:'📸',fib:'📥',lib:'📦',dep:'🚚',fdel:'🎯'};
+/* ตรวจว่ามี Task ไหน "เพิ่งเสร็จ" แล้วแจ้ง */
+function checkDone(){
+  DEPOTS.forEach(dep=>{
+    if(!DATA[dep]) return;
+    let doneCount=0;
+    TASKS.forEach(t=>{
+      const s=taskState(dep,t.k);
+      const key=dep+'|'+t.k;
+      const now = s.st==='ok'||s.st==='bad' ? (s.st+'|'+(s.v||'')) : '';
+      if(s.st==='ok'||s.st==='bad') doneCount++;
+      if(PREV[key]===undefined){ PREV[key]=now; return; }   // ครั้งแรก = ตั้งค่าเริ่มต้น ไม่แจ้ง
+      if(now && now!==PREV[key]){
+        PREV[key]=now;
+        const good = s.st==='ok';
+        const ic=TASK_ICON[t.k]||'📌';
+        toastFeed(ic, '<b>'+dep+'</b> — '+t.l+' '+(good?'เสร็จแล้ว':'เกินเป้า')
+          +'<small>'+(s.v||'')+' • '+(s.s2||'')+(t.tg?' • เป้า '+t.tg:'')+'</small>', good?'ok':'bad');
+        pushNoti((good?'✅ ':'⚠️ ')+dep+' — '+t.l,
+          (s.v||'')+(s.s2? ' • '+s.s2:'')+(good?'':' (เกินเป้า '+t.tg+')'), dep+t.k);
+        ding(1);
+      } else PREV[key]=now;
+    });
+    /* ครบทุกขั้น = สรุปสาขา */
+    const fkey=dep+'|__all';
+    const allDone = doneCount===TASKS.length;
+    if(PREV[fkey]===undefined){ PREV[fkey]=allDone; return; }
+    if(allDone && !PREV[fkey]){
+      PREV[fkey]=true;
+      const d=DATA[dep], ck=Object.values(d.checkins||{}), p=d.pph||{};
+      const late=ck.filter(r=>r.status==='late').length;
+      const nC=(+p.courierN)||ck.length||0;
+      const P=pphOf(p,nC);
+      const fd=Object.values(p.rp||{}).map(x=>x.fdel).filter(Boolean);
+      const avgF=fd.length? hmOf(av(fd.map(secOf))):'—';
+      const sum='Ontime '+(ck.length-late)+'/'+ck.length
+        +' • PPH Sort '+(P.sort!=null?Math.round(P.sort*10)/10:'—')
+        +' / Route '+(P.route!=null?Math.round(P.route):'—')
+        +' • First Del '+avgF;
+      toastFeed('🎉','<b>'+dep+' ทำครบทุกขั้นแล้ว</b><small>'+sum+'</small>','done');
+      pushNoti('🎉 '+dep+' ทำครบทุกขั้นแล้ว', sum, dep+'_all');
+      ding(2);
+    } else PREV[fkey]=allDone;
+  });
+}
+
 /* ---------- RENDER ---------- */
 function render(){
   document.getElementById('dTitle').textContent = DATE===todayKey()? 'วันนี้ '+thD(DATE) : thD(DATE);
@@ -344,6 +470,8 @@ function render(){
     : '';
   if(MTAB==='ins') renderIns();
   if(MTAB==='ch') renderCh();
+  updNotiBtn();
+  checkDone();                     /* 🔔 ตรวจ Task ที่เพิ่งเสร็จ แล้วแจ้งเตือน */
 }
 
 /* ================= 📈 INSIGHT: วิเคราะห์ปัญหา ================= */

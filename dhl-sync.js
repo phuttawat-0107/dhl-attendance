@@ -33,6 +33,11 @@ const S = {
 window.DHLSync = S;
 
 /* ---------- utils ---------- */
+/* ตัวแปรที่แอปประกาศด้วย let/const จะไม่อยู่บน window — ต้องอ่านผ่าน global scope */
+function G(name){ try{ return (0,eval)(name); }catch(e){ return undefined; } }
+const getCouriers = ()=> (Array.isArray(G('couriers'))? G('couriers') : (window.couriers||[]));
+const getSettings = ()=> (G('settings') || window.settings || null);
+
 const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const lsSet = (k,v) => { try{ localStorage.setItem(k,v); }catch(e){} };
 const dayRef  = (dep,date)=> doc(dbF,'depots',dep,'days',date);
@@ -123,7 +128,8 @@ function injectUI(){
 
   const deps=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
   document.getElementById('dsDep').innerHTML=deps.map(x=>'<option>'+x+'</option>').join('');
-  const cur=(window.settings&&settings.depot)||lsGet('dsDepot');
+  const st0=getSettings();
+  const cur=(st0&&st0.depot)||lsGet('dsDepot');
   if(cur) document.getElementById('dsDep').value=cur;
   document.getElementById('dsDep').onchange=()=>{
     const b=document.getElementById('dsGo'); b.textContent='เข้าใช้งาน'; delete b.dataset.force;
@@ -237,8 +243,9 @@ async function afterLogin(){
   document.getElementById('dsBadge').classList.add('on');
   document.getElementById('dsBadge').textContent='☁ '+S.depot+' · '+S.staff;
   /* ให้แอปเดิมใช้ค่าตรงกัน */
-  if(window.settings){ settings.depot=S.depot; settings.staff=S.staff;
-    try{ localStorage.setItem('settings',JSON.stringify(settings)); }catch(e){}
+  const st=getSettings();
+  if(st){ st.depot=S.depot; st.staff=S.staff;
+    try{ localStorage.setItem('settings',JSON.stringify(st)); }catch(e){}
     if(window.applyHeader) applyHeader();
   }
   await pushAll();
@@ -277,7 +284,7 @@ async function pushAll(){
         if(Object.keys(o).length) up['pph.rp.'+cid]=o;
       });
     }
-    const couriers=(window.couriers||[]).filter(c=>c.active!==false)
+    const couriers=getCouriers().filter(c=>c.active!==false)
       .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'' }));
     if(couriers.length){
       up['couriers']=couriers;

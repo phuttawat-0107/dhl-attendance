@@ -48,6 +48,18 @@ const tKey = ()=> (window.todayKey? todayKey() : new Date().toISOString().slice(
 
 function toast(msg){ if(window.flash) flash(msg); }
 
+/* รอให้ฐานข้อมูลในเครื่อง (IndexedDB) พร้อมก่อน — ไม่งั้น merge จะล้มเหลวเงียบๆ */
+async function waitDB(ms=15000){
+  const t0=Date.now();
+  while(Date.now()-t0<ms){
+    try{
+      if(window.getByDate){ await getByDate(tKey()); return true; }
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,300));
+  }
+  return false;
+}
+
 /* ---------- ย่อรูปให้เล็กพอสำหรับ Firestore ---------- */
 function shrink(dataUrl){
   return new Promise(res=>{
@@ -239,6 +251,7 @@ function startHeartbeat(){
 }
 
 async function afterLogin(){
+  await waitDB();                       // ⏳ รอฐานข้อมูลในเครื่องพร้อมก่อนเสมอ
   S.ready=true;
   document.getElementById('dsBadge').classList.add('on');
   document.getElementById('dsBadge').textContent='☁ '+S.depot+' · '+S.staff;
@@ -261,11 +274,20 @@ async function afterLogin(){
 /* ดึงข้อมูลวันนี้ + รายชื่อ Courier ของสาขาลงเครื่องทันที */
 async function pullOnce(){
   try{
+    await waitDB();
     const dep0=await getDoc(depRef(S.depot));
     if(dep0.exists() && dep0.data().couriers) mergeCouriers(dep0.data().couriers);
     const snap=await getDoc(dayRef(S.depot,tKey()));
-    if(snap.exists()) await mergeRemote(snap.data());
+    if(snap.exists()){ await mergeRemote(snap.data()); }
     else repaintSoon();
+    /* ตรวจซ้ำ: ถ้าคลาวด์มีแต่เครื่องยังว่าง แปลว่า merge ไม่ติด — ลองใหม่ */
+    if(snap.exists()){
+      const n=Object.keys(snap.data().checkins||{}).length;
+      if(n){
+        const local=await getByDate(tKey());
+        if(local.length<n){ S.merging=false; await mergeRemote(snap.data()); }
+      }
+    }
   }catch(e){ console.warn('pull',e); }
 }
 
@@ -574,6 +596,12 @@ function boot(){
     b.textContent='⚠ ยังไม่ได้เข้าระบบ — แตะเพื่อล็อกอิน';
     b.onclick=()=>document.getElementById('dsLogin').classList.add('show');
   },5000);
+
+  /* กลับมาที่แอป (สลับแอป/ปลดล็อกจอ) → ดึงข้อมูลล่าสุดทันที */
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden && S.ready) pullOnce();
+  });
+  window.addEventListener('online',()=>{ if(S.ready){ pullOnce(); pushAll(); } });
 
   /* ข้ามวัน → ย้าย listener */
   let cur=tKey();

@@ -111,6 +111,36 @@ textarea:focus{outline:2px solid var(--y);}
 .fitem .tx{flex:1;line-height:1.4;} .fitem .tx small{display:block;color:#a09884;font-size:11px;margin-top:1px;}
 .fitem.done{background:linear-gradient(135deg,#1c7a4d,#2e7d32);}
 .fitem.done b{color:#fff;}
+/* ---- 📋 DATA TAB ---- */
+.segbar{display:flex;gap:5px;background:#fff;border-radius:99px;padding:5px;box-shadow:0 1px 6px rgba(60,50,20,.08);margin-bottom:11px;}
+.seg{flex:1;border:none;border-radius:99px;padding:10px 4px;font-weight:800;font-size:12.5px;background:none;color:#a09884;
+  font-family:inherit;cursor:pointer;transition:.18s;}
+.seg.on{background:#1a1a1a;color:var(--y);}
+.dtbl{width:100%;border-collapse:separate;border-spacing:0 5px;font-size:12.5px;}
+.dtbl th{font-size:9.5px;color:#a09884;text-transform:uppercase;letter-spacing:.4px;font-weight:800;
+  padding:0 7px 4px;text-align:center;white-space:nowrap;position:sticky;top:0;background:#fff;z-index:2;}
+.dtbl th.l,.dtbl td.l{text-align:left;}
+.dtbl td{padding:9px 7px;text-align:center;background:#fbf9f4;white-space:nowrap;font-weight:700;}
+.dtbl td:first-child{border-radius:14px 0 0 14px;} .dtbl td:last-child{border-radius:0 14px 14px 0;}
+.dtbl td.g{background:#e6f5eb;color:#12683f;} .dtbl td.b{background:#fdeaea;color:#b3121d;}
+.dtbl td.n{color:#c4bca6;font-weight:600;}
+.dtbl .nm{font-weight:800;} .dtbl .s2{font-size:10px;color:#8a8272;font-weight:600;}
+.dtbl tr.sep td{background:none;padding:2px;}
+.dwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -6px;padding:0 6px;max-height:70vh;overflow-y:auto;}
+.impcard{display:flex;align-items:center;gap:11px;background:#fbf9f4;border-radius:18px;padding:12px 14px;margin-bottom:7px;
+  cursor:pointer;transition:.18s;} .impcard:active{transform:scale(.985);}
+.impcard.up{background:linear-gradient(135deg,#e6f5eb,#f3faf5);} .impcard.dn{background:linear-gradient(135deg,#fdeaea,#fff5f5);}
+.impcard .dp{font-weight:900;font-size:16px;width:52px;flex-shrink:0;}
+.impcard .bd{flex:1;min-width:0;} .impcard .t1{font-weight:800;font-size:12.5px;}
+.impcard .t2{font-size:10.5px;color:#8a8272;font-weight:600;margin-top:2px;}
+.impcard .pc{font-size:20px;font-weight:900;white-space:nowrap;}
+.impcard .pc.up{color:#12683f;} .impcard .pc.dn{color:#b3121d;} .impcard .pc.eq{color:#a09884;}
+.dlg{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:#8a8272;font-weight:700;margin-top:9px;align-items:center;}
+.dlg i{width:13px;height:13px;border-radius:4px;display:inline-block;margin-right:4px;vertical-align:-2px;font-style:normal;}
+.cmpsel{display:flex;gap:7px;margin-top:11px;}
+.cmpsel button{flex:1;border:none;border-radius:14px;padding:11px 8px;font-weight:800;font-size:12px;font-family:inherit;
+  cursor:pointer;background:rgba(255,255,255,.1);color:#cfc8b8;transition:.18s;}
+.cmpsel button.on{background:var(--y);color:#1a1a1a;}
 /* ---- ตัวเลือกช่วงวัน + ปุ่มสาขา (ดีไซน์ใหม่) ---- */
 .rangebar{background:linear-gradient(135deg,#1a1a1a,#2e2e2e);border-radius:24px;padding:16px;margin-bottom:11px;
   box-shadow:0 6px 22px rgba(0,0,0,.18);color:#fff;animation:fadeUp .3s ease;}
@@ -162,6 +192,7 @@ textarea:focus{outline:2px solid var(--y);}
     <button class="mtab on" id="tb_live" onclick="window.__tab('live')">🔴 Live</button>
     <button class="mtab" id="tb_ins" onclick="window.__tab('ins')">📈 อินไซต์</button>
     <button class="mtab" id="tb_ch" onclick="window.__tab('ch')">📊 กราฟ</button>
+    <button class="mtab" id="tb_data" onclick="window.__tab('data')">📋 Data</button>
   </div>
   <div id="viewLive">
   <div id="kpis"></div>
@@ -181,6 +212,7 @@ textarea:focus{outline:2px solid var(--y);}
   </div>
   <div id="viewIns" style="display:none;"></div>
   <div id="viewCh" style="display:none;"></div>
+  <div id="viewData" style="display:none;"></div>
 </div>
 
 <div class="modal" id="mdl"><div class="sheet" id="mdlBody"></div></div>
@@ -491,15 +523,17 @@ function render(){
 let MTAB='live', HIST=null, histLoading=false;
 window.__tab=t=>{
   MTAB=t;
-  ['live','ins','ch'].forEach(k=>{
+  ['live','ins','ch','data'].forEach(k=>{
     const b=document.getElementById('tb_'+(k==='live'?'live':k));
     if(b) b.classList.toggle('on',t===k);
   });
   document.getElementById('viewLive').style.display= t==='live'?'':'none';
   document.getElementById('viewIns').style.display = t==='ins'?'':'none';
   document.getElementById('viewCh').style.display  = t==='ch'?'':'none';
+  document.getElementById('viewData').style.display= t==='data'?'':'none';
   if(t==='ins'){ renderIns(); if(!HIST&&!histLoading) loadHist(); }
   if(t==='ch'){ renderCh(); if(!HIST&&!histLoading) loadHist(); }
+  if(t==='data'){ renderData(); ensureData(); }
 };
 
 function nowSec(){ const d=new Date(); return d.getHours()*3600+d.getMinutes()*60; }
@@ -746,6 +780,7 @@ window.__setRange=(f,t)=>{
   if(rangeDays()>92) RFROM=addD(RTO,-91);
   HIST=null; loadHist();
   if(MTAB==='ch') renderCh(); if(MTAB==='ins') renderIns();
+  if(MTAB==='data'){ renderData(); ensureData(); }
 };
 window.__quick=n=>{
   const t=todayKey();
@@ -755,6 +790,7 @@ window.__quick=n=>{
   else { RTO=t; RFROM=addD(t,-(n-1)); }
   HIST=null; loadHist();
   if(MTAB==='ch') renderCh(); if(MTAB==='ins') renderIns();
+  if(MTAB==='data'){ renderData(); ensureData(); }
 };
 function rangeBarHTML(withDeps){
   const days=rangeDays(), t=todayKey();
@@ -799,6 +835,314 @@ function renderCh(){
   METRICS.forEach(m=>drawMetric(m,deps));       // วาดทันที (DOM พร้อมแล้ว)
 }
 window.__chDep=d=>{ CHDEP=d; renderCh(); };
+
+/* ================= 📋 DATA TAB ================= */
+let DLEVEL='dep', DMODE='data', CMODE='auto', DLOAD=false;
+let BFROM=(()=>{ const d=new Date(); d.setDate(d.getDate()-13); return dKey(d); })(),
+    BTO  =(()=>{ const d=new Date(); d.setDate(d.getDate()-7);  return dKey(d); })();
+const RC={};                                  /* cache: 'DEP|YYYY-MM-DD' -> doc | null */
+
+function dList(f,t){ const o=[]; let k=f,g=0; while(k<=t&&g++<95){ o.push(k); k=addD(k,1); } return o.length?o:[f]; }
+function baseRange(){
+  if(CMODE==='custom') return {f:BFROM,t:BTO};
+  const n=rangeDays(), t=addD(RFROM,-1);       /* ช่วงเท่ากันที่อยู่ก่อนหน้า */
+  return {f:addD(t,-(n-1)), t};
+}
+function docOf(dep,dk){
+  if(dk===DATE && DATA[dep]) return DATA[dep];
+  const v=RC[dep+'|'+dk]; return v||null;
+}
+async function ensureData(){
+  if(DLOAD) return;
+  const b=baseRange();
+  const need=[];
+  const want= DMODE==='cmp' ? chDates().concat(dList(b.f,b.t)) : chDates();
+  DEPOTS.forEach(dep=> want.forEach(dk=>{
+    if(dk===DATE) return;
+    if(RC[dep+'|'+dk]===undefined) need.push([dep,dk]);
+  }));
+  if(!need.length){ renderData(); return; }
+  DLOAD=true; renderData();
+  const jobs=need.map(([dep,dk])=> getDoc(doc(db,'depots',dep,'days',dk))
+    .then(s=>{ RC[dep+'|'+dk]= s.exists()? s.data() : null; })
+    .catch(()=>{ RC[dep+'|'+dk]=null; }));
+  for(let i=0;i<jobs.length;i+=40) await Promise.all(jobs.slice(i,i+40));
+  DLOAD=false; renderData();
+}
+function cmapAll(dep){
+  const m={}, add=l=>(l||[]).forEach(c=>{ if(c&&c.id!=null&&!m[c.id]) m[c.id]=c; });
+  add(DATA[dep]&&DATA[dep].couriers);
+  Object.keys(RC).forEach(k=>{ if(k.indexOf(dep+'|')===0&&RC[k]) add(RC[k].couriers); });
+  if(HIST&&HIST[dep]) HIST[dep].forEach(x=>add(x.couriers));
+  add(META[dep]&&META[dep].couriers);
+  return m;
+}
+/* ---- รวมค่าระดับสาขา ---- */
+function aggDep(dep,dks){
+  let days=0,ckN=0,lateN=0,lateMin=0,okT=0,totT=0;
+  const pd=[],fib=[],lib=[],dp=[],fd=[];
+  dks.forEach(dk=>{
+    const d=docOf(dep,dk); if(!d) return;
+    const ck=Object.values(d.checkins||{}), p=d.pph||{}, rp=Object.values(p.rp||{});
+    if(!ck.length && !p.inboundTs && !rp.length) return;
+    days++;
+    ck.forEach(r=>{ ckN++; const s=secOf(r.ts);
+      if(r.status==='late'||s>GRACE) lateN++;
+      lateMin += Math.max(0,s-CUT)/60; });
+    if(ck.length){ totT++; if(!ck.some(r=>r.status==='late'||secOf(r.ts)>GRACE)) okT++; }
+    if(p.pd&&p.pd.ts){ const s=secOf(p.pd.ts); pd.push(s); totT++; if(s<=PD_END) okT++; }
+    if(p.inboundTs) fib.push(secOf(p.inboundTs));
+    if(p.lastInboundTs) lib.push(secOf(p.lastInboundTs));
+    const a1=rp.map(x=>x.dep).filter(Boolean);
+    if(a1.length){ const a=av(a1.map(secOf)); dp.push(a); totT++; if(a<T_DEP) okT++; }
+    const a2=rp.map(x=>x.fdel).filter(Boolean);
+    if(a2.length){ const a=av(a2.map(secOf)); fd.push(a); totT++; if(a<T_FDEL) okT++; }
+  });
+  if(!days) return null;
+  return { days, head: ckN? Math.round(ckN/days):0, ckN, lateN,
+    ontime: ckN? (ckN-lateN)/ckN*100 : null,
+    lateAvg: ckN? lateMin/ckN : null,
+    pd:av(pd), fib:av(fib), lib:av(lib), dep:av(dp), fdel:av(fd),
+    tgt: totT? okT/totT*100 : null };
+}
+/* ---- รวมค่ารายบุคคล ---- */
+function aggPeople(deps,dks){
+  const M={};
+  deps.forEach(dep=>{
+    const cm=cmapAll(dep);
+    const get=cid=>{ const k=dep+'|'+cid;
+      return M[k]||(M[k]={dep,cid,c:cm[cid]||{},days:0,late:0,lateMin:0,fs:[],dp:[],fd:[]}); };
+    dks.forEach(dk=>{
+      const d=docOf(dep,dk); if(!d) return;
+      const p=d.pph||{};
+      Object.entries(d.checkins||{}).forEach(([cid,r])=>{
+        const o=get(cid); o.days++; const s=secOf(r.ts);
+        if(r.status==='late'||s>GRACE) o.late++;
+        o.lateMin += Math.max(0,s-CUT)/60;
+      });
+      Object.entries(p.rp||{}).forEach(([cid,q])=>{
+        const o=get(cid);
+        if(q.fs) o.fs.push(secOf(q.fs));
+        if(q.dep) o.dp.push(secOf(q.dep));
+        if(q.fdel) o.fd.push(secOf(q.fdel));
+      });
+    });
+  });
+  return Object.values(M).filter(o=>o.days||o.fs.length||o.dp.length||o.fd.length)
+    .map(o=>({...o, ontime:o.days? (o.days-o.late)/o.days*100:null,
+      lateAvg:o.days? o.lateMin/o.days:null,
+      fsA:av(o.fs), dpA:av(o.dp), fdA:av(o.fd)}));
+}
+/* ---- เซลล์พร้อมสี ---- */
+function cel(v,fmt,ok){
+  if(v==null||isNaN(v)) return '<td class="n">—</td>';
+  return '<td class="'+(ok===null?'':(ok?'g':'b'))+'">'+fmt(v)+'</td>';
+}
+const m1=v=>Math.round(v*10)/10;
+
+/* ---- ตารางระดับสาขา ---- */
+function tblDep(dks){
+  const rows=DEPOTS.map(dep=>({dep,a:aggDep(dep,dks)})).filter(x=>x.a);
+  if(!rows.length) return '<div class="empty">ไม่มีข้อมูลในช่วงวันที่เลือก</div>';
+  rows.sort((x,y)=>(y.a.ontime??-1)-(x.a.ontime??-1));
+  let h='<div class="dwrap"><table class="dtbl"><thead><tr>'
+    +'<th class="l">สาขา</th><th>วัน</th><th>คน</th><th>Ontime</th><th>สาย</th><th>นาทีสาย/คน</th>'
+    +'<th>PD</th><th>First IB</th><th>Last IB</th><th>Departure</th><th>First Del</th><th>Task ตามเป้า</th>'
+    +'</tr></thead><tbody>';
+  rows.forEach(({dep,a})=>{
+    h+='<tr><td class="l"><div class="nm">'+dep+'</div><div class="s2">'+a.days+' วัน</div></td>'
+      +'<td class="n">'+a.days+'</td><td class="n">'+a.head+'</td>'
+      +cel(a.ontime,v=>Math.round(v)+'%', a.ontime>=95)
+      +cel(a.lateN,v=>v+' ครั้ง', a.lateN===0)
+      +cel(a.lateAvg,v=>m1(v)+' น.', a.lateAvg<=2)
+      +cel(a.pd,hmOf,a.pd<=PD_END)
+      +cel(a.fib,hmOf,null)
+      +cel(a.lib,hmOf,null)
+      +cel(a.dep,hmOf,a.dep<T_DEP)
+      +cel(a.fdel,hmOf,a.fdel<T_FDEL)
+      +cel(a.tgt,v=>Math.round(v)+'%',a.tgt>=80)
+      +'</tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+/* ---- ตารางรายบุคคล ---- */
+function tblPeople(dks){
+  const rows=aggPeople(DEPOTS,dks);
+  if(!rows.length) return '<div class="empty">ไม่มีข้อมูลในช่วงวันที่เลือก</div>';
+  rows.sort((a,b2)=>(b2.lateAvg??-1)-(a.lateAvg??-1));
+  let h='<div class="dwrap"><table class="dtbl"><thead><tr>'
+    +'<th class="l">รหัส / ชื่อ</th><th>สาขา</th><th>ประเภทรถ</th><th>Vendor</th><th>วัน</th>'
+    +'<th>Ontime</th><th>สาย</th><th>นาทีสาย/วัน</th><th>FS</th><th>Departure</th><th>First Del</th>'
+    +'</tr></thead><tbody>';
+  rows.forEach(o=>{
+    h+='<tr><td class="l"><div class="nm">'+esc(o.c.code||('#'+o.cid))+'</div>'
+      +'<div class="s2">'+esc(o.c.name||'—')+'</div></td>'
+      +'<td class="n">'+o.dep+'</td>'
+      +'<td class="n">'+esc(o.c.type||'—')+'</td>'
+      +'<td class="n">'+esc(o.c.vendor||'—')+'</td>'
+      +'<td class="n">'+o.days+'</td>'
+      +cel(o.ontime,v=>Math.round(v)+'%',o.ontime>=95)
+      +cel(o.late,v=>v+' ครั้ง',o.late===0)
+      +cel(o.lateAvg,v=>m1(v)+' น.',o.lateAvg<=2)
+      +cel(o.fsA,hmOf,null)
+      +cel(o.dpA,hmOf,o.dpA<T_DEP)
+      +cel(o.fdA,hmOf,o.fdA<T_FDEL)
+      +'</tr>';
+  });
+  return h+'</tbody></table><div class="small" style="margin-top:8px;">เรียงจากคนที่สายเฉลี่ยมากสุด → น้อยสุด</div></div>';
+}
+/* ---- คำนวณ % พัฒนาการ ---- */
+const IMET=[
+  {k:'ontime', l:'Ontime %',       fmt:v=>Math.round(v)+'%',   hi:true,  tgt:95,    unit:'p'},
+  {k:'lateAvg',l:'นาทีสาย/คน',      fmt:v=>m1(v)+' น.',         hi:false, tgt:0,     unit:'m'},
+  {k:'pd',     l:'PD',             fmt:hmOf,                   hi:false, tgt:PD_END,unit:'t'},
+  {k:'dep',    l:'Departure',      fmt:hmOf,                   hi:false, tgt:T_DEP, unit:'t'},
+  {k:'fdel',   l:'First Del',      fmt:hmOf,                   hi:false, tgt:T_FDEL,unit:'t'},
+  {k:'tgt',    l:'Task ตามเป้า %',  fmt:v=>Math.round(v)+'%',   hi:true,  tgt:80,    unit:'p'}
+];
+/* คืน % พัฒนาการ (+ = ดีขึ้น) */
+function impPct(m,a,b){
+  if(a==null||b==null||isNaN(a)||isNaN(b)) return null;
+  if(m.hi){ if(a<=0) return b>0?100:0; return (b-a)/Math.abs(a)*100; }
+  if(m.unit==='m'){ if(a<=0) return b<=0?0:-100; return (a-b)/a*100; }
+  /* เวลา: วัดจาก "นาทีที่เกินเป้า" */
+  const A=Math.max(0,a-m.tgt), B=Math.max(0,b-m.tgt);
+  if(A<=0) return B<=0? 0 : -100;
+  return (A-B)/A*100;
+}
+const clamp=v=>Math.max(-100,Math.min(100,v));
+function pcHTML(p){
+  if(p==null) return '<span class="pc eq">—</span>';
+  const c= p>1?'up':(p<-1?'dn':'eq'), s= p>1?'▲':(p<-1?'▼':'•');
+  return '<span class="pc '+c+'">'+s+' '+Math.abs(Math.round(p))+'%</span>';
+}
+function cmpRows(){
+  const b=baseRange(), A=dList(b.f,b.t), B=chDates();
+  return DEPOTS.map(dep=>{
+    const a=aggDep(dep,A), c=aggDep(dep,B);
+    if(!a||!c) return {dep,a,c,score:null,det:[]};
+    const det=IMET.map(m=>({m, va:a[m.k], vb:c[m.k], p:impPct(m,a[m.k],c[m.k])}));
+    const ps=det.map(d=>d.p).filter(p=>p!=null).map(clamp);
+    return {dep,a,c,det,score: ps.length? av(ps):null};
+  }).filter(x=>x.a&&x.c);
+}
+/* ---- วาดแท็บ Data ---- */
+function renderData(){
+  if(MTAB!=='data') return;
+  const dks=chDates();
+  let h='<div class="segbar">'
+    +'<button class="seg'+(DMODE==='data'?' on':'')+'" onclick="window.__dMode(\'data\')">📋 ชุดข้อมูล</button>'
+    +'<button class="seg'+(DMODE==='cmp'?' on':'')+'" onclick="window.__dMode(\'cmp\')">📈 เปรียบเทียบ Improve</button>'
+    +'</div>';
+  h+=rangeBarHTML(false);
+  if(DMODE==='cmp'){
+    const b=baseRange();
+    h+='<div class="rangebar">'
+      +'<div class="lab">⚖️ เทียบกับช่วงไหน</div>'
+      +'<div class="cmpsel" style="margin-top:0;">'
+      +'<button class="'+(CMODE==='auto'?'on':'')+'" onclick="window.__cMode(\'auto\')">⚡ ช่วงก่อนหน้าอัตโนมัติ</button>'
+      +'<button class="'+(CMODE==='custom'?'on':'')+'" onclick="window.__cMode(\'custom\')">📅 เลือกเอง</button></div>'
+      +(CMODE==='custom'
+        ? '<div style="display:flex;gap:9px;align-items:flex-end;margin-top:11px;">'
+          +'<div class="dfield"><div class="lab">ช่วงฐาน (ก่อน)</div>'
+          +'<input type="date" value="'+BFROM+'" max="'+todayKey()+'" onchange="window.__setBase(this.value,null)"></div>'
+          +'<div class="dsep">→</div>'
+          +'<div class="dfield"><div class="lab">ถึงวันที่</div>'
+          +'<input type="date" value="'+BTO+'" max="'+todayKey()+'" onchange="window.__setBase(null,this.value)"></div></div>'
+        : '')
+      +'<div class="rsum">⚖️ ฐาน <b>'+thD(b.f)+' → '+thD(b.t)+'</b> &nbsp;⟶&nbsp; ปัจจุบัน <b>'
+      +thD(RFROM)+' → '+thD(RTO)+'</b></div></div>';
+  }
+
+  if(DMODE==='data'){
+    h+='<div class="segbar">'
+      +'<button class="seg'+(DLEVEL==='dep'?' on':'')+'" onclick="window.__dLv(\'dep\')">🏢 รายสาขา</button>'
+      +'<button class="seg'+(DLEVEL==='ppl'?' on':'')+'" onclick="window.__dLv(\'ppl\')">👤 รายบุคคล</button>'
+      +'</div>';
+    h+='<div class="card"><h2>'+(DLEVEL==='dep'?'🏢 ข้อมูลรายสาขา':'👤 ข้อมูลรายบุคคล')
+      +' <span class="small">'+dks.length+' วัน • '+thD(RFROM)+(RFROM===RTO?'':' → '+thD(RTO))
+      +(DLOAD?' • กำลังโหลด...':'')+'</span></h2>'
+      + (DLOAD && !Object.keys(RC).length ? '<div class="empty">กำลังโหลดข้อมูล...</div>'
+         : (DLEVEL==='dep'? tblDep(dks) : tblPeople(dks)))
+      +'<div class="dlg"><span><i style="background:#e6f5eb"></i>Ontime / ตามเป้า</span>'
+      +'<span><i style="background:#fdeaea"></i>Late / ไม่ถึงเป้า</span>'
+      +'<span><i style="background:#fbf9f4"></i>ไม่มีเป้า</span>'
+      +'<span>เป้า: เข้างาน 07:00 • PD 07:15 • Departure 08:30 • First Del 09:00</span></div></div>';
+  } else {
+    const rows=cmpRows();
+    rows.sort((a,b2)=>(b2.score??-999)-(a.score??-999));
+    h+='<div class="card"><h2>🏆 พัฒนาการรายสาขา <span class="small">เรียงจากดีขึ้นมากสุด • แตะเพื่อดูรายละเอียด</span></h2>';
+    if(DLOAD) h+='<div class="empty">กำลังโหลดข้อมูล...</div>';
+    else if(!rows.length) h+='<div class="empty">ยังไม่มีข้อมูลพอเปรียบเทียบ — ลองขยายช่วงวันที่</div>';
+    else rows.forEach(r=>{
+      const up= r.score>1, dn= r.score<-1;
+      const best=r.det.filter(d=>d.p!=null).sort((a,b2)=>b2.p-a.p)[0];
+      const worst=r.det.filter(d=>d.p!=null).sort((a,b2)=>a.p-b2.p)[0];
+      h+='<div class="impcard '+(up?'up':(dn?'dn':''))+'" onclick="window.__impD(\''+r.dep+'\')">'
+        +'<div class="dp">'+r.dep+'</div><div class="bd">'
+        +'<div class="t1">'+(up?'ดีขึ้น':(dn?'แย่ลง':'ทรงตัว'))
+        +' • '+r.a.days+' วัน → '+r.c.days+' วัน</div>'
+        +'<div class="t2">'+(best?'ดีสุด: '+best.m.l+' '+(best.p>0?'+':'')+Math.round(best.p)+'%':'')
+        +(worst&&worst!==best?' • แย่สุด: '+worst.m.l+' '+Math.round(worst.p)+'%':'')+'</div></div>'
+        +pcHTML(r.score)+'</div>';
+    });
+    h+='</div>';
+    /* ตารางละเอียด */
+    if(!DLOAD && rows.length){
+      h+='<div class="card"><h2>📊 รายละเอียดตัวชี้วัด <span class="small">ก่อน → หลัง • % คือพัฒนาการ</span></h2>'
+        +'<div class="dwrap"><table class="dtbl"><thead><tr><th class="l">สาขา / ตัวชี้วัด</th>'
+        +'<th>ช่วงก่อน</th><th>ช่วงปัจจุบัน</th><th>เปลี่ยนแปลง</th><th>% พัฒนาการ</th></tr></thead><tbody>';
+      rows.forEach(r=>{
+        h+='<tr><td class="l" colspan="5" style="background:#1a1a1a;color:var(--y);border-radius:12px;font-weight:900;">'
+          +r.dep+' &nbsp;<span style="font-weight:600;font-size:11px;color:#a09884;">รวม '+(r.score==null?'—':(r.score>0?'+':'')+Math.round(r.score)+'%')+'</span></td></tr>';
+        r.det.forEach(d=>{
+          const good= d.p!=null && d.p>1, bad= d.p!=null && d.p<-1;
+          let diff='—';
+          if(d.va!=null&&d.vb!=null){
+            if(d.m.unit==='t'){ const mm=Math.round((d.vb-d.va)/60); diff=(mm>0?'+':'')+mm+' นาที'; }
+            else if(d.m.unit==='m'){ diff=((d.vb-d.va)>0?'+':'')+m1(d.vb-d.va)+' น.'; }
+            else { diff=((d.vb-d.va)>0?'+':'')+Math.round(d.vb-d.va)+' จุด'; }
+          }
+          h+='<tr><td class="l">'+d.m.l+'</td>'
+            +'<td class="n">'+(d.va==null?'—':d.m.fmt(d.va))+'</td>'
+            +'<td class="'+(d.vb==null?'n':(d.m.hi? (d.vb>=d.m.tgt?'g':'b') : (d.vb<=d.m.tgt?'g':'b')))+'">'
+            +(d.vb==null?'—':d.m.fmt(d.vb))+'</td>'
+            +'<td class="'+(good?'g':(bad?'b':'n'))+'">'+diff+'</td>'
+            +'<td class="'+(good?'g':(bad?'b':'n'))+'">'+(d.p==null?'—':(d.p>0?'+':'')+Math.round(clamp(d.p))+'%')+'</td></tr>';
+        });
+        h+='<tr class="sep"><td colspan="5"></td></tr>';
+      });
+      h+='</tbody></table></div></div>';
+    }
+  }
+  document.getElementById('viewData').innerHTML=h;
+}
+window.__dMode=m=>{ DMODE=m; renderData(); ensureData(); };
+window.__dLv  =l=>{ DLEVEL=l; renderData(); };
+window.__cMode=m=>{ CMODE=m; renderData(); ensureData(); };
+window.__setBase=(f,t)=>{
+  if(f) BFROM=f; if(t) BTO=t;
+  if(BFROM>BTO){ const x=BFROM; BFROM=BTO; BTO=x; }
+  renderData(); ensureData();
+};
+window.__impD=dep=>{
+  const b=baseRange(), a=aggDep(dep,dList(b.f,b.t)), c=aggDep(dep,chDates());
+  if(!a||!c) return;
+  let x='<h2 style="margin-bottom:8px;">📈 '+dep+' — พัฒนาการ</h2>'
+    +'<div class="small" style="margin-bottom:10px;">'+thD(b.f)+' → '+thD(b.t)
+    +' &nbsp;เทียบกับ&nbsp; '+thD(RFROM)+' → '+thD(RTO)+'</div>';
+  IMET.forEach(m=>{
+    const p=impPct(m,a[m.k],c[m.k]);
+    x+='<div class="row-c"><div class="info"><div class="nm">'+m.l+'</div>'
+      +'<div class="sub2">'+(a[m.k]==null?'—':m.fmt(a[m.k]))+' → '+(c[m.k]==null?'—':m.fmt(c[m.k]))+'</div></div>'
+      +'<span class="chip '+(p!=null&&p>1?'ok':(p!=null&&p<-1?'no':''))+'">'
+      +(p==null?'—':(p>0?'+':'')+Math.round(clamp(p))+'%')+'</span></div>';
+  });
+  document.getElementById('mdlBody').innerHTML=x
+    +'<div style="margin-top:14px;"><button class="btn btn-o" style="width:100%;" '
+    +'onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
+  document.getElementById('mdl').classList.add('show');
+};
 function cvx(id,hpx){
   const c=document.getElementById(id); if(!c) return null;
   const dpr=window.devicePixelRatio||1, w=c.clientWidth||600, hh=hpx||150;

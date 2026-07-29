@@ -248,11 +248,25 @@ async function afterLogin(){
     try{ localStorage.setItem('settings',JSON.stringify(st)); }catch(e){}
     if(window.applyHeader) applyHeader();
   }
+  /* 1) ดึงของสาขาลงมาก่อน (สำคัญมากสำหรับเครื่องที่ยังไม่มีข้อมูล/รายชื่อ) */
+  await pullOnce();
+  /* 2) แล้วค่อยส่งของเราขึ้นไปเสริม */
   await pushAll();
   listenDay();
   listenComments();
   startHeartbeat();
   purgeOldPhotos30();
+}
+
+/* ดึงข้อมูลวันนี้ + รายชื่อ Courier ของสาขาลงเครื่องทันที */
+async function pullOnce(){
+  try{
+    const dep0=await getDoc(depRef(S.depot));
+    if(dep0.exists() && dep0.data().couriers) mergeCouriers(dep0.data().couriers);
+    const snap=await getDoc(dayRef(S.depot,tKey()));
+    if(snap.exists()) await mergeRemote(snap.data());
+    else repaintSoon();
+  }catch(e){ console.warn('pull',e); }
 }
 
 /* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */
@@ -331,23 +345,55 @@ function listenDay(){
   }, e=>console.warn('listen day',e));
 }
 
+/* ซิงค์รายชื่อ Courier ลงเครื่อง — สำคัญมากสำหรับเครื่องที่เพิ่งเข้าใช้ครั้งแรก */
+function mergeCouriers(list){
+  if(!Array.isArray(list)||!list.length) return false;
+  const arr=getCouriers();
+  if(!Array.isArray(arr)) return false;
+  const have={}; arr.forEach(c=>have[c.id]=c);
+  let changed=false;
+  list.forEach(c=>{
+    if(!have[c.id]){ arr.push({ id:c.id, code:c.code, name:c.name,
+      vendor:c.vendor||'', type:c.type||'2W', active:true }); changed=true; }
+    else{
+      const o=have[c.id];
+      if(!o.code&&c.code){ o.code=c.code; changed=true; }
+      if(!o.name&&c.name){ o.name=c.name; changed=true; }
+      if(!o.vendor&&c.vendor){ o.vendor=c.vendor; changed=true; }
+      if(!o.type&&c.type){ o.type=c.type; changed=true; }
+    }
+  });
+  if(changed){
+    try{ localStorage.setItem('couriers',JSON.stringify(arr)); }catch(e){}
+    try{ if(window.saveCouriers) saveCouriers(); }catch(e){}
+    try{ if(window.renderManage) renderManage(); }catch(e){}
+  }
+  return changed;
+}
+
 async function mergeRemote(d){
+  if(S.merging) return;
+  S.merging=true;                       // ⛔ กันลูป: ระหว่าง merge จะไม่ push กลับ
   try{
     const date=d.date||tKey();
     let changed=false;
+    /* --- รายชื่อ Courier (ต้องมาก่อน เพื่อให้เช็คอินมีที่แสดง) --- */
+    if(mergeCouriers(d.couriers)) changed=true;
+    const putCk = S._rawPutCheckin || window.putCheckin;   // ใช้ตัวดิบ ไม่ trigger push
+    const putPp = S._rawPutPPH || window.putPPH;
     /* --- เช็คอิน --- */
     const local = window.getByDate? await getByDate(date) : [];
     const lmap={}; local.forEach(r=>lmap[r.courierId]=r);
     for(const [cid,rc] of Object.entries(d.checkins||{})){
       const id=+cid, cur=lmap[id];
       if(!cur){
-        await putCheckin({ courierId:id, date, ts:rc.ts, status:rc.status, buffer:!!rc.buffer,
+        await putCk({ courierId:id, date, ts:rc.ts, status:rc.status, buffer:!!rc.buffer,
           photo:null, uniform:rc.uniform!==false, manualEdit:!!rc.manualEdit, staff:rc.staff||'' });
         changed=true;
       } else if(cur.ts!==rc.ts || cur.status!==rc.status || (!!cur.manualEdit)!==(!!rc.manualEdit)){
         cur.ts=rc.ts; cur.status=rc.status; cur.buffer=!!rc.buffer;
         cur.manualEdit=!!rc.manualEdit; cur.uniform=rc.uniform!==false;
-        await putCheckin(cur); changed=true;
+        await putCk(cur); changed=true;
       }
     }
     /* --- PPH / Route prep / PD --- */
@@ -361,20 +407,37 @@ async function mergeRemote(d){
         cur.pNew=r.pNew; cur.pOld=r.pOld; cur.inboundTs=r.inboundTs;
         cur.lastInboundTs=r.lastInboundTs; cur.rp=r.rp||{};
         if(r.pd){ cur.pd = cur.pd||{}; cur.pd.ts=r.pd.ts; cur.pd.manualEdit=!!r.pd.manualEdit; }
-        await putPPH(cur); changed=true;
+        await putPp(cur); changed=true;
       }
     }
-    if(changed){
-      toast('☁ ซิงค์ข้อมูลจากเครื่องอื่นแล้ว');
-      const v=document.querySelector('.view.active');
-      const id=v? v.id:'';
-      if(id==='view-checkin'&&window.renderCheckin) renderCheckin();
-      if(id==='view-pd'&&window.renderPDCard) renderPDCard();
-      if(id==='view-pph'&&window.renderPPH) renderPPH();
-      if(id==='view-fdel'&&window.renderFDel) renderFDel();
-      if(id==='view-dash'&&window.renderDash) renderDash();
-    }
+    if(changed) repaintSoon();
   }catch(e){ console.warn('merge',e); }
+  finally{ S.merging=false; }
+}
+
+/* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
+let paintT=null, paintQueued=false;
+function repaintSoon(){
+  paintQueued=true;
+  if(paintT) return;
+  paintT=setTimeout(()=>{
+    paintT=null;
+    if(!paintQueued) return;
+    paintQueued=false;
+    /* ไม่วาดถ้าผู้ใช้กำลังพิมพ์/เปิดกล้อง/เปิด popup อยู่ — กันจอกระพริบขณะทำงาน */
+    const ae=document.activeElement;
+    if(ae && (ae.tagName==='INPUT'||ae.tagName==='SELECT'||ae.tagName==='TEXTAREA')) { repaintSoon(); return; }
+    if(document.querySelector('.overlay.show, .modal.show')) { repaintSoon(); return; }
+    toast('☁ ซิงค์ข้อมูลจากเครื่องอื่นแล้ว');
+    const v=document.querySelector('.view.active'); const id=v? v.id:'';
+    try{
+      if(id==='view-checkin'&&window.renderCheckin) renderCheckin();
+      else if(id==='view-pd'&&window.renderPDCard) renderPDCard();
+      else if(id==='view-pph'&&window.renderPPH) renderPPH();
+      else if(id==='view-fdel'&&window.renderFDel) renderFDel();
+      else if(id==='view-dash'&&window.renderDash) renderDash();
+    }catch(e){}
+  },1200);
 }
 
 /* ============ COMMENTS ============ */
@@ -463,19 +526,22 @@ setInterval(mountLogout,2000);
 /* ============ WRAP ฟังก์ชันเดิม ============ */
 function wrap(){
   if(window.putCheckin && !window.putCheckin.__ds){
-    const o=window.putCheckin;
-    const f=async function(rec){ const r=await o(rec); pushSoon(); if(rec&&rec.photo) pushPhoto('ci',rec.courierId,rec.photo); return r; };
+    const o=window.putCheckin; S._rawPutCheckin=o;
+    const f=async function(rec){ const r=await o(rec);
+      if(!S.merging){ pushSoon(); if(rec&&rec.photo) pushPhoto('ci',rec.courierId,rec.photo); }
+      return r; };
     f.__ds=true; window.putCheckin=f;
   }
   if(window.putPPH && !window.putPPH.__ds){
-    const o=window.putPPH;
-    const f=async function(rec){ const r=await o(rec); pushSoon();
-      if(rec&&rec.pd&&rec.pd.photo) pushPhoto('pd',null,rec.pd.photo); return r; };
+    const o=window.putPPH; S._rawPutPPH=o;
+    const f=async function(rec){ const r=await o(rec);
+      if(!S.merging){ pushSoon(); if(rec&&rec.pd&&rec.pd.photo) pushPhoto('pd',null,rec.pd.photo); }
+      return r; };
     f.__ds=true; window.putPPH=f;
   }
   if(window.delCheckin && !window.delCheckin.__ds){
-    const o=window.delCheckin;
-    const f=async function(id){ const r=await o(id); pushSoon(); return r; };
+    const o=window.delCheckin; S._rawDel=o;
+    const f=async function(id){ const r=await o(id); if(!S.merging) pushSoon(); return r; };
     f.__ds=true; window.delCheckin=f;
   }
 }

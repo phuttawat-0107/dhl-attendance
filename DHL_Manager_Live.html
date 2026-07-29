@@ -371,8 +371,10 @@ function pushNoti(title,body,tag){
   }catch(e){}
 }
 const TASK_ICON={checkin:'✅',pd:'📸',fib:'📥',lib:'📦',dep:'🚚',fdel:'🎯'};
+window.__PREV=PREV;
 /* ตรวจว่ามี Task ไหน "เพิ่งเสร็จ" แล้วแจ้ง */
 function checkDone(){
+  window.__cdRuns=(window.__cdRuns||0)+1;
   DEPOTS.forEach(dep=>{
     if(!DATA[dep]) return;
     let doneCount=0;

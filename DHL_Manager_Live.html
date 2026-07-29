@@ -99,6 +99,7 @@ textarea:focus{outline:2px solid var(--y);}
   box-shadow:0 5px 18px rgba(0,0,0,.3);transition:transform .18s cubic-bezier(.34,1.56,.64,1);}
 #notiBtn:active{transform:scale(.92);}
 #notiBtn.off{background:#f2ede2;color:#8a8272;}
+#notiBtn.warn{background:#fff3d6;color:#a06a00;}
 #feed{position:fixed;left:0;right:0;bottom:0;z-index:69;pointer-events:none;padding:0 12px 74px;
   display:flex;flex-direction:column;align-items:center;gap:7px;}
 .fitem{pointer-events:auto;background:#1a1a1a;color:#fff;border-radius:16px;padding:11px 15px;max-width:420px;width:100%;
@@ -326,10 +327,13 @@ window.__noti=async ()=>{
   toastFeed('🔔','<b>เปิดแจ้งเตือนแล้ว</b><small>จะแจ้งทุกครั้งที่สาขาทำ Task เสร็จ</small>','');
   ding(1);
 };
+function notiPerm(){ try{ return ('Notification' in window)? Notification.permission : 'na'; }catch(e){ return 'na'; } }
 function updNotiBtn(){
   const b=document.getElementById('notiBtn'); if(!b) return;
-  b.className = notiOn? '' : 'off';
-  b.textContent = notiOn? '🔔 แจ้งเตือน: เปิด' : '🔕 เปิดแจ้งเตือน';
+  const perm=notiPerm();
+  if(!notiOn){ b.className='off'; b.textContent='🔕 เปิดแจ้งเตือน'; return; }
+  if(perm!=='granted'){ b.className='warn'; b.textContent='⚠️ แจ้งเตือน: ในแอปเท่านั้น'; return; }
+  b.className=''; b.textContent='🔔 แจ้งเตือน: เปิด';
 }
 function ding(kind){
   if(!notiOn) return;
@@ -372,6 +376,13 @@ function pushNoti(title,body,tag){
 }
 const TASK_ICON={checkin:'✅',pd:'📸',fib:'📥',lib:'📦',dep:'🚚',fdel:'🎯'};
 window.__PREV=PREV;
+/* ปุ่มทดสอบ: กดค้างที่ปุ่มแจ้งเตือน 1 วิ = ยิงแจ้งเตือนตัวอย่าง */
+window.__testNoti=()=>{
+  toastFeed('🔔','<b>ทดสอบแจ้งเตือน</b> — ระบบทำงานปกติ<small>เมื่อสาขาทำ Task เสร็จ จะขึ้นแบบนี้</small>','ok');
+  pushNoti('🔔 ทดสอบแจ้งเตือน','ระบบแจ้งเตือนทำงานปกติ','test');
+  ding(1);
+  return notiPerm();
+};
 /* ตรวจว่ามี Task ไหน "เพิ่งเสร็จ" แล้วแจ้ง */
 function checkDone(){
   window.__cdRuns=(window.__cdRuns||0)+1;
@@ -1078,6 +1089,16 @@ setInterval(()=>{ const d=new Date();
   document.getElementById('clk').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
   const k=todayKey(); if(k!==DATE){ DATE=k; start(); }
 },1000);
+
+/* 🔔 ตรวจซ้ำทุก 15 วิ กันกรณี render ไม่ถูกเรียก */
+setInterval(()=>{ try{ checkDone(); }catch(e){} },15000);
+/* กดค้างที่ปุ่มแจ้งเตือน 1 วิ = ทดสอบ */
+(function(){ let t=null; const b=document.getElementById('notiBtn'); if(!b) return;
+  const dn=()=>{ t=setTimeout(()=>{ t=null; window.__testNoti(); },900); };
+  const up=()=>{ if(t){ clearTimeout(t); t=null; } };
+  b.addEventListener('touchstart',dn,{passive:true}); b.addEventListener('touchend',up);
+  b.addEventListener('mousedown',dn); b.addEventListener('mouseup',up); b.addEventListener('mouseleave',up);
+})();
 
 signInAnonymously(auth).catch(e=>console.warn(e));
 onAuthStateChanged(auth,u=>{

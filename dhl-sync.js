@@ -177,7 +177,12 @@ async function loadStaffList(){
       err.textContent='สาขานี้ยังไม่มีรายชื่อ — แจ้งผู้จัดการเพิ่มชื่อให้ก่อน';
       return;
     }
-    err.textContent='';
+    const owner=lsGet('dsDataDepot');
+    err.style.color = (owner&&owner!==dep) ? '#a06a00' : '';
+    err.innerHTML = (owner&&owner!==dep)
+      ? '⚠ เครื่องนี้เก็บข้อมูลของสาขา <b>'+owner+'</b> อยู่<br>ถ้าเข้าสาขา <b>'+dep
+        +'</b> ระบบจะล้างข้อมูลเดิมทิ้งแล้วดึงของ '+dep+' ลงมาใหม่'
+      : '';
     sel.innerHTML='<option value="">— เลือกชื่อ —</option>'+names.map(n=>'<option>'+n+'</option>').join('');
     const last=lsGet('dsStaff'); if(last&&names.includes(last)) sel.value=last;
   }catch(e){ sel.innerHTML='<option value="">— เลือกชื่อ —</option>'; }
@@ -282,8 +287,41 @@ function ensureAppSettings(){
   return false;
 }
 
+/* ============ 🔒 กันข้อมูลข้ามสาขา ============
+   เครื่องหนึ่งเครื่องเก็บข้อมูลได้ทีละ 1 สาขาเท่านั้น
+   ถ้าล็อกอินสาขาใหม่ → ล้างข้อมูลสาขาเดิมออกก่อน แล้วดึงของสาขาใหม่ลงมา */
+async function wipeLocalData(){
+  /* ล้าง IndexedDB ทุกตาราง */
+  try{
+    const dbx=await new Promise((res,rej)=>{ const q=indexedDB.open('dhl_attendance');
+      q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
+    for(const n of [...dbx.objectStoreNames]){
+      await new Promise(r=>{ const t=dbx.transaction(n,'readwrite');
+        try{ t.objectStore(n).clear(); }catch(e){}
+        t.oncomplete=r; t.onerror=r; t.onabort=r; });
+    }
+    dbx.close();
+  }catch(e){ console.warn('[ds] wipe idb',e); }
+  /* ล้างรายชื่อ Courier ในเครื่อง */
+  try{ localStorage.removeItem('dhl_couriers'); localStorage.removeItem('couriers'); }catch(e){}
+}
+/* คืน true = กำลังล้าง+รีโหลด ให้หยุดทำงานต่อ */
+async function guardDepotData(){
+  const owner=lsGet('dsDataDepot');
+  if(!owner){ lsSet('dsDataDepot',S.depot); return false; }   // เครื่องเดิม → ผูกสาขาให้เลย
+  if(owner===S.depot) return false;                            // สาขาเดิม → ปกติ
+  const b=document.getElementById('dsBadge');
+  if(b){ b.style.background='#D40511'; b.style.color='#fff';
+         b.textContent='🧹 ล้างข้อมูลสาขา '+owner+' ...'; }
+  await wipeLocalData();
+  lsSet('dsDataDepot',S.depot);
+  setTimeout(()=>location.reload(),700);
+  return true;
+}
+
 async function afterLogin(){
   await waitDB();                       // ⏳ รอฐานข้อมูลในเครื่องพร้อมก่อนเสมอ
+  if(await guardDepotData()) return;     // 🔒 เปลี่ยนสาขา → ล้างของเดิมแล้วเริ่มใหม่
   S.ready=true;
   document.getElementById('dsBadge').classList.add('on');
   document.getElementById('dsBadge').textContent='☁ '+S.depot+' · '+S.staff;
@@ -323,7 +361,12 @@ async function pullOnce(){
 /* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */
 /* เขียนแบบ field-level (dot path) — ไม่ทับข้อมูลของเครื่องอื่น และไม่ล้างด้วยค่าว่าง */
 async function pushAll(){
-  if(!S.ready||S.busy) return; S.busy=true;
+  if(!S.ready||S.busy) return;
+  /* 🔒 กันข้อมูลข้ามสาขา: ถ้าข้อมูลในเครื่องเป็นของสาขาอื่น ห้ามส่งขึ้นเด็ดขาด */
+  if(lsGet('dsDataDepot') && lsGet('dsDataDepot')!==S.depot){
+    console.warn('[ds] ข้ามการส่ง — ข้อมูลในเครื่องเป็นของสาขา '+lsGet('dsDataDepot')); return;
+  }
+  S.busy=true;
   try{
     const date=tKey();
     const recs = window.getByDate? await getByDate(date) : [];
@@ -481,7 +524,7 @@ function mergeCouriers(list){
     }
   });
   if(changed){
-    try{ localStorage.setItem('couriers',JSON.stringify(arr)); }catch(e){}
+    try{ localStorage.setItem('dhl_couriers',JSON.stringify(arr)); }catch(e){}
     try{ if(window.saveCouriers) saveCouriers(); }catch(e){}
     try{ if(window.renderManage) renderManage(); }catch(e){}
   }
@@ -619,6 +662,23 @@ window.dsLogout=async ()=>{
   const bell=document.getElementById('dsBell'); if(bell) bell.classList.remove('on');
   location.reload();
 };
+/* 🧹 ล้างข้อมูลในเครื่องแล้วดึงใหม่จากคลาวด์ (ใช้เมื่อมีข้อมูลสาขาอื่นปน) */
+window.dsResync=async ()=>{
+  if(!S.ready){ alert('ต้องเข้าสู่ระบบก่อน'); return; }
+  if(!confirm('ล้างข้อมูลในเครื่องนี้ แล้วดึงใหม่จากคลาวด์?\n\n'
+    +'• รายชื่อ Courier และข้อมูลทั้งหมดในเครื่องจะถูกลบ\n'
+    +'• จากนั้นระบบจะดึงข้อมูลของสาขา '+S.depot+' ลงมาใหม่ทั้งหมด\n'
+    +'• ข้อมูลที่ซิงค์ขึ้นคลาวด์แล้วจะกลับมาครบ\n\n'
+    +'ใช้เมื่อเห็นข้อมูลของสาขาอื่นปนอยู่เท่านั้น')) return;
+  const b=document.getElementById('dsBadge');
+  if(b){ b.style.background='#D40511'; b.style.color='#fff'; b.textContent='🧹 กำลังล้างข้อมูล...'; }
+  try{ if(S.unsubDay)S.unsubDay(); if(S.unsubCom)S.unsubCom(); }catch(e){}
+  S.ready=false;
+  await wipeLocalData();
+  lsSet('dsDataDepot',S.depot);
+  setTimeout(()=>location.reload(),700);
+};
+
 /* ปุ่มออกจากระบบในหน้า "จัดการ" + แตะแถบสถานะ */
 function mountLogout(){
   const badge=document.getElementById('dsBadge');
@@ -630,7 +690,10 @@ function mountLogout(){
     div.innerHTML='<h2>☁ บัญชีผู้ใช้</h2>'
       +'<div class="small" id="dsWho" style="margin-bottom:9px;"></div>'
       +'<button class="btn btn-o btn-block" style="color:var(--r);border-color:var(--r);" onclick="dsLogout()">🚪 ออกจากระบบ</button>'
-      +'<div class="small" style="margin-top:7px;">ใช้เมื่อเปลี่ยนคนใช้เครื่องนี้ หรือย้ายไปเครื่องอื่น</div>';
+      +'<div class="small" style="margin-top:7px;">ใช้เมื่อเปลี่ยนคนใช้เครื่องนี้ หรือย้ายไปเครื่องอื่น</div>'
+      +'<div style="height:12px"></div>'
+      +'<button class="btn btn-o btn-block" onclick="dsResync()">🧹 ล้างข้อมูลเครื่องนี้ แล้วดึงใหม่จากคลาวด์</button>'
+      +'<div class="small" style="margin-top:7px;">ใช้เมื่อเห็นรายชื่อหรือข้อมูลของสาขาอื่นปนอยู่ — ข้อมูลที่ซิงค์แล้วจะกลับมาครบ</div>';
     mv.appendChild(div);
   }
   const who=document.getElementById('dsWho');

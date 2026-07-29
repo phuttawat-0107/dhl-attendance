@@ -618,6 +618,74 @@ function mountLogout(){
 }
 setInterval(mountLogout,2000);
 
+/* ============ 🎛 ปรับ UX/UI + ตัดเมนูที่ไม่ใช้แล้ว ============ */
+const TIDY_CSS=`
+/* --- แถบเมนูล่าง: กดง่ายขึ้น --- */
+.nav{left:6px;right:6px;padding:4px;border-radius:24px;
+  bottom:max(10px,env(safe-area-inset-bottom,10px));}
+.nav button{padding:6px 1px 5px;min-height:56px;font-size:9.5px;line-height:1.15;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  letter-spacing:-.2px;white-space:nowrap;overflow:hidden;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  transition:transform .13s cubic-bezier(.34,1.56,.64,1),background .15s,color .15s;}
+.nav button .ic{font-size:20px;line-height:1;display:block;}
+.nav button:active{transform:scale(.86);}
+.nav button.on{box-shadow:0 3px 11px rgba(255,204,0,.55);}
+.nav button.on .ic{transform:scale(1.1);}
+/* --- ปุ่มทั่วไป: มีฟีดแบ็กตอนกด --- */
+.btn{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.btn:active{transform:scale(.96);}
+/* --- ช่องกรอก: กันมือถือซูมอัตโนมัติตอนแตะ (ต้อง ≥16px) --- */
+input[type=text],input[type=search],input[type=tel],input[type=number],select,textarea{
+  font-size:16px;min-height:46px;}
+/* --- กล่องข้อมูลผู้ใช้ (อ่านอย่างเดียว) --- */
+#dsSetInfo{background:#fbf9f4;border-radius:13px;padding:11px 13px;margin:4px 0 10px;line-height:1.65;}
+#dsSetInfo b{color:#1a1a1a;}
+`;
+(function(){ const st=document.createElement('style'); st.id='dsTidyCSS';
+  st.textContent=TIDY_CSS; document.head.appendChild(st); })();
+
+/* ซ่อนเมนูที่ซ้ำซ้อน/เสี่ยง ในหน้า "จัดการ"
+   - ตั้งค่าสาขา + ชื่อ Staff  → ควบคุมโดยระบบ Login แล้ว (กดเปลี่ยนเองทำให้ข้อมูลลงผิดสาขา)
+   - ⬇ สำรองข้อมูล (JSON)      → ซิงค์ขึ้นคลาวด์อัตโนมัติแล้ว */
+function tidyManage(){
+  const sd=document.getElementById('sDepot');
+  if(!sd || sd.dataset.dsTidy) return;
+  const card=sd.closest('.card'); if(!card) return;
+  sd.dataset.dsTidy='1';
+  const hide=el=>{ if(el) el.style.display='none'; };
+
+  ['sDepot','sStaff'].forEach(id=>{
+    const e=document.getElementById(id); if(!e) return;
+    hide(e);
+    const p=e.previousElementSibling;
+    if(p && p.tagName==='LABEL') hide(p);
+  });
+  [...card.querySelectorAll('button')].forEach(b=>{
+    if(/saveSettings|backupJSON/.test(b.getAttribute('onclick')||'')) hide(b);
+  });
+  /* ซ่อน spacer เปล่าที่เหลือค้าง */
+  [...card.children].forEach(c=>{
+    if(c.tagName==='DIV' && !c.id && !c.textContent.trim()
+       && /height/.test(c.getAttribute('style')||'')) hide(c);
+  });
+  /* แทนที่ด้วยบรรทัดอ่านอย่างเดียว */
+  const info=document.createElement('div');
+  info.id='dsSetInfo'; info.className='small';
+  const h2=card.querySelector('h2');
+  if(h2) h2.parentNode.insertBefore(info,h2.nextSibling); else card.insertBefore(info,card.firstChild);
+}
+function paintSetInfo(){
+  const info=document.getElementById('dsSetInfo'); if(!info) return;
+  info.innerHTML = S.ready
+    ? '🏢 สาขา <b>'+S.depot+'</b><br>👤 ผู้บันทึก <b>'+S.staff+'</b>'
+      +'<br><span style="color:#8a8272;">สาขาและชื่อกำหนดจากตอนเข้าสู่ระบบ — เปลี่ยนได้โดยกด 🚪 ออกจากระบบ ด้านล่าง</span>'
+    : '<span style="color:var(--r);font-weight:700;">⚠ ยังไม่ได้เข้าระบบ</span>'
+      +'<br><span style="color:#8a8272;">แตะแถบสีแดงมุมขวาล่างเพื่อเข้าสู่ระบบ</span>';
+}
+setInterval(()=>{ try{ tidyManage(); paintSetInfo(); }catch(e){} },2000);
+try{ tidyManage(); paintSetInfo(); }catch(e){}
+
 /* ============ WRAP ฟังก์ชันเดิม ============ */
 function wrap(){
   if(window.putCheckin && !window.putCheckin.__ds){

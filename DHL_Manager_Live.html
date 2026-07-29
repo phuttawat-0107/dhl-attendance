@@ -1082,8 +1082,9 @@ function renderData(){
         +'<div class="dp">'+r.dep+'</div><div class="bd">'
         +'<div class="t1">'+(up?'ดีขึ้น':(dn?'แย่ลง':'ทรงตัว'))
         +' • '+r.a.days+' วัน → '+r.c.days+' วัน</div>'
-        +'<div class="t2">'+(best?'ดีสุด: '+best.m.l+' '+(best.p>0?'+':'')+Math.round(best.p)+'%':'')
-        +(worst&&worst!==best?' • แย่สุด: '+worst.m.l+' '+Math.round(worst.p)+'%':'')+'</div></div>'
+        +'<div class="t2">'+(best&&best.p>1?'👍 ดีขึ้นสุด: '+best.m.l+' +'+Math.round(clamp(best.p))+'%':'')
+        +(worst&&worst!==best&&worst.p<-1?' • ⚠️ แย่ลง: '+worst.m.l+' '+Math.round(clamp(worst.p))+'%':'')
+        +(best&&best.p<=1&&(!worst||worst.p>=-1)?'ไม่มีการเปลี่ยนแปลงชัดเจน':'')+'</div></div>'
         +pcHTML(r.score)+'</div>';
     });
     h+='</div>';

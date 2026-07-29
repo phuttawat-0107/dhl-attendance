@@ -691,6 +691,12 @@ function tidyManage(){
     if(c.tagName==='DIV' && !c.id && !c.textContent.trim()
        && /height/.test(c.getAttribute('style')||'')) hide(c);
   });
+  /* อัปเดตข้อความเดิมที่ล้าสมัย (ตอนนี้ซิงค์ขึ้นคลาวด์แล้ว) */
+  [...card.querySelectorAll('.small')].forEach(el=>{
+    if(/เก็บในเครื่องนี้เท่านั้น/.test(el.textContent))
+      el.innerHTML='☁ ข้อมูลซิงค์ขึ้นคลาวด์อัตโนมัติ — ผู้จัดการเห็นแบบเรียลไทม์<br>'
+        +'ห้ามล้างข้อมูลเบราว์เซอร์ • ภาพถ่ายเก็บย้อนหลัง 30 วัน';
+  });
   /* แทนที่ด้วยบรรทัดอ่านอย่างเดียว */
   const info=document.createElement('div');
   info.id='dsSetInfo'; info.className='small';

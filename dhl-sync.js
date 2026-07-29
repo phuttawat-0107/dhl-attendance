@@ -275,6 +275,7 @@ async function afterLogin(){
   listenComments();
   startHeartbeat();
   purgeOldPhotos30();
+  setTimeout(backfill, 4000);          // 🛟 กู้ข้อมูลย้อนหลังที่หายไป (ถ้ามี)
 }
 
 /* ดึงข้อมูลวันนี้ + รายชื่อ Courier ของสาขาลงเครื่องทันที */
@@ -340,6 +341,53 @@ async function pushAll(){
 }
 let pushTimer=null;
 function pushSoon(){ clearTimeout(pushTimer); pushTimer=setTimeout(pushAll,700); }
+
+/* ============ 🛟 กู้ข้อมูลย้อนหลัง ============
+   ตรวจ 7 วันย้อนหลัง: วันไหนเครื่องมีข้อมูลแต่คลาวด์ไม่มี/ไม่ครบ → ส่งขึ้นไปคืน
+   ทำครั้งเดียวหลังล็อกอิน (เงียบๆ ไม่รบกวนการทำงาน) */
+async function backfill(){
+  if(!S.ready) return;
+  try{
+    const today=tKey();
+    for(let i=1;i<=7;i++){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      const date=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      if(date===today) continue;
+      let recs=[]; try{ recs=await getByDate(date); }catch(e){ continue; }
+      let lp=null; try{ lp=await getPPH(date); }catch(e){}
+      const lRp=lp? Object.keys(lp.rp||{}).length : 0;
+      if(!recs.length && !lRp) continue;                 // เครื่องนี้ไม่มีข้อมูลวันนั้น
+
+      const snap=await getDoc(dayRef(S.depot,date));
+      const cN = snap.exists()? Object.keys(snap.data().checkins||{}).length : 0;
+      const cRp= snap.exists()&&snap.data().pph? Object.keys(snap.data().pph.rp||{}).length : 0;
+      if(recs.length<=cN && lRp<=cRp) continue;          // คลาวด์ครบแล้ว
+
+      /* ส่งคืนวันนั้น */
+      const ref=dayRef(S.depot,date);
+      await setDoc(ref,{ depot:S.depot, date, by:S.staff, restoredAt:Date.now() },{merge:true});
+      const up={};
+      recs.forEach(r=>{ up['checkins.'+r.courierId]={ ts:r.ts, status:r.status, buffer:!!r.buffer,
+        uniform:r.uniform!==false, manualEdit:!!r.manualEdit, staff:r.staff||S.staff, hasPhoto:!!r.photo }; });
+      if(lp){
+        ['staffN','sorterN','courierN','pNew','pOld'].forEach(k=>{ if(lp[k]!=null) up['pph.'+k]=+lp[k]||0; });
+        if(lp.inboundTs)     up['pph.inboundTs']=lp.inboundTs;
+        if(lp.lastInboundTs) up['pph.lastInboundTs']=lp.lastInboundTs;
+        if(lp.pd&&lp.pd.ts)  up['pph.pd']={ ts:lp.pd.ts, manualEdit:!!lp.pd.manualEdit, hasPhoto:!!lp.pd.photo };
+        Object.entries(lp.rp||{}).forEach(([cid,q])=>{
+          const o={}; if(q.fs)o.fs=q.fs; if(q.dep)o.dep=q.dep; if(q.fdel)o.fdel=q.fdel;
+          if(Object.keys(o).length) up['pph.rp.'+cid]=o;
+        });
+      }
+      const cl=getCouriers().filter(c=>c.active!==false)
+        .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'' }));
+      if(cl.length) up['couriers']=cl;
+      if(Object.keys(up).length) await updateDoc(ref,up);
+      console.log('backfill: กู้ข้อมูลวัน '+date+' คืนแล้ว ('+recs.length+' คน)');
+      toast('🛟 กู้ข้อมูลวัน '+date+' คืนขึ้นระบบแล้ว');
+    }
+  }catch(e){ console.warn('backfill',e); }
+}
 
 /* ============ PHOTOS: ย่อ + อัปขึ้น Firestore ============ */
 async function pushPhoto(kind, cid, dataUrl){

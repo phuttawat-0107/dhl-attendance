@@ -1392,7 +1392,8 @@ function perfRows(dep){
     R.push({k:'First Del เฉลี่ย', v:hmOf(a), t:'ก่อน 09:00', ok:a<T_FDEL}); }
   return R;
 }
-let NDEPS=[];
+let NDEPS=[], NMODE='msg';                 // 'msg' = ข้อความอย่างเดียว · 'perf' = แนบ Performance
+window.__nMode=m=>{ NMODE=m; window.__notice(true); };
 window.__nDep=dep=>{
   if(dep==='all'){ NDEPS = NDEPS.length===DEPOTS.length? [] : DEPOTS.slice(); }
   else { const i=NDEPS.indexOf(dep); if(i<0) NDEPS.push(dep); else NDEPS.splice(i,1); }
@@ -1404,6 +1405,10 @@ window.__notice=(keep)=>{
   const rows = one? perfRows(one) : [];
   let b='<h2>📣 ส่งประกาศถึงสาขา</h2>'
     +'<div class="small" style="margin-bottom:11px;">Staff จะเห็นป๊อปอัปเต็มจอ ปิดไม่ได้จนกว่าจะกดรับทราบ • ทุกคนในสาขาต้องกด</div>'
+    +'<div class="segbar" style="margin-bottom:12px;">'
+    +'<button class="seg'+(NMODE==='msg'?' on':'')+'" onclick="window.__nMode(\'msg\')">✍️ ข้อความอย่างเดียว</button>'
+    +'<button class="seg'+(NMODE==='perf'?' on':'')+'" onclick="window.__nMode(\'perf\')">📊 แนบ Performance</button>'
+    +'</div>'
     +'<div class="lab2">เลือกสาขา</div><div class="depbar" style="margin-bottom:12px;">'
     +'<button class="dbtn all'+(NDEPS.length===DEPOTS.length?' on':'')+'" onclick="window.__nDep(\'all\')">👥 ทุกสาขา</button>'
     + DEPOTS.map((d,i)=>'<button class="dbtn'+(NDEPS.includes(d)?' on':'')+'" onclick="window.__nDep(\''+d+'\')">'
@@ -1413,8 +1418,12 @@ window.__notice=(keep)=>{
   b+='<div class="lab2">ระดับความสำคัญ</div>'
     +'<select id="nLv"><option value="info">🔵 ทั่วไป</option><option value="warn" selected>🟡 สำคัญ</option><option value="crit">🔴 ด่วน</option></select>';
   b+='<div class="lab2">หัวข้อ</div>'
-    +'<input id="nTitle" placeholder="เช่น สรุป Performance วันนี้" value="'+(one? 'Performance สาขา '+one+' — '+thD(DATE) : 'ประกาศจากผู้จัดการ')+'">';
+    +'<input id="nTitle" placeholder="'+(NMODE==='msg'?'เช่น ยินดีต้อนรับทีมงาน':'เช่น สรุป Performance วันนี้')+'" value="'
+    + (NMODE==='msg' ? '' : (one? 'Performance สาขา '+one+' — '+thD(DATE) : 'ประกาศจากผู้จัดการ')) +'">';
 
+  if(NMODE==='msg'){
+    b+='<div id="nRows" style="display:none;"></div>';
+  } else {
   b+='<div class="lab2">ชุดข้อมูลที่จะแนบ '+(one? '<span style="color:#8a8272;font-weight:600;">(ดึงจากข้อมูลวันนี้อัตโนมัติ • แก้ไขได้)</span>':'')+'</div>';
   if(one && rows.length){
     b+='<div id="nRows">'+rows.map((r,i)=>
@@ -1430,9 +1439,13 @@ window.__notice=(keep)=>{
       +(NDEPS.length? 'เลือกหลายสาขา — ระบบจะแนบตัวเลขของแต่ละสาขาให้อัตโนมัติ' : 'เลือกสาขาก่อน เพื่อให้ระบบดึงตัวเลขมาให้')
       +'</div><div id="nRows"></div>';
   }
+  }
 
   b+='<div class="lab2">ข้อความถึงสาขา</div>'
-    +'<textarea id="nMsg" style="min-height:88px;" placeholder="เช่น อีก 5% จะถึง Target บริษัท โฟกัสด้วยนะครับ"></textarea>';
+    +'<textarea id="nMsg" style="min-height:'+(NMODE==='msg'?'130':'88')+'px;" placeholder="'
+    +(NMODE==='msg'
+      ? 'พิมพ์ข้อความได้เต็มที่ เช่น&#10;&#10;ยินดีต้อนรับสู่ระบบบันทึกงานเช้าแบบใหม่&#10;ขอให้ทุกคนบันทึกข้อมูลให้ครบทุกขั้นตอนนะครับ'
+      : 'เช่น อีก 5% จะถึง Target บริษัท โฟกัสด้วยนะครับ')+'"></textarea>';
   b+='<div style="display:flex;gap:8px;margin-top:13px;">'
     +'<button class="btn btn-r" style="flex:1;" onclick="window.__sendNotice()">📨 ส่งประกาศ</button>'
     +'<button class="btn btn-o" style="flex:1;" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>'
@@ -1454,7 +1467,8 @@ window.__sendNotice=async ()=>{
   const btn=event&&event.target; if(btn) btn.textContent='กำลังส่ง...';
   try{
     for(const dep of NDEPS){
-      const rows = (NDEPS.length===1 ? manual : perfRows(dep).map(r=>({k:r.k,v:r.v,t:r.t})));
+      const rows = NMODE==='msg' ? []
+        : (NDEPS.length===1 ? manual : perfRows(dep).map(r=>({k:r.k,v:r.v,t:r.t})));
       await addDoc(collection(db,'depots',dep,'notices'),
         { title, msg, level:lv, rows, at:Date.now(), by:'ผู้จัดการ', date:DATE, acks:{} });
     }

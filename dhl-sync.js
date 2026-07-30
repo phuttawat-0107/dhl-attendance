@@ -335,6 +335,8 @@ async function afterLogin(){
   await pushAll();
   listenDay();
   listenComments();
+  listenNotices();                     // 📣 ประกาศจากผู้จัดการ
+  setTimeout(checkNotices, 2500);
   startHeartbeat();
   purgeOldPhotos30();
   setTimeout(backfill, 4000);          // 🛟 กู้ข้อมูลย้อนหลังที่หายไป (ถ้ามี)
@@ -858,6 +860,90 @@ function mountLogout(){
     : '<span style="color:var(--r);font-weight:700;">⚠ ยังไม่ได้เข้าระบบ — ข้อมูลจะไม่ขึ้นคลาวด์</span>';
 }
 setInterval(mountLogout,2000);
+
+/* ============ 📣 ประกาศจากผู้จัดการ (บังคับกดรับทราบ) ============ */
+const NOTICE_CSS=`
+#dsNotice{position:fixed;inset:0;z-index:99999;background:rgba(16,14,10,.82);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;padding:16px;}
+#dsNotice.show{display:flex;}
+#dsNotice .box{background:#fff;border-radius:24px;width:100%;max-width:460px;max-height:92vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);animation:nPop .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes nPop{from{opacity:0;transform:translateY(26px) scale(.95);}to{opacity:1;transform:none;}}
+#dsNotice .hd{padding:16px 18px;border-radius:24px 24px 0 0;color:#fff;}
+#dsNotice .hd.info{background:linear-gradient(135deg,#1565c0,#1e88e5);}
+#dsNotice .hd.warn{background:linear-gradient(135deg,#b58900,#e0a500);}
+#dsNotice .hd.crit{background:linear-gradient(135deg,#a00d16,#D40511);}
+#dsNotice .hd .lv{font-size:10.5px;font-weight:900;letter-spacing:1.2px;opacity:.9;}
+#dsNotice .hd h3{font-size:17px;font-weight:900;margin-top:3px;line-height:1.35;}
+#dsNotice .hd .mt{font-size:11px;opacity:.85;margin-top:5px;font-weight:600;}
+#dsNotice .bd{padding:16px 18px 18px;}
+#dsNotice table{width:100%;border-collapse:separate;border-spacing:0 5px;font-size:13.5px;}
+#dsNotice td{background:#fbf9f4;padding:10px 11px;}
+#dsNotice td:first-child{border-radius:12px 0 0 12px;font-weight:700;}
+#dsNotice td:last-child{border-radius:0 12px 12px 0;text-align:right;font-weight:900;white-space:nowrap;}
+#dsNotice td .tg{display:block;font-size:10px;color:#a09884;font-weight:700;margin-top:1px;}
+#dsNotice .msg{background:#fff8e1;border-left:5px solid #FFCC00;border-radius:14px;
+  padding:13px 15px;margin-top:13px;font-size:14.5px;line-height:1.65;white-space:pre-wrap;}
+#dsNotice .ackbtn{width:100%;margin-top:16px;border:none;border-radius:16px;padding:16px;
+  font-size:16px;font-weight:900;font-family:inherit;background:#1a1a1a;color:#FFCC00;cursor:pointer;
+  transition:transform .15s;-webkit-tap-highlight-color:transparent;}
+#dsNotice .ackbtn:active{transform:scale(.97);}
+#dsNotice .ackbtn:disabled{opacity:.55;}
+#dsNotice .cnt{text-align:center;font-size:11.5px;color:#a09884;margin-top:9px;font-weight:700;}
+`;
+(function(){ const st=document.createElement('style'); st.textContent=NOTICE_CSS; document.head.appendChild(st);
+  const d=document.createElement('div'); d.id='dsNotice'; d.innerHTML='<div class="box"></div>';
+  document.body.appendChild(d); })();
+
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LV={info:{t:'ประกาศทั่วไป',i:'🔵'},warn:{t:'สำคัญ — โปรดอ่าน',i:'🟡'},crit:{t:'ด่วน — ต้องดำเนินการ',i:'🔴'}};
+function showNotice(n, idx, total){
+  const box=document.querySelector('#dsNotice .box');
+  const lv=LV[n.level]||LV.warn;
+  const t=new Date(n.at||Date.now());
+  let h='<div class="hd '+(n.level||'warn')+'">'
+    +'<div class="lv">'+lv.i+' '+lv.t+'</div>'
+    +'<h3>'+esc(n.title||'ประกาศจากผู้จัดการ')+'</h3>'
+    +'<div class="mt">จากผู้จัดการ • '+t.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})+'</div></div>'
+    +'<div class="bd">';
+  if(Array.isArray(n.rows)&&n.rows.length){
+    h+='<table>'+n.rows.map(r=>'<tr><td>'+esc(r.k)+'</td><td>'+esc(r.v)
+      +(r.t? '<span class="tg">เป้า '+esc(r.t)+'</span>':'')+'</td></tr>').join('')+'</table>';
+  }
+  if(n.msg) h+='<div class="msg">'+esc(n.msg)+'</div>';
+  h+='<button class="ackbtn" id="dsAckBtn">✔ รับทราบแล้ว</button>';
+  if(total>1) h+='<div class="cnt">ประกาศที่ '+(idx+1)+' จาก '+total+'</div>';
+  h+='</div>';
+  box.innerHTML=h;
+  document.getElementById('dsAckBtn').onclick=async function(){
+    this.disabled=true; this.textContent='กำลังบันทึก...';
+    try{
+      await updateDoc(doc(dbF,'depots',S.depot,'notices',n.__id),{ ['acks.'+S.staff]: Date.now() });
+      document.getElementById('dsNotice').classList.remove('show');
+      toast('✔ รับทราบประกาศแล้ว');
+      setTimeout(checkNotices,600);
+    }catch(e){ this.disabled=false; this.textContent='✔ รับทราบแล้ว'; alert('บันทึกไม่สำเร็จ: '+e.message); }
+  };
+  document.getElementById('dsNotice').classList.add('show');
+}
+async function checkNotices(){
+  if(!S.ready||!S.depot||!S.staff) return;
+  if(document.getElementById('dsNotice').classList.contains('show')) return;
+  try{
+    const snap=await getDocs(collection(dbF,'depots',S.depot,'notices'));
+    const cut=Date.now()-7*86400000;
+    const pending=snap.docs.map(d=>({...d.data(), __id:d.id}))
+      .filter(n=>(n.at||0)>cut && !(n.acks&&n.acks[S.staff]))
+      .sort((a,b)=>(a.at||0)-(b.at||0));
+    if(pending.length) showNotice(pending[0], 0, pending.length);
+  }catch(e){ console.warn('notices',e); }
+}
+function listenNotices(){
+  if(S.unsubNoti) try{ S.unsubNoti(); }catch(e){}
+  S.unsubNoti = onSnapshot(collection(dbF,'depots',S.depot,'notices'), ()=>{ checkNotices(); },
+    e=>console.warn('noti listen',e));
+}
 
 /* ============ 🎛 ปรับ UX/UI + ตัดเมนูที่ไม่ใช้แล้ว ============ */
 const TIDY_CSS=`

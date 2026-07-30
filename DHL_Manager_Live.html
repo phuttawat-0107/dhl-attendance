@@ -125,6 +125,12 @@ textarea:focus{outline:2px solid var(--y);}
 .fitem .tx{flex:1;line-height:1.4;} .fitem .tx small{display:block;color:#a09884;font-size:11px;margin-top:1px;}
 .fitem.done{background:linear-gradient(135deg,#1c7a4d,#2e7d32);}
 .fitem.done b{color:#fff;}
+/* ---- 📣 ฟอร์มส่งประกาศ ---- */
+.lab2{font-size:11px;font-weight:800;color:#8a8272;margin:12px 0 5px;letter-spacing:.3px;}
+.nrow{display:flex;gap:5px;align-items:center;margin-bottom:6px;}
+.nrow input[type=checkbox]{width:19px;height:19px;min-height:0;flex-shrink:0;accent-color:#D40511;}
+.nrow .nk{flex:2.1;min-width:0;} .nrow .nv{flex:1.1;min-width:0;} .nrow .nt{flex:1.2;min-width:0;}
+.nrow input{margin:0;padding:8px 9px;font-size:13px;min-height:38px;}
 /* ---- 🟢 ON AIR (ใครกำลังใช้แอปอยู่) ---- */
 .onair{display:block;font-size:8.5px;font-weight:800;color:#12683f;line-height:1.3;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -212,6 +218,7 @@ textarea:focus{outline:2px solid var(--y);}
     <div class="mlogo">DHL <span>Live</span></div>
     <div class="meta" style="display:flex;align-items:center;gap:10px;">
       <div><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
+      <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__notice()" title="ส่งประกาศถึงสาขา">📣</button>
       <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__settings()">⚙️</button>
     </div>
   </div>
@@ -1361,6 +1368,122 @@ window.__open=async (dep,task)=>{
   document.getElementById('mdlBody').innerHTML=b;
   document.getElementById('mdl').classList.add('show');
   loadPhotos();
+};
+
+/* ================= 📣 ส่งประกาศถึงสาขา ================= */
+/* ดึงตัวเลข Performance ของสาขาจากข้อมูลวันนี้ */
+function perfRows(dep){
+  const d=DATA[dep]; if(!d) return [];
+  const ck=Object.values(d.checkins||{}), p=d.pph||{}, rp=Object.values(p.rp||{});
+  const R=[];
+  if(ck.length){
+    const late=ck.filter(r=>r.status==='late').length;
+    const pct=Math.round((ck.length-late)/ck.length*100);
+    R.push({k:'Ontime การเข้างาน', v:pct+'%', t:'95%', ok:pct>=95});
+    R.push({k:'จำนวนคนมาสาย', v:late+' คน', t:'0 คน', ok:late===0});
+  }
+  if(p.pd&&p.pd.ts){ const s=secOf(p.pd.ts);
+    R.push({k:'PD', v:hmOf(s), t:'ก่อน 07:15', ok:s<=PD_END}); }
+  const dp=rp.map(x=>x.dep).filter(Boolean);
+  if(dp.length){ const a=av(dp.map(secOf));
+    R.push({k:'Departure เฉลี่ย', v:hmOf(a), t:'ก่อน 08:30', ok:a<T_DEP}); }
+  const fd=rp.map(x=>x.fdel).filter(Boolean);
+  if(fd.length){ const a=av(fd.map(secOf));
+    R.push({k:'First Del เฉลี่ย', v:hmOf(a), t:'ก่อน 09:00', ok:a<T_FDEL}); }
+  return R;
+}
+let NDEPS=[];
+window.__nDep=dep=>{
+  if(dep==='all'){ NDEPS = NDEPS.length===DEPOTS.length? [] : DEPOTS.slice(); }
+  else { const i=NDEPS.indexOf(dep); if(i<0) NDEPS.push(dep); else NDEPS.splice(i,1); }
+  window.__notice(true);
+};
+window.__notice=(keep)=>{
+  if(!keep) NDEPS=[];
+  const one = NDEPS.length===1? NDEPS[0] : null;
+  const rows = one? perfRows(one) : [];
+  let b='<h2>📣 ส่งประกาศถึงสาขา</h2>'
+    +'<div class="small" style="margin-bottom:11px;">Staff จะเห็นป๊อปอัปเต็มจอ ปิดไม่ได้จนกว่าจะกดรับทราบ • ทุกคนในสาขาต้องกด</div>'
+    +'<div class="lab2">เลือกสาขา</div><div class="depbar" style="margin-bottom:12px;">'
+    +'<button class="dbtn all'+(NDEPS.length===DEPOTS.length?' on':'')+'" onclick="window.__nDep(\'all\')">👥 ทุกสาขา</button>'
+    + DEPOTS.map((d,i)=>'<button class="dbtn'+(NDEPS.includes(d)?' on':'')+'" onclick="window.__nDep(\''+d+'\')">'
+        +'<i style="background:'+PAL[i%PAL.length]+'"></i>'+d+'</button>').join('')
+    +'</div>';
+
+  b+='<div class="lab2">ระดับความสำคัญ</div>'
+    +'<select id="nLv"><option value="info">🔵 ทั่วไป</option><option value="warn" selected>🟡 สำคัญ</option><option value="crit">🔴 ด่วน</option></select>';
+  b+='<div class="lab2">หัวข้อ</div>'
+    +'<input id="nTitle" placeholder="เช่น สรุป Performance วันนี้" value="'+(one? 'Performance สาขา '+one+' — '+thD(DATE) : 'ประกาศจากผู้จัดการ')+'">';
+
+  b+='<div class="lab2">ชุดข้อมูลที่จะแนบ '+(one? '<span style="color:#8a8272;font-weight:600;">(ดึงจากข้อมูลวันนี้อัตโนมัติ • แก้ไขได้)</span>':'')+'</div>';
+  if(one && rows.length){
+    b+='<div id="nRows">'+rows.map((r,i)=>
+      '<div class="nrow"><input type="checkbox" class="nck" checked data-i="'+i+'">'
+      +'<input class="nk" value="'+esc(r.k)+'" placeholder="หัวข้อ">'
+      +'<input class="nv" value="'+esc(r.v)+'" placeholder="ค่า">'
+      +'<input class="nt" value="'+esc(r.t)+'" placeholder="เป้า">'
+      +'<span class="chip '+(r.ok?'ok':'no')+'">'+(r.ok?'✔':'✖')+'</span></div>').join('')+'</div>';
+  } else if(one){
+    b+='<div class="empty" style="padding:14px;">สาขานี้ยังไม่มีข้อมูลวันนี้ — ส่งได้เฉพาะข้อความ</div><div id="nRows"></div>';
+  } else {
+    b+='<div class="small" style="background:#fbf9f4;border-radius:12px;padding:11px;">'
+      +(NDEPS.length? 'เลือกหลายสาขา — ระบบจะแนบตัวเลขของแต่ละสาขาให้อัตโนมัติ' : 'เลือกสาขาก่อน เพื่อให้ระบบดึงตัวเลขมาให้')
+      +'</div><div id="nRows"></div>';
+  }
+
+  b+='<div class="lab2">ข้อความถึงสาขา</div>'
+    +'<textarea id="nMsg" style="min-height:88px;" placeholder="เช่น อีก 5% จะถึง Target บริษัท โฟกัสด้วยนะครับ"></textarea>';
+  b+='<div style="display:flex;gap:8px;margin-top:13px;">'
+    +'<button class="btn btn-r" style="flex:1;" onclick="window.__sendNotice()">📨 ส่งประกาศ</button>'
+    +'<button class="btn btn-o" style="flex:1;" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
+  document.getElementById('mdlBody').innerHTML=b;
+  document.getElementById('mdl').classList.add('show');
+};
+window.__sendNotice=async ()=>{
+  if(!NDEPS.length){ alert('เลือกสาขาก่อน'); return; }
+  const title=document.getElementById('nTitle').value.trim();
+  const msg=document.getElementById('nMsg').value.trim();
+  const lv=document.getElementById('nLv').value;
+  if(!title && !msg){ alert('ใส่หัวข้อหรือข้อความอย่างน้อย 1 อย่าง'); return; }
+  /* แถวที่ผู้ใช้แก้ไว้ (กรณีเลือกสาขาเดียว) */
+  const manual=[...document.querySelectorAll('#nRows .nrow')].filter(r=>r.querySelector('.nck').checked)
+    .map(r=>({k:r.querySelector('.nk').value.trim(), v:r.querySelector('.nv').value.trim(),
+              t:r.querySelector('.nt').value.trim()})).filter(x=>x.k);
+  const btn=event&&event.target; if(btn) btn.textContent='กำลังส่ง...';
+  try{
+    for(const dep of NDEPS){
+      const rows = (NDEPS.length===1 ? manual : perfRows(dep).map(r=>({k:r.k,v:r.v,t:r.t})));
+      await addDoc(collection(db,'depots',dep,'notices'),
+        { title, msg, level:lv, rows, at:Date.now(), by:'ผู้จัดการ', date:DATE, acks:{} });
+    }
+    document.getElementById('mdl').classList.remove('show');
+    toastFeed('📣','<b>ส่งประกาศแล้ว</b><small>'+NDEPS.join(', ')+'</small>','ok');
+  }catch(e){ alert('ส่งไม่สำเร็จ: '+e.message); if(btn) btn.textContent='📨 ส่งประกาศ'; }
+};
+/* ดูสถานะการรับทราบ */
+window.__noticeStatus=async ()=>{
+  let b='<h2>📣 ประกาศที่ส่งไป</h2><div class="small" style="margin-bottom:11px;">7 วันล่าสุด</div>';
+  const cut=Date.now()-7*86400000;
+  let any=false;
+  for(const dep of DEPOTS){
+    let snap; try{ snap=await getDocs(collection(db,'depots',dep,'notices')); }catch(e){ continue; }
+    const list=snap.docs.map(d=>d.data()).filter(x=>x.at>cut).sort((a,b2)=>b2.at-a.at);
+    if(!list.length) continue;
+    any=true;
+    const staffN=((META[dep]&&META[dep].staffNames)||[]).length||3;
+    b+='<div style="font-weight:900;margin:12px 0 6px;">'+dep+'</div>';
+    list.forEach(x=>{
+      const n=Object.keys(x.acks||{}).length;
+      b+='<div class="row-c"><div class="info"><div class="nm">'+esc(x.title||'(ไม่มีหัวข้อ)')+'</div>'
+        +'<div class="sub2">'+fmtT(x.at)+' • '+(Object.keys(x.acks||{}).join(', ')||'ยังไม่มีใครรับทราบ')+'</div></div>'
+        +'<span class="chip '+(n>=staffN?'ok':(n?'':'no'))+'">'+n+'/'+staffN+'</span></div>';
+    });
+  }
+  if(!any) b+='<div class="empty">ยังไม่มีประกาศใน 7 วันล่าสุด</div>';
+  b+='<div style="margin-top:14px;"><button class="btn btn-o" style="width:100%;" '
+    +'onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
+  document.getElementById('mdlBody').innerHTML=b;
+  document.getElementById('mdl').classList.add('show');
 };
 
 /* 🟢 ป๊อปอัป: ใครกำลังใช้แอปอยู่ / ใช้กี่เครื่อง */

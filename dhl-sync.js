@@ -884,15 +884,18 @@ const NOTICE_CSS=`
 #dsNotice .hd .mt{font-size:12px;opacity:.85;margin-top:10px;font-weight:600;line-height:1.5;
   padding-top:9px;border-top:1px solid rgba(255,255,255,.25);}
 #dsNotice .bd{padding:20px 22px 22px;}
-#dsNotice table{width:100%;display:table;border-collapse:separate;border-spacing:0 7px;}
-#dsNotice tbody{display:table-row-group;} #dsNotice tr{display:table-row;}
-#dsNotice td{display:table-cell;background:#fbf9f4;padding:14px 15px;vertical-align:middle;
-  font-size:15px;line-height:1.4;}
-#dsNotice td:first-child{border-radius:14px 0 0 14px;font-weight:700;color:#3a352c;}
-#dsNotice td:last-child{border-radius:0 14px 14px 0;text-align:right;font-weight:900;
-  white-space:nowrap;font-size:19px;color:#1a1a1a;}
-#dsNotice td .tg{display:block;font-size:11px;color:#a09884;font-weight:700;margin-top:3px;
-  text-align:right;letter-spacing:.2px;}
+#dsNotice .box table{width:100%!important;display:table!important;border-collapse:separate!important;
+  border-spacing:0 7px!important;}
+#dsNotice .box tbody{display:table-row-group!important;}
+#dsNotice .box tr{display:table-row!important;}
+#dsNotice .box td{display:table-cell!important;background:#fbf9f4;padding:14px 15px;
+  vertical-align:middle!important;font-size:15px;line-height:1.4;width:auto!important;}
+#dsNotice .box td:first-child{border-radius:14px 0 0 14px;font-weight:700;color:#3a352c;
+  text-align:left!important;}
+#dsNotice .box td:last-child{border-radius:0 14px 14px 0;text-align:right!important;font-weight:900;
+  white-space:nowrap;font-size:19px;color:#1a1a1a;width:1%!important;}
+#dsNotice .box td .tg{display:block!important;font-size:11px;color:#a09884;font-weight:700;
+  margin-top:3px;text-align:right!important;letter-spacing:.2px;}
 #dsNotice .msg{background:#fff8e1;border-left:6px solid #FFCC00;border-radius:16px;
   padding:18px 20px;margin-top:16px;font-size:18px;line-height:1.85;white-space:pre-wrap;
   font-weight:600;color:#2a2620;word-break:break-word;}
@@ -908,7 +911,7 @@ const NOTICE_CSS=`
   #dsNotice .hd{padding:17px 17px 15px;} #dsNotice .hd h3{font-size:19px;}
   #dsNotice .bd{padding:16px 17px 18px;}
   #dsNotice .msg{font-size:16.5px;padding:15px 16px;line-height:1.8;}
-  #dsNotice td{font-size:14px;padding:12px 13px;} #dsNotice td:last-child{font-size:17px;}
+  #dsNotice .box td{font-size:14px;padding:12px 13px;} #dsNotice .box td:last-child{font-size:17px;}
   #dsNotice .ackbtn{font-size:17px;padding:17px 14px;}
 }
 `;

@@ -26,17 +26,30 @@ h2{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;fle
 .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:#e9e2d2;}
 .kpi.red::before{background:var(--r);} .kpi.green::before{background:var(--g);} .kpi.am::before{background:var(--y);}
 .kpi .v{font-size:23px;font-weight:800;line-height:1;} .kpi .l{font-size:10px;color:#8a8272;font-weight:600;margin-top:3px;}
-.gridwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -6px;padding:0 6px;}
-table.grid{width:100%;border-collapse:separate;border-spacing:4px;font-size:12px;}
-table.grid th{font-size:9.5px;color:#a09884;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:2px;text-align:center;white-space:nowrap;}
-table.grid th.tg{color:var(--r);font-size:8.5px;display:block;font-weight:700;}
-td.dep{font-weight:900;font-size:14px;text-align:left;padding-right:6px;white-space:nowrap;}
-td.dep small{display:block;font-size:9.5px;color:#a09884;font-weight:600;}
-td.cell{border-radius:13px;text-align:center;padding:9px 5px;cursor:pointer;background:#f2ede2;color:#b0a892;
-  transition:transform .16s cubic-bezier(.34,1.56,.64,1);min-width:62px;}
+/* ตารางพอดีจอเสมอ — ไม่ต้องเลื่อนซ้าย-ขวา */
+.gridwrap{margin:0 -2px;padding:0 2px;overflow:visible;}
+table.grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:3px;font-size:12px;}
+table.grid col.c-dep{width:15%;} table.grid col.c-task{width:14.16%;}
+table.grid th{font-size:9px;color:#a09884;font-weight:800;letter-spacing:0;padding:2px 1px;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+table.grid th.tg{color:var(--r);font-size:8px;display:block;font-weight:700;}
+td.dep{font-weight:900;font-size:13.5px;text-align:left;padding-right:4px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;line-height:1.25;}
+td.dep small{display:block;font-size:9px;color:#a09884;font-weight:600;}
+td.cell{border-radius:12px;text-align:center;padding:8px 2px;cursor:pointer;background:#f2ede2;color:#b0a892;
+  transition:transform .16s cubic-bezier(.34,1.56,.64,1);overflow:hidden;}
 td.cell:active{transform:scale(.93);}
-td.cell b{display:block;font-size:14px;font-weight:800;line-height:1.15;}
-td.cell span{font-size:9px;font-weight:700;opacity:.85;}
+td.cell b{display:block;font-size:13.5px;font-weight:800;line-height:1.15;white-space:nowrap;}
+td.cell span{font-size:8.5px;font-weight:700;opacity:.85;display:block;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+@media(max-width:560px){
+  table.grid{border-spacing:2px;}
+  table.grid col.c-dep{width:16%;}
+  table.grid th{font-size:8px;} table.grid th.tg{display:none;}
+  td.dep{font-size:12px;} td.dep small{font-size:8px;}
+  td.cell{padding:7px 1px;border-radius:10px;}
+  td.cell b{font-size:11.5px;} td.cell span{display:none;}
+}
 td.cell.ok{background:#e6f5eb;color:#1c7a4d;} td.cell.bad{background:#fdeaea;color:#b3121d;}
 td.cell.wait{background:#fff6d6;color:#8a6d00;}
 td.cell.hascom{box-shadow:inset 0 0 0 2.5px var(--r);}
@@ -112,16 +125,17 @@ textarea:focus{outline:2px solid var(--y);}
 .fitem.done{background:linear-gradient(135deg,#1c7a4d,#2e7d32);}
 .fitem.done b{color:#fff;}
 /* ---- 🟢 ON AIR (ใครกำลังใช้แอปอยู่) ---- */
-.onair{display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:2px 8px 2px 6px;
-  border-radius:99px;background:#e6f5eb;color:#12683f;font-size:9.5px;font-weight:900;letter-spacing:.5px;}
-.onair i{width:7px;height:7px;border-radius:50%;background:#1c7a4d;font-style:normal;flex-shrink:0;
-  animation:blip 1.3s ease-in-out infinite;}
+.onair{display:block;font-size:8.5px;font-weight:800;color:#12683f;line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.onair i{width:6px;height:6px;border-radius:50%;background:#1c7a4d;font-style:normal;
+  display:inline-block;margin-right:4px;vertical-align:1px;animation:blip 1.3s ease-in-out infinite;}
 @keyframes blip{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(28,122,77,.55);}
-  50%{opacity:.45;box-shadow:0 0 0 5px rgba(28,122,77,0);}}
-.offair{margin-top:5px;font-size:9.5px;font-weight:800;color:#c4bca6;letter-spacing:.4px;}
-.dep .who{font-size:9.5px;font-weight:700;color:#12683f;margin-top:2px;line-height:1.3;
-  max-width:120px;white-space:normal;}
-.dep .who.dim{color:#b0a892;font-weight:600;}
+  50%{opacity:.4;box-shadow:0 0 0 4px rgba(28,122,77,0);}}
+.offair{display:block;font-size:8.5px;font-weight:700;color:#c4bca6;line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.offair i{width:6px;height:6px;border-radius:50%;border:1.5px solid #d5cdb9;font-style:normal;
+  display:inline-block;margin-right:4px;vertical-align:1px;box-sizing:border-box;}
+@media(max-width:560px){ .onair,.offair{font-size:7.5px;} }
 .dotlive{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1c7a4d;
   margin-right:6px;vertical-align:3px;animation:blip 1.3s ease-in-out infinite;}
 /* ---- 📋 DATA TAB ---- */
@@ -252,12 +266,12 @@ const DEPOTS=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
 /* สาขา TEST สำหรับ Run test — โผล่เฉพาะเมื่อเปิดด้วย ?test=1 */
 if(/[?&]test=1/.test(location.search)) DEPOTS.push('TEST');
 const TASKS=[
-  {k:'checkin',l:'เข้างาน',tg:'07:00'},
-  {k:'pd',     l:'PD',     tg:'<07:15'},
-  {k:'fib',    l:'First IB',tg:''},
-  {k:'lib',    l:'Last IB', tg:''},
-  {k:'dep',    l:'Departure',tg:'<08:30'},
-  {k:'fdel',   l:'First Del',tg:'<09:00'}
+  {k:'checkin',l:'เข้างาน',  s:'เข้างาน', tg:'07:00'},
+  {k:'pd',     l:'PD',      s:'PD',      tg:'<07:15'},
+  {k:'fib',    l:'First IB',s:'IB แรก',  tg:''},
+  {k:'lib',    l:'Last IB', s:'IB ท้าย', tg:''},
+  {k:'dep',    l:'Departure',s:'ออกรถ',  tg:'<08:30'},
+  {k:'fdel',   l:'First Del',s:'ส่งแรก', tg:'<09:00'}
 ];
 const CUT=25200, GRACE=25800, PD_END=7*3600+15*60, T_DEP=8*3600+1800, T_FDEL=9*3600;
 const pad=n=>String(n).padStart(2,'0');
@@ -525,17 +539,18 @@ function render(){
     +'</div>';
 
   /* GRID */
-  let h='<tr><th></th>'+TASKS.map(t=>'<th>'+t.l+(t.tg?'<span class="tg">'+t.tg+'</span>':'')+'</th>').join('')+'</tr>';
+  let h='<colgroup><col class="c-dep">'+TASKS.map(()=>'<col class="c-task">').join('')+'</colgroup>'
+    +'<tr><th></th>'+TASKS.map(t=>'<th>'+(t.s||t.l)+(t.tg?'<span class="tg">'+t.tg+'</span>':'')+'</th>').join('')+'</tr>';
   DEPOTS.forEach(dep=>{
     const d=DATA[dep];
     const n=d? Object.keys(d.checkins||{}).length : 0;
     const onl=onlineOf(dep);
+    const last=(SES[dep]||[]).slice().sort((a,b)=>b.at-a.at)[0];
     const air = onl.length
-      ? '<div class="onair"><i></i>ON AIR</div><div class="who">'
-        + onl.map(s=>esc(s.name)).join(' · ') + '</div>'
-      : (()=>{ const last=(SES[dep]||[]).sort((a,b)=>b.at-a.at)[0];
-          return '<div class="offair">○ ออฟไลน์</div>'
-            + (last&&last.at? '<div class="who dim">'+esc(last.name)+' • '+agoTxt(Date.now()-last.at)+'</div>' : ''); })();
+      ? '<span class="onair" title="'+esc(onl.map(s=>s.name).join(', '))+'"><i></i>Online · '
+        + esc(onl.map(s=>s.name).join(', ')) + '</span>'
+      : '<span class="offair" title="'+(last&&last.at? esc(last.name)+' — '+agoTxt(Date.now()-last.at):'ยังไม่เคยเข้าใช้')+'"><i></i>'
+        + (last&&last.at? esc(last.name)+' · '+agoTxt(Date.now()-last.at) : 'ยังไม่เข้าใช้') + '</span>';
     h+='<tr><td class="dep">'+dep+'<small>'+(d? n+' คน':'ไม่มีข้อมูล')+'</small>'+air+'</td>';
     TASKS.forEach(t=>{
       const s=taskState(dep,t.k);

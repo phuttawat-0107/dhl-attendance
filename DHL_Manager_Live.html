@@ -31,7 +31,7 @@ h2{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;fle
 .gridwrap{margin:0 -2px;padding:0 2px;overflow:visible;}
 table.grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:3px;font-size:12px;}
 table.grid col.c-dep{width:15%;} table.grid col.c-task{width:14.16%;}
-table.grid th{font-size:9px;color:#a09884;font-weight:800;letter-spacing:0;padding:2px 1px;text-align:center;
+table.grid th{font-size:9.5px;color:#8a8272;font-weight:800;letter-spacing:.2px;padding:2px 1px;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 table.grid th.tg{color:var(--r);font-size:8px;display:block;font-weight:700;}
 td.dep{font-weight:900;font-size:13.5px;text-align:left;padding-right:4px;white-space:nowrap;
@@ -136,6 +136,8 @@ textarea:focus{outline:2px solid var(--y);}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .offair i{width:6px;height:6px;border-radius:50%;border:1.5px solid #d5cdb9;font-style:normal;
   display:inline-block;margin-right:4px;vertical-align:1px;box-sizing:border-box;}
+.onair,.offair{cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:opacity .15s;} .onair:active,.offair:active{opacity:.5;}
 @media(max-width:560px){ .onair,.offair{font-size:7.5px;} }
 .dotlive{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1c7a4d;
   margin-right:6px;vertical-align:3px;animation:blip 1.3s ease-in-out infinite;}
@@ -267,12 +269,12 @@ const DEPOTS=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
 /* สาขา TEST สำหรับ Run test — โผล่เฉพาะเมื่อเปิดด้วย ?test=1 */
 if(/[?&]test=1/.test(location.search)) DEPOTS.push('TEST');
 const TASKS=[
-  {k:'checkin',l:'เข้างาน',  s:'เข้างาน', tg:'07:00'},
-  {k:'pd',     l:'PD',      s:'PD',      tg:'<07:15'},
-  {k:'fib',    l:'First IB',s:'IB แรก',  tg:''},
-  {k:'lib',    l:'Last IB', s:'IB ท้าย', tg:''},
-  {k:'dep',    l:'Departure',s:'ออกรถ',  tg:'<08:30'},
-  {k:'fdel',   l:'First Del',s:'ส่งแรก', tg:'<09:00'}
+  {k:'checkin',l:'เข้างาน',  s:'Check-in', tg:'07:00'},
+  {k:'pd',     l:'PD',      s:'PD',        tg:'<07:15'},
+  {k:'fib',    l:'First IB',s:'First IB',  tg:''},
+  {k:'lib',    l:'Last IB', s:'Last IB',   tg:''},
+  {k:'dep',    l:'Departure',s:'Departure',tg:'<08:30'},
+  {k:'fdel',   l:'First Del',s:'First Del',tg:'<09:00'}
 ];
 const CUT=25200, GRACE=25800, PD_END=7*3600+15*60, T_DEP=8*3600+1800, T_FDEL=9*3600;
 const pad=n=>String(n).padStart(2,'0');
@@ -548,10 +550,11 @@ function render(){
     const n=d? Object.keys(d.checkins||{}).length : 0;
     const onl=onlineOf(dep);
     const last=(SES[dep]||[]).slice().sort((a,b)=>b.at-a.at)[0];
+    const click=' onclick="event.stopPropagation();window.__who(\''+dep+'\')" ';
     const air = onl.length
-      ? '<span class="onair" title="'+esc(onl.map(s=>s.name).join(', '))+'"><i></i>Online · '
-        + esc(onl.map(s=>s.name).join(', ')) + '</span>'
-      : '<span class="offair" title="'+(last&&last.at? esc(last.name)+' — '+agoTxt(Date.now()-last.at):'ยังไม่เคยเข้าใช้')+'"><i></i>'
+      ? '<span class="onair"'+click+'title="แตะเพื่อดูรายละเอียด"><i></i>Online · '
+        + esc(onl.map(s=>s.name).join(', ')) + (onl.length>1? ' ('+onl.length+')':'') + '</span>'
+      : '<span class="offair"'+click+'title="แตะเพื่อดูรายละเอียด"><i></i>'
         + (last&&last.at? esc(last.name)+' · '+agoTxt(Date.now()-last.at) : 'ยังไม่เข้าใช้') + '</span>';
     h+='<tr><td class="dep">'+dep+'<small>'+(d? n+' คน':'ไม่มีข้อมูล')+'</small>'+air+'</td>';
     TASKS.forEach(t=>{
@@ -1358,6 +1361,47 @@ window.__open=async (dep,task)=>{
   document.getElementById('mdlBody').innerHTML=b;
   document.getElementById('mdl').classList.add('show');
   loadPhotos();
+};
+
+/* 🟢 ป๊อปอัป: ใครกำลังใช้แอปอยู่ / ใช้กี่เครื่อง */
+window.__who=dep=>{
+  const all=(SES[dep]||[]).slice().sort((a,b)=>b.at-a.at);
+  const now=Date.now();
+  const onl=all.filter(s=>s.at&&(now-s.at)<ONLINE_MS);
+  const off=all.filter(s=>!(s.at&&(now-s.at)<ONLINE_MS));
+  const devOn=new Set(onl.map(s=>s.uid).filter(Boolean)).size || onl.length;
+  const maxS=(META[dep]&&META[dep].maxStaff)||3;
+
+  let b='<h2>'+(onl.length? '<span class="dotlive"></span>':'○ ')+dep+' — การใช้งานแอป</h2>'
+    +'<div class="small" style="margin-bottom:11px;">อัปเดตทุก 2 นาที • เงียบเกิน 5 นาที = ออฟไลน์</div>'
+    +'<div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:13px;">'
+    +'<div class="kpi '+(onl.length?'green':'')+'"><div class="v">'+onl.length+'</div><div class="l">กำลังใช้งาน</div></div>'
+    +'<div class="kpi"><div class="v">'+devOn+'</div><div class="l">เครื่อง</div></div>'
+    +'<div class="kpi"><div class="v">'+all.length+'/'+maxS+'</div><div class="l">ชื่อที่เข้าระบบ</div></div>'
+    +'</div>';
+
+  b+='<div style="font-weight:800;font-size:13px;margin-bottom:6px;">🟢 กำลังใช้งานอยู่</div>';
+  b+= onl.length ? onl.map(s=>
+        '<div class="row-c"><div class="info"><div class="nm">'+esc(s.name)+'</div>'
+        +'<div class="sub2">เครื่อง #'+esc(String(s.uid||'').slice(-6).toUpperCase()||'—')
+        +' • สัญญาณล่าสุด '+fmtT(s.at)+'</div></div>'
+        +'<span class="chip ok">● Online</span></div>').join('')
+      : '<div class="empty" style="padding:18px 10px;">ไม่มีใครเปิดแอปอยู่ตอนนี้</div>';
+
+  if(off.length){
+    b+='<div style="font-weight:800;font-size:13px;margin:14px 0 6px;">○ เคยเข้าใช้ (ออฟไลน์)</div>'
+      + off.map(s=>
+        '<div class="row-c"><div class="info"><div class="nm">'+esc(s.name)+'</div>'
+        +'<div class="sub2">เครื่อง #'+esc(String(s.uid||'').slice(-6).toUpperCase()||'—')
+        +(s.at? ' • ล่าสุด '+fmtT(s.at):'')+'</div></div>'
+        +'<span class="chip">'+(s.at? agoTxt(now-s.at):'—')+'</span></div>').join('');
+  }
+  if(!all.length) b+='<div class="empty" style="padding:18px 10px;">สาขานี้ยังไม่เคยเข้าสู่ระบบเลย</div>';
+
+  b+='<div style="margin-top:14px;"><button class="btn btn-o" style="width:100%;" '
+    +'onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
+  document.getElementById('mdlBody').innerHTML=b;
+  document.getElementById('mdl').classList.add('show');
 };
 
 window.__zoom=src=>{

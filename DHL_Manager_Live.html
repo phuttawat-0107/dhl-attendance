@@ -1435,7 +1435,9 @@ window.__notice=(keep)=>{
     +'<textarea id="nMsg" style="min-height:88px;" placeholder="เช่น อีก 5% จะถึง Target บริษัท โฟกัสด้วยนะครับ"></textarea>';
   b+='<div style="display:flex;gap:8px;margin-top:13px;">'
     +'<button class="btn btn-r" style="flex:1;" onclick="window.__sendNotice()">📨 ส่งประกาศ</button>'
-    +'<button class="btn btn-o" style="flex:1;" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
+    +'<button class="btn btn-o" style="flex:1;" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>'
+    +'<div style="height:8px"></div>'
+    +'<button class="btn btn-o" style="width:100%;" onclick="window.__noticeStatus()">📋 ดูสถานะการรับทราบ</button>';
   document.getElementById('mdlBody').innerHTML=b;
   document.getElementById('mdl').classList.add('show');
 };

@@ -148,10 +148,11 @@ textarea:focus{outline:2px solid var(--y);}
 .dotlive{display:inline-block;width:9px;height:9px;border-radius:50%;background:#1c7a4d;
   margin-right:6px;vertical-align:3px;animation:blip 1.3s ease-in-out infinite;}
 /* ---- 📋 DATA TAB ---- */
-.segbar{display:flex;gap:5px;background:#fff;border-radius:99px;padding:5px;box-shadow:0 1px 6px rgba(60,50,20,.08);margin-bottom:11px;}
-.seg{flex:1;border:none;border-radius:99px;padding:10px 4px;font-weight:800;font-size:12.5px;background:none;color:#a09884;
-  font-family:inherit;cursor:pointer;transition:.18s;}
-.seg.on{background:#1a1a1a;color:var(--y);}
+.segbar{display:flex;gap:3px;background:#f2ede2;border-radius:12px;padding:3px;margin-bottom:10px;}
+.seg{flex:1;border:none;border-radius:9px;padding:8px 4px;font-weight:800;font-size:12px;background:none;color:#8a8272;
+  font-family:inherit;cursor:pointer;transition:.16s;-webkit-tap-highlight-color:transparent;}
+.seg:active{transform:scale(.97);}
+.seg.on{background:#fff;color:#1a1a1a;box-shadow:0 1px 4px rgba(60,50,20,.14);}
 .dtbl{width:100%;border-collapse:separate;border-spacing:0 5px;font-size:12.5px;}
 .dtbl th{font-size:9.5px;color:#a09884;text-transform:uppercase;letter-spacing:.4px;font-weight:800;
   padding:0 7px 4px;text-align:center;white-space:nowrap;position:sticky;top:0;background:#fff;z-index:2;}
@@ -173,35 +174,47 @@ textarea:focus{outline:2px solid var(--y);}
 .impcard .pc.up{color:#12683f;} .impcard .pc.dn{color:#b3121d;} .impcard .pc.eq{color:#a09884;}
 .dlg{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:#8a8272;font-weight:700;margin-top:9px;align-items:center;}
 .dlg i{width:13px;height:13px;border-radius:4px;display:inline-block;margin-right:4px;vertical-align:-2px;font-style:normal;}
-.cmpsel{display:flex;gap:7px;margin-top:11px;}
-.cmpsel button{flex:1;border:none;border-radius:14px;padding:11px 8px;font-weight:800;font-size:12px;font-family:inherit;
-  cursor:pointer;background:rgba(255,255,255,.1);color:#cfc8b8;transition:.18s;}
-.cmpsel button.on{background:var(--y);color:#1a1a1a;}
+.cmpsel{display:flex;gap:5px;margin-top:8px;}
+.cmpsel button{flex:1;border:1px solid #efe9dc;border-radius:10px;padding:7px 6px;font-weight:800;font-size:11.5px;
+  font-family:inherit;cursor:pointer;background:#fbf9f4;color:#8a8272;transition:.16s;
+  -webkit-tap-highlight-color:transparent;}
+.cmpsel button:active{transform:scale(.96);}
+.cmpsel button.on{background:#1a1a1a;color:var(--y);border-color:#1a1a1a;}
 /* ---- ตัวเลือกช่วงวัน + ปุ่มสาขา (ดีไซน์ใหม่) ---- */
-.rangebar{background:linear-gradient(135deg,#1a1a1a,#2e2e2e);border-radius:24px;padding:16px;margin-bottom:11px;
-  box-shadow:0 6px 22px rgba(0,0,0,.18);color:#fff;animation:fadeUp .3s ease;}
-.rangebar .lab{font-size:10.5px;font-weight:700;color:#8f8677;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px;}
+.rangebar{background:#fff;border:1px solid #efe9dc;border-radius:16px;padding:11px 12px;margin-bottom:10px;
+  box-shadow:0 1px 5px rgba(60,50,20,.05);color:#1a1a1a;animation:fadeUp .25s ease;}
+.rangebar .lab{font-size:9.5px;font-weight:800;color:#b0a892;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px;}
 .dfield{flex:1;min-width:0;}
-.dfield input{width:100%;padding:11px 12px;border:none;border-radius:14px;background:rgba(255,255,255,.1);
-  color:#fff;font-size:14px;font-weight:700;font-family:inherit;-webkit-appearance:none;}
-.dfield input::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.7);cursor:pointer;}
-.dfield input:focus{outline:2px solid var(--y);background:rgba(255,255,255,.16);}
-.dsep{align-self:flex-end;padding-bottom:12px;color:#8f8677;font-weight:800;}
-.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px;}
-.qbtn{border:none;border-radius:99px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
-  background:rgba(255,255,255,.1);color:#cfc8bb;transition:all .2s cubic-bezier(.34,1.56,.64,1);}
-.qbtn:active{transform:scale(.93);}
-.qbtn.on{background:var(--y);color:#1a1a1a;box-shadow:0 3px 10px rgba(255,204,0,.35);}
-.rsum{margin-top:11px;font-size:12px;color:#b8b0a2;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-.rsum b{color:var(--y);}
-.depbar{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12);}
-.dbtn{border:none;border-radius:99px;padding:9px 15px 9px 12px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;
-  background:rgba(255,255,255,.09);color:#cfc8bb;display:inline-flex;align-items:center;gap:7px;
-  transition:all .2s cubic-bezier(.34,1.56,.64,1);}
-.dbtn:active{transform:scale(.92);}
-.dbtn i{width:9px;height:9px;border-radius:50%;font-style:normal;flex-shrink:0;}
-.dbtn.on{background:#fff;color:#1a1a1a;box-shadow:0 3px 12px rgba(0,0,0,.3);}
-.dbtn.all.on{background:var(--y);color:#1a1a1a;}
+.dfield input{width:100%;padding:7px 9px;border:1px solid #ece5d5;border-radius:10px;background:#fbf9f4;
+  color:#1a1a1a;font-size:13px;font-weight:700;font-family:inherit;-webkit-appearance:none;min-height:0;}
+.dfield input::-webkit-calendar-picker-indicator{opacity:.45;cursor:pointer;width:15px;}
+.dfield input:focus{outline:none;border-color:var(--y);background:#fffdf5;box-shadow:0 0 0 3px rgba(255,204,0,.18);}
+.dsep{align-self:flex-end;padding-bottom:7px;color:#c4bca6;font-weight:800;font-size:12px;}
+.quick{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;}
+.qbtn{border:1px solid #efe9dc;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;
+  font-family:inherit;background:#fbf9f4;color:#8a8272;transition:all .16s ease;
+  -webkit-tap-highlight-color:transparent;}
+.qbtn:active{transform:scale(.94);}
+.qbtn.on{background:#1a1a1a;color:var(--y);border-color:#1a1a1a;}
+.rsum{margin-top:8px;font-size:11px;color:#a09884;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:600;}
+.rsum b{color:#1a1a1a;font-weight:800;}
+.depbar{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid #f2ede2;}
+.dbtn{border:1px solid #efe9dc;border-radius:8px;padding:5px 10px 5px 8px;font-size:11.5px;font-weight:800;
+  cursor:pointer;font-family:inherit;background:#fbf9f4;color:#8a8272;display:inline-flex;align-items:center;gap:5px;
+  transition:all .16s ease;-webkit-tap-highlight-color:transparent;}
+.dbtn:active{transform:scale(.94);}
+.dbtn i{width:7px;height:7px;border-radius:50%;font-style:normal;flex-shrink:0;opacity:.75;}
+.dbtn.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.dbtn.on i{opacity:1;}
+.dbtn.all.on{background:var(--y);color:#1a1a1a;border-color:var(--y);}
+/* ---- ฟอร์ม: input / select ให้เข้าธีม ---- */
+#mdlBody select,#mdlBody input[type=text],#mdlBody input:not([type]),#mdlBody textarea{
+  width:100%;padding:9px 11px;border:1px solid #ece5d5;border-radius:11px;background:#fbf9f4;
+  font-family:inherit;font-size:14px;font-weight:600;color:#1a1a1a;min-height:0;-webkit-appearance:none;}
+#mdlBody select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='7'><path d='M1 1l4.5 4.5L10 1' stroke='%23a09884' stroke-width='1.8' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+#mdlBody input:focus,#mdlBody select:focus,#mdlBody textarea:focus{
+  outline:none;border-color:var(--y);background:#fffdf5;box-shadow:0 0 0 3px rgba(255,204,0,.18);}
 </style>
 </head>
 <body>
@@ -869,15 +882,15 @@ function rangeBarHTML(withDeps){
     return RTO===t && RFROM===addD(t,-(n-1)); };
   const q=(v,l)=>'<button class="qbtn'+(isQ(v)?' on':'')+'" onclick="window.__quick('+(typeof v==='number'?v:"'"+v+"'")+')">'+l+'</button>';
   let h='<div class="rangebar">'
-    +'<div style="display:flex;gap:9px;align-items:flex-end;">'
-    +'<div class="dfield"><div class="lab">📅 จากวันที่</div>'
+    +'<div style="display:flex;gap:7px;align-items:flex-end;">'
+    +'<div class="dfield"><div class="lab">จากวันที่</div>'
     +'<input type="date" value="'+RFROM+'" max="'+t+'" onchange="window.__setRange(this.value,null)"></div>'
     +'<div class="dsep">→</div>'
     +'<div class="dfield"><div class="lab">ถึงวันที่</div>'
     +'<input type="date" value="'+RTO+'" max="'+t+'" onchange="window.__setRange(null,this.value)"></div></div>'
     +'<div class="quick">'+q(1,'วันนี้')+q(7,'7 วัน')+q(14,'14 วัน')+q(30,'30 วัน')+q('month','เดือนนี้')+q('prevmonth','เดือนที่แล้ว')+'</div>'
-    +'<div class="rsum">📊 <b>'+days+' วัน</b> • '+thD(RFROM)+(RFROM===RTO?'':' → '+thD(RTO))
-    +(histLoading?' • <span style="color:#FFCC00;">กำลังโหลด...</span>':'')+'</div>';
+    +'<div class="rsum"><b>'+days+' วัน</b> · '+thD(RFROM)+(RFROM===RTO?'':' → '+thD(RTO))
+    +(histLoading?' · <span style="color:#b58900;font-weight:700;">กำลังโหลด…</span>':'')+'</div>';
   if(withDeps){
     h+='<div class="depbar">'
       +'<button class="dbtn all'+(CHDEP==='all'?' on':'')+'" onclick="window.__chDep(\'all\')">👥 ทุกสาขา</button>'
@@ -1109,7 +1122,7 @@ function renderData(){
   if(DMODE==='cmp'){
     const b=baseRange();
     h+='<div class="rangebar">'
-      +'<div class="lab">⚖️ เทียบกับช่วงไหน</div>'
+      +'<div class="lab">เทียบกับช่วงไหน</div>'
       +'<div class="cmpsel" style="margin-top:0;">'
       +'<button class="'+(CMODE==='auto'?'on':'')+'" onclick="window.__cMode(\'auto\')">⚡ ช่วงก่อนหน้าอัตโนมัติ</button>'
       +'<button class="'+(CMODE==='custom'?'on':'')+'" onclick="window.__cMode(\'custom\')">📅 เลือกเอง</button></div>'
@@ -1121,7 +1134,7 @@ function renderData(){
           +'<div class="dfield"><div class="lab">ถึงวันที่</div>'
           +'<input type="date" value="'+BTO+'" max="'+todayKey()+'" onchange="window.__setBase(null,this.value)"></div></div>'
         : '')
-      +'<div class="rsum">⚖️ ฐาน <b>'+thD(b.f)+' → '+thD(b.t)+'</b> &nbsp;⟶&nbsp; ปัจจุบัน <b>'
+      +'<div class="rsum">ฐาน <b>'+thD(b.f)+' → '+thD(b.t)+'</b> &nbsp;⟶&nbsp; ปัจจุบัน <b>'
       +thD(RFROM)+' → '+thD(RTO)+'</b></div></div>';
   }
 

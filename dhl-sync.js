@@ -756,7 +756,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-e';
+const SYNC_VER='2026.08.05-f';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1268,7 +1268,16 @@ const GRP_CSS = "#dsGrpBar{display:flex;gap:6px;align-items:center;margin:2px 0 
 +"#dsDone{overflow:hidden;}"
 +"#dsAllDone{background:#e6f5eb;color:#12683f;border-radius:12px;padding:18px 14px;text-align:center;"
 +"font-size:14.5px;font-weight:800;margin-bottom:6px;}"
-+"body.dsNoPh #ciList img{display:none!important;}";
++"body.dsNoPh #ciList img{display:none!important;}"
++"#dsSum{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:16px;"
++"padding:15px 17px;margin:0 0 11px;transition:background .3s;}"
++"#dsSum.go{background:#fff5d6;} #dsSum.ok{background:#e6f5eb;}"
++"#dsSum .pv{font-size:34px;font-weight:900;line-height:1;letter-spacing:-1px;}"
++"#dsSum .ps{font-size:13.5px;font-weight:700;margin-top:5px;}"
++"#dsSum .tl{font-size:11.5px;font-weight:700;opacity:.75;text-align:right;}"
++"#dsSum .tv{font-size:21px;font-weight:900;line-height:1.15;text-align:right;margin-top:2px;}"
++"#dsSum.go,#dsSum.go *{color:#8a6100;} #dsSum.ok,#dsSum.ok *{color:#12683f;}"
++"#dsSum .lt{font-size:12px;font-weight:800;color:#b3121d;}";
 (function(){ const s=document.createElement('style'); s.id='dsGrpCSS'; s.textContent=GRP_CSS; document.head.appendChild(s); })();
 
 let GRPBUSY=false;
@@ -1332,8 +1341,26 @@ function regroupCheckin(){
     list.innerHTML='';
     list.appendChild(frag);
     list.querySelectorAll('img').forEach(im=>im.setAttribute('loading','lazy'));
+    mountSummary(); paintSummary(todo.length, done.length, late);
   }catch(e){ console.warn('regroup',e); }
   GRPBUSY=false;
+}
+function mountSummary(){
+  const anchor=document.getElementById('dsGrpBar')||document.getElementById('ciSearch');
+  if(!anchor||document.getElementById('dsSum')) return;
+  const d=document.createElement('div'); d.id='dsSum'; d.className='go';
+  anchor.parentNode.insertBefore(d, anchor);
+}
+function paintSummary(todo, done, late){
+  const el=document.getElementById('dsSum'); if(!el) return;
+  const tot=todo+done, pct= tot? Math.round(done/tot*100):0;
+  const now=new Date();
+  const hh=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  el.className = (todo===0 && tot>0)? 'ok':'go';
+  el.innerHTML='<div><div class="pv">'+pct+'%</div>'
+    +'<div class="ps">เช็คอินแล้ว '+done+'/'+tot+' คน'
+    +(late? ' <span class="lt">· สาย '+late+'</span>':'')+'</div></div>'
+    +'<div><div class="tl">เวลา</div><div class="tv">'+hh+'</div></div>';
 }
 function mountGrpBar(){
   const s=document.getElementById('ciSearch');
@@ -1353,7 +1380,10 @@ function mountGrpBar(){
     mountGrpBar(); applyPhotoMode(); regroupCheckin();
     new MutationObserver(()=>{ if(!GRPBUSY) setTimeout(regroupCheckin,30); })
       .observe(list,{childList:true});
-    setInterval(()=>{ mountGrpBar(); regroupCheckin(); }, 3000);
+    setInterval(()=>{ mountGrpBar(); mountSummary(); regroupCheckin(); }, 3000);
+    setInterval(()=>{ const l=document.getElementById('ciList'); if(!l) return;
+      const rw=[...l.querySelectorAll('.row-c')];
+      const dn=rw.filter(isDone); paintSummary(rw.length-dn.length, dn.length, dn.filter(r=>r.classList.contains('st-late')).length); }, 20000);
   };
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
 })();

@@ -494,6 +494,55 @@ async function removeCloudCheckin(cid){
   try{ await deleteDoc(doc(phoCol(S.depot),'ci_'+cid+'_'+date)); }catch(e){}
 }
 
+/* ============ 📷 ดึงรูปจากคลาวด์ลงเครื่อง (ให้ทุกเครื่องเห็นรูปเหมือนกัน) ============ */
+const photoQ=[]; let photoBusy=false, photoDone={};
+function queuePhotoPull(cid,date){
+  const key=cid+'_'+date;
+  if(photoDone[key]) return;
+  if(photoQ.some(x=>x.key===key)) return;
+  photoQ.push({cid,date,key});
+  runPhotoQ();
+}
+async function runPhotoQ(){
+  if(photoBusy||!photoQ.length||!S.ready) return;
+  photoBusy=true;
+  let got=0;
+  while(photoQ.length){
+    const j=photoQ.shift();
+    photoDone[j.key]=1;
+    try{
+      const snap=await getDoc(doc(phoCol(S.depot),'ci_'+j.cid+'_'+j.date));
+      if(!snap.exists()||!snap.data().d) continue;
+      const recs=await getByDate(j.date);
+      const rec=recs.find(r=>String(r.courierId)===String(j.cid));
+      if(!rec||rec.photo) continue;
+      rec.photo=snap.data().d;
+      const put=S._rawPutCheckin||window.putCheckin;
+      const wasMerging=S.merging; S.merging=true;      // อย่าให้ push กลับขึ้นคลาวด์
+      try{ await put(rec); }finally{ S.merging=wasMerging; }
+      got++;
+    }catch(e){ console.warn('photo pull',e); }
+    await new Promise(r=>setTimeout(r,120));           // เว้นจังหวะ ไม่ให้เครื่องหน่วง
+  }
+  photoBusy=false;
+  if(got){ toast('📷 โหลดรูปจากเครื่องอื่นแล้ว '+got+' รูป'); repaintSoon(); }
+}
+
+let pdPulled={};
+async function queuePdPull(date){
+  if(pdPulled[date]||!S.ready) return; pdPulled[date]=1;
+  try{
+    const snap=await getDoc(doc(phoCol(S.depot),'pd_pd_'+date));
+    if(!snap.exists()||!snap.data().d) return;
+    const cur=await getPPH(date); if(!cur||!cur.pd||cur.pd.photo) return;
+    cur.pd.photo=snap.data().d;
+    const put=S._rawPutPPH||window.putPPH;
+    const was=S.merging; S.merging=true;
+    try{ await put(cur); }finally{ S.merging=was; }
+    toast('📷 โหลดรูป PD จากเครื่องอื่นแล้ว'); repaintSoon();
+  }catch(e){ console.warn('pd pull',e); }
+}
+
 async function pushPhoto(kind, cid, dataUrl){
   if(!S.ready||!dataUrl) return;
   try{
@@ -651,8 +700,12 @@ async function mergeRemote(d){
       if(!cur){
         await putCk({ courierId:id, date, ts:rc.ts, status:rc.status, buffer:!!rc.buffer,
           photo:null, uniform:rc.uniform!==false, manualEdit:!!rc.manualEdit, staff:rc.staff||'' });
+        if(rc.hasPhoto) queuePhotoPull(id,date);      // 📷 ดึงรูปจากคลาวด์มาแสดงด้วย
         changed=true;
-      } else if(cur.ts!==rc.ts || cur.status!==rc.status || (!!cur.manualEdit)!==(!!rc.manualEdit)){
+      } else if(cur.ts===rc.ts && rc.hasPhoto && !cur.photo){
+        queuePhotoPull(id,date);                      // มีรูปบนคลาวด์ แต่เครื่องนี้ยังไม่มี
+      }
+      if(cur && (cur.ts!==rc.ts || cur.status!==rc.status || (!!cur.manualEdit)!==(!!rc.manualEdit))){
         cur.ts=rc.ts; cur.status=rc.status; cur.buffer=!!rc.buffer;
         cur.manualEdit=!!rc.manualEdit; cur.uniform=rc.uniform!==false;
         await putCk(cur); changed=true;
@@ -671,6 +724,8 @@ async function mergeRemote(d){
         if(r.pd){ cur.pd = cur.pd||{}; cur.pd.ts=r.pd.ts; cur.pd.manualEdit=!!r.pd.manualEdit; }
         await putPp(cur); changed=true;
       }
+      /* 📷 รูป PD จากเครื่องอื่น */
+      if(r.pd && r.pd.hasPhoto && !(cur.pd&&cur.pd.photo)) queuePdPull(date);
     }
     if(changed) repaintSoon();
   }catch(e){ console.warn('merge',e); }
@@ -678,6 +733,15 @@ async function mergeRemote(d){
 }
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
+/* 🖐 จับเวลาที่ผู้ใช้แตะจอล่าสุด — ห้ามวาดจอใหม่ระหว่างที่กำลังกด
+   (สาเหตุอาการ "กดไม่ติด": ระหว่างนิ้วแตะ ระบบวาดรายชื่อใหม่ ปุ่มเดิมถูกลบทิ้ง คลิกเลยหลุด) */
+let lastTouch=0, touching=false;
+['pointerdown','touchstart','mousedown'].forEach(ev=>
+  document.addEventListener(ev,()=>{ touching=true; lastTouch=Date.now(); },{capture:true,passive:true}));
+['pointerup','touchend','touchcancel','mouseup','click'].forEach(ev=>
+  document.addEventListener(ev,()=>{ touching=false; lastTouch=Date.now(); },{capture:true,passive:true}));
+const QUIET_MS=2500;      // เงียบ 2.5 วิหลังแตะจอครั้งล่าสุด ค่อยวาดใหม่
+
 let paintT=null, paintQueued=false;
 function repaintSoon(){
   paintQueued=true;
@@ -686,10 +750,12 @@ function repaintSoon(){
     paintT=null;
     if(!paintQueued) return;
     paintQueued=false;
+    /* 🖐 กำลังแตะจออยู่ หรือเพิ่งแตะไม่ถึง 2.5 วิ → เลื่อนออกไปก่อน */
+    if(touching || (Date.now()-lastTouch) < QUIET_MS){ repaintSoon(); return; }
     /* ไม่วาดถ้าผู้ใช้กำลังพิมพ์/เปิดกล้อง/เปิด popup อยู่ — กันจอกระพริบขณะทำงาน */
     const ae=document.activeElement;
     if(ae && (ae.tagName==='INPUT'||ae.tagName==='SELECT'||ae.tagName==='TEXTAREA')) { repaintSoon(); return; }
-    if(document.querySelector('.overlay.show, .modal.show')) { repaintSoon(); return; }
+    if(document.querySelector('.overlay.show, .modal.show, #dsNotice.show')) { repaintSoon(); return; }
     toast('☁ ซิงค์ข้อมูลจากเครื่องอื่นแล้ว');
     const v=document.querySelector('.view.active'); const id=v? v.id:'';
     try{

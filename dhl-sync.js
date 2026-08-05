@@ -394,7 +394,7 @@ async function pushAll(){
     /* 🚫 ไม่ส่งระเบียนที่ถูกลบไปแล้ว (และลบทิ้งจากเครื่องนี้ให้ด้วย) */
     const ckDel=S.ckDel||{};
     if(Object.keys(ckDel).length){
-      const dead=recs.filter(r=>{ const t=ckDel[String(r.courierId)]; return t && r.ts<=t; });
+      const dead=recs.filter(r=>isDeleted(ckDel, r.courierId, r.ts));
       if(dead.length){
         for(const r of dead){ try{ if(S._rawDel) await S._rawDel(r.id); }catch(e){} }
         recs=recs.filter(r=>!dead.some(x=>x.id===r.id));
@@ -491,15 +491,21 @@ async function backfill(){
 /* ลบเช็คอินคนหนึ่งออกจากคลาวด์ (พร้อมรูป) — ใช้ตอน Staff กด "บันทึกใหม่/ลบ"
    จด ckDel[cid] = เวลาที่ลบ  → ทุกเครื่องจะลบเฉพาะระเบียนที่เก่ากว่าเวลานี้
    ถ้าเช็คอินใหม่ทีหลัง (ts ใหม่กว่า) จะไม่โดนลบ ไม่ต้องยกเลิก tombstone เอง */
-async function removeCloudCheckin(cid){
+async function removeCloudCheckin(cid, delTs){
   if(!S.ready||cid==null) return;
   const date=tKey(), now=Date.now();
   try{
     await updateDoc(dayRef(S.depot,date),{ ['checkins.'+cid]: deleteField(),
-      ['ckDel.'+cid]: now, updatedAt:now });
-    S.ckDel=S.ckDel||{}; S.ckDel[String(cid)]=now;
+      ['ckDel.'+cid]: { ts:(delTs||0), at:now }, updatedAt:now });
+    S.ckDel=S.ckDel||{}; S.ckDel[String(cid)]={ts:(delTs||0), at:now};
   }catch(e){ console.warn('rm checkin',e); }
   try{ await deleteDoc(doc(phoCol(S.depot),'ci_'+cid+'_'+date)); }catch(e){}
+}
+function isDeleted(ckDel, cid, ts){
+  const e=ckDel && ckDel[String(cid)];
+  if(!e) return false;
+  if(typeof e==='number') return false;
+  return Number(e.ts)>0 && Number(e.ts)===Number(ts);
 }
 
 /* ============ 📷 ดึงรูปจากคลาวด์ลงเครื่อง (ให้ทุกเครื่องเห็นรูปเหมือนกัน) ============ */
@@ -694,16 +700,14 @@ async function mergeRemote(d){
     if(date===tKey()) S.ckDel=ckDel;
     if(Object.keys(ckDel).length && S._rawDel){
       for(const r of local){
-        const t=ckDel[String(r.courierId)];
-        if(t && r.ts<=t){
+        if(isDeleted(ckDel, r.courierId, r.ts)){
           try{ await S._rawDel(r.id); changed=true; }catch(e){}
           delete lmap[r.courierId];
         }
       }
     }
     for(const [cid,rc] of Object.entries(d.checkins||{})){
-      const td=ckDel[String(cid)];
-      if(td && rc.ts<=td) continue;                 // 🚫 ไม่ดึงระเบียนที่ถูกลบแล้วกลับมา
+      if(isDeleted(ckDel, cid, rc.ts)) continue;
       const id=+cid, cur=lmap[id];
       if(!cur){
         await putCk({ courierId:id, date, ts:rc.ts, status:rc.status, buffer:!!rc.buffer,
@@ -742,7 +746,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-a';
+const SYNC_VER='2026.08.05-b';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1182,7 +1186,7 @@ function wrap(){
         try{
           const after=await getByDate(tKey());
           const gone=before.filter(b=>!after.some(a=>String(a.courierId)===String(b.courierId)));
-          for(const g of gone) await removeCloudCheckin(g.courierId);
+          for(const g of gone) await removeCloudCheckin(g.courierId, g.ts);
         }catch(e){ console.warn('del cloud',e); }
         pushSoon();
       }

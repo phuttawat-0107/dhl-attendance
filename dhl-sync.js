@@ -707,7 +707,13 @@ async function mergeRemote(d){
     const lmap={}; local.forEach(r=>lmap[r.courierId]=r);
     /* --- เช็คอินที่ถูกลบไปแล้ว → ลบออกจากเครื่องนี้ด้วย (เฉพาะระเบียนที่เก่ากว่าเวลาที่ลบ) --- */
     const ckDel=d.ckDel||{};
-    if(date===tKey()){ S.ckDel=ckDel; S.absent=d.absent||{}; try{ localStorage.setItem('dsAbs_'+date, JSON.stringify(S.absent)); }catch(e){} }
+    if(date===tKey()){
+      S.ckDel=ckDel;
+      const cloudAbs=d.absent||{}, locAbs=S.absent||{}, merged=Object.assign({},cloudAbs);
+      Object.keys(locAbs).forEach(k=>{ if(!cloudAbs[k] && (Date.now()-(locAbs[k].at||0))<45000) merged[k]=locAbs[k]; });
+      S.absent=merged;
+      try{ localStorage.setItem('dsAbs_'+date, JSON.stringify(S.absent)); }catch(e){}
+    }
     if(Object.keys(ckDel).length && S._rawDel){
       for(const r of local){
         if(isDeleted(ckDel, r.courierId, r.ts)){
@@ -756,7 +762,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-g';
+const SYNC_VER='2026.08.05-h';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1329,6 +1335,8 @@ function regroupCheckin(){
       frag.appendChild(h);
       todo.forEach(r=>{
         const cid=rowCid(r);
+        r.classList.remove('dsAbsRow');
+        const oldTag=r.querySelector('.dsAbsTag'); if(oldTag) oldTag.remove();
         if(cid && !r.querySelector('#dsAbsBtnRow'+cid)){
           const nm=rowName(r);
           const b=document.createElement('button');

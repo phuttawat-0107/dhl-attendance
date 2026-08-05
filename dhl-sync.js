@@ -762,7 +762,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-h';
+const SYNC_VER='2026.08.05-i';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1316,7 +1316,7 @@ function regroupCheckin(){
   if(!rows.length) return;                      // แอปยังไม่วาด หรือไม่มีรายชื่อ
   GRPBUSY=true;
   try{
-    const sig=rows.length+':'+rows.map(r=>(r.querySelector('button')||{}).outerHTML? (r.querySelector('button').getAttribute('onclick')||''):'').join(',');
+    const sig=rows.length+':'+rows.map(r=>(r.querySelector('button')||{}).outerHTML? (r.querySelector('button').getAttribute('onclick')||''):'').join(',')+'|A:'+Object.keys(absMap()).sort().join(',');
     if(list.dataset.dsSig===sig && list.querySelector('.dsHdr')){ GRPBUSY=false; return; }
     list.dataset.dsSig=sig;
     const todo=[], done=[], absent=[];
@@ -1511,6 +1511,7 @@ async function dsAbsSave(cid, note){
   if(!cid) return;
   const rec={ note, at:Date.now(), by:S.staff||'' };
   S.absent=S.absent||{}; S.absent[String(cid)]=rec; absLocalSave();
+  try{ const L=document.getElementById('ciList'); if(L) L.dataset.dsSig=''; }catch(e){}
   try{ regroupCheckin(); }catch(e){}
   if(!S.ready) return;
   try{
@@ -1524,6 +1525,7 @@ window.dsAbsClear=async (cid)=>{
   const k=String(cid);
   if(S.absent) delete S.absent[k];
   absLocalSave();
+  try{ const L=document.getElementById('ciList'); if(L) L.dataset.dsSig=''; }catch(e){}
   try{ regroupCheckin(); }catch(e){}
   if(!S.ready) return;
   try{ await updateDoc(dayRef(S.depot,tKey()), { ['absent.'+k]: deleteField(), updatedAt:Date.now() }); }

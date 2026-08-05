@@ -238,6 +238,7 @@ textarea:focus{outline:2px solid var(--y);}
     <div class="mlogo">DHL <span>Live</span></div>
     <div class="meta" style="display:flex;align-items:center;gap:10px;">
       <div><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
+      <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__backup()" title="ข้อมูลสำรอง">💾</button>
       <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__notice()" title="ส่งประกาศถึงสาขา">📣</button>
       <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__settings()">⚙️</button>
     </div>
@@ -373,6 +374,7 @@ async function login(){
     try{ localStorage.setItem('mgPin',pin); }catch(e){}
     document.getElementById('login').style.display='none';
     start();
+    setTimeout(autoBackup, 8000);
   }catch(e){ err.textContent='เชื่อมต่อไม่ได้: '+e.message; }
 }
 
@@ -1549,6 +1551,89 @@ window.__noticeStatus=async ()=>{
     +'onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
   document.getElementById('mdlBody').innerHTML=b;
   document.getElementById('mdl').classList.add('show');
+};
+
+
+/* ================= 💾 ระบบสำรองข้อมูลอัตโนมัติ ================= */
+const BK_KEEP=30; let BKLAST=0;
+async function snapshotDay(date, quiet){
+  const done=[], fail=[];
+  for(const dep of DEPOTS){
+    try{
+      const [dayS, depS] = await Promise.all([ getDoc(doc(db,'depots',dep,'days',date)), getDoc(doc(db,'depots',dep)) ]);
+      if(!dayS.exists()) continue;
+      const dd=dayS.data(), pd=depS.exists()? depS.data():{};
+      await setDoc(doc(db,'backups',date+'__'+dep),{ date, depot:dep, at:Date.now(), by:'auto',
+        checkins: dd.checkins||{}, pph: dd.pph||{}, ckDel: dd.ckDel||{},
+        dayCouriers: dd.couriers||[], by0: dd.by||'',
+        couriers: pd.couriers||[], staffNames: pd.staffNames||[],
+        pin: pd.pin||'', maxStaff: pd.maxStaff||3, removedIds: pd.removedIds||[] });
+      done.push(dep);
+    }catch(e){ fail.push(dep+': '+e.message); }
+  }
+  if(!quiet) toastFeed('💾','<b>สำรองข้อมูลแล้ว</b><small>'+date+' • '+done.length+' สาขา'+(fail.length?' • ผิดพลาด '+fail.length:'')+'</small>', fail.length?'bad':'ok');
+  return {done, fail};
+}
+async function purgeOldBackups(){
+  try{ const cut=new Date(); cut.setDate(cut.getDate()-BK_KEEP); const cutKey=dKey(cut);
+    const s=await getDocs(collection(db,'backups')); let n=0;
+    for(const d of s.docs){ const dt=(d.id.split('__')[0]||''); if(dt && dt<cutKey){ await deleteDoc(d.ref); n++; } }
+  }catch(e){ console.warn('purge backups',e); }
+}
+async function autoBackup(){
+  try{ const y=new Date(); y.setDate(y.getDate()-1);
+    for(const d of [dKey(y), todayKey()]){
+      const probe=await getDoc(doc(db,'backups',d+'__'+DEPOTS[0]));
+      const fresh = probe.exists() && (Date.now()-(probe.data().at||0) < 6*3600000);
+      if(d===todayKey() || !probe.exists() || !fresh) await snapshotDay(d, true);
+    }
+    purgeOldBackups(); BKLAST=Date.now();
+  }catch(e){ console.warn('autoBackup',e); }
+}
+window.__backup=async ()=>{
+  document.getElementById('mdlBody').innerHTML='<h2>💾 ข้อมูลสำรอง</h2><div class="empty">กำลังโหลด...</div>';
+  document.getElementById('mdl').classList.add('show');
+  let snaps=[];
+  try{ const s=await getDocs(collection(db,'backups')); const by={};
+    s.docs.forEach(d=>{ const p=d.id.split('__'); if(!p[0]) return;
+      (by[p[0]]=by[p[0]]||[]).push({dep:p[1], n:Object.keys(d.data().checkins||{}).length}); });
+    snaps=Object.entries(by).sort((a,b)=>b[0].localeCompare(a[0]));
+  }catch(e){}
+  let b='<h2>💾 ข้อมูลสำรอง</h2><div class="small" style="margin-bottom:11px;">สำรองอัตโนมัติทุกครั้งที่เปิดหน้านี้ • เก็บย้อนหลัง '+BK_KEEP+' วัน • ไม่รวมรูปถ่าย</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:13px;"><button class="btn btn-r" style="flex:1;" onclick="window.__bkNow()">💾 สำรองเดี๋ยวนี้</button>'
+    +'<button class="btn btn-o" style="flex:1;" onclick="window.__bkDownload()">⬇ ดาวน์โหลดทั้งหมด</button></div>';
+  if(!snaps.length) b+='<div class="empty">ยังไม่มีข้อมูลสำรอง — กดปุ่มสำรองเดี๋ยวนี้</div>';
+  else b+=snaps.slice(0,40).map(function(e){ const dt=e[0], list=e[1];
+    const tot=list.reduce((a,x)=>a+x.n,0);
+    return '<div class="row-c"><div class="info"><div class="nm">'+thD(dt)+'</div><div class="sub2">'+list.length+' สาขา • '+tot+' เช็คอิน • '+list.map(x=>x.dep).join(' ')+'</div></div>'
+      +'<button class="btn btn-o" style="min-height:34px;padding:6px 11px;font-size:12px;" onclick="window.__bkRestore(\''+dt+'\')">กู้คืน</button></div>'; }).join('');
+  b+='<div style="margin-top:14px;"><button class="btn btn-o" style="width:100%;" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
+  document.getElementById('mdlBody').innerHTML=b;
+};
+window.__bkNow=async ()=>{ const r=await snapshotDay(todayKey());
+  alert('สำรองข้อมูลวันนี้แล้ว '+r.done.length+' สาขา'+(r.fail.length?'\nผิดพลาด: '+r.fail.join(', '):'')); window.__backup(); };
+window.__bkDownload=async ()=>{
+  try{ const s=await getDocs(collection(db,'backups')); const out={};
+    s.docs.forEach(d=>out[d.id]=d.data());
+    const blob=new Blob([JSON.stringify(out,null,1)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='DHL_backup_'+todayKey()+'.json'; a.click();
+  }catch(e){ alert('ดาวน์โหลดไม่สำเร็จ: '+e.message); }
+};
+window.__bkRestore=async (date)=>{
+  if(!confirm('กู้คืนข้อมูลวันที่ '+thD(date)+' ?\n\n• ข้อมูลเช็คอิน/PPH ของวันนั้นจะถูกเขียนทับด้วยข้อมูลสำรอง\n• รายชื่อพนักงานจะถูกกู้กลับด้วย\n• ใช้เมื่อข้อมูลเสียหายเท่านั้น')) return;
+  let ok=0, bad=[];
+  for(const dep of DEPOTS){
+    try{ const s=await getDoc(doc(db,'backups',date+'__'+dep)); if(!s.exists()) continue; const bk=s.data();
+      await setDoc(doc(db,'depots',dep,'days',date),{ depot:dep, date, checkins:bk.checkins||{}, pph:bk.pph||{},
+        couriers:bk.dayCouriers||[], by:bk.by0||'', updatedAt:Date.now(), restoredAt:Date.now() },{merge:true});
+      await setDoc(doc(db,'depots',dep),{ couriers:bk.couriers||[], staffNames:bk.staffNames||[],
+        removedIds:bk.removedIds||[], couriersAt:Date.now() },{merge:true});
+      ok++;
+    }catch(e){ bad.push(dep); }
+  }
+  alert('กู้คืนแล้ว '+ok+' สาขา'+(bad.length?'\nผิดพลาด: '+bad.join(', '):'')+'\n\n⚠️ ให้ Staff ทุกเครื่องกด Refresh');
+  document.getElementById('mdl').classList.remove('show');
 };
 
 /* 🛡 หน้าสรุปสุขภาพระบบทุกสาขา */

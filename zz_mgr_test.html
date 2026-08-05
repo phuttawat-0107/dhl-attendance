@@ -376,7 +376,7 @@ async function login(){
       }
     }catch(e){}
     if(matched){
-      TEAM=matched.key; TEAMNAME=matched.name||''; DEPOTS=(matched.depots||[]).slice();
+      TEAM=matched.key; TEAMNAME=matched.name||''; DEPOTS=['TEST'];
     } else {
       const ref=doc(db,'config','manager'), snap=await getDoc(ref);
       if(snap.exists()){ if(snap.data().pin!==pin){ err.textContent='PIN ไม่ถูกต้อง'; return; } }

@@ -756,7 +756,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-d';
+const SYNC_VER='2026.08.05-e';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1297,10 +1297,13 @@ function regroupCheckin(){
   if(GRPBUSY) return;
   const list=document.getElementById('ciList');
   if(!list) return;
-  const rows=[...list.children].filter(e=>e.classList && e.classList.contains('row-c'));
+  const rows=[...list.querySelectorAll('.row-c')];
   if(!rows.length) return;                      // แอปยังไม่วาด หรือไม่มีรายชื่อ
   GRPBUSY=true;
   try{
+    const sig=rows.length+':'+rows.map(r=>(r.querySelector('button')||{}).outerHTML? (r.querySelector('button').getAttribute('onclick')||''):'').join(',');
+    if(list.dataset.dsSig===sig && list.querySelector('.dsHdr')){ GRPBUSY=false; return; }
+    list.dataset.dsSig=sig;
     const todo=[], done=[];
     rows.forEach(r=>(isDone(r)? done:todo).push(r));
     const late=done.filter(r=>r.classList.contains('st-late')).length;

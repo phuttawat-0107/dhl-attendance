@@ -124,7 +124,7 @@ const LOGIN_CSS = `
 #dsCom .cm.done{background:#f3faf5;} #dsCom .cm.done .ok{color:#1c7a4d;font-weight:800;font-size:12px;}
 `;
 
-function injectUI(){
+async function injectUI(){
   const st=document.createElement('style'); st.textContent=LOGIN_CSS; document.head.appendChild(st);
   const d=document.createElement('div'); d.id='dsLogin';
   d.innerHTML=`<div class="box"><div class="yb"></div>
@@ -145,8 +145,18 @@ function injectUI(){
   document.body.appendChild(cm);
 
   /* สาขา TEST จะโผล่เฉพาะเมื่อเปิดลิงก์ด้วย ?test=1 — Staff ทั่วไปไม่เห็น */
-  const deps=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
-  if(/[?&]test=1/.test(location.search)) deps.push('TEST');
+  let deps=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
+  /* ทีมจากลิงก์ ?t=XXX — แต่ละทีมเห็นเฉพาะสาขาของตัวเอง */
+  const tm=(location.search.match(/[?&]t=([A-Za-z0-9_]+)/)||[])[1];
+  if(tm){
+    try{
+      const ts=await getDoc(doc(dbF,'config','teams'));
+      const T=ts.exists()? ts.data():null;
+      const key=Object.keys(T||{}).find(k=>k.toUpperCase()===tm.toUpperCase());
+      if(key && Array.isArray(T[key].depots) && T[key].depots.length) deps=T[key].depots.slice();
+    }catch(e){ console.warn('team',e); }
+  }
+  if(/[?&]test=1/.test(location.search) && !deps.includes('TEST')) deps.push('TEST');
   document.getElementById('dsDep').innerHTML=deps.map(x=>'<option>'+x+'</option>').join('');
   const st0=getSettings();
   const cur=(st0&&st0.depot)||lsGet('dsDepot');
@@ -746,7 +756,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-b';
+const SYNC_VER='2026.08.05-c';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1197,8 +1207,8 @@ function wrap(){
 }
 
 /* ============ BOOT ============ */
-function boot(){
-  injectUI(); wrap();
+async function boot(){
+  await injectUI(); wrap();
   const iv=setInterval(wrap,1500);         // เผื่อฟังก์ชันถูกนิยามทีหลัง
   setTimeout(()=>clearInterval(iv),20000);
   signInAnonymously(auth).catch(e=>console.warn('anon auth',e));

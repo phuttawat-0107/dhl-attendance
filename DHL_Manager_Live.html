@@ -235,7 +235,7 @@ textarea:focus{outline:2px solid var(--y);}
 
 <div class="topbar"><div class="ybar"></div>
   <div class="hd">
-    <div class="mlogo">DHL <span>Live</span></div>
+    <div class="mlogo">DHL <span>Live</span><small id="teamTag" style="display:block;font-size:10px;font-weight:700;color:#a09884;letter-spacing:.3px;"></small></div>
     <div class="meta" style="display:flex;align-items:center;gap:10px;">
       <div><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
       <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__backup()" title="ข้อมูลสำรอง">💾</button>
@@ -294,9 +294,9 @@ const firebaseConfig = {
 };
 const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
 
-const DEPOTS=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
-/* สาขา TEST สำหรับ Run test — โผล่เฉพาะเมื่อเปิดด้วย ?test=1 */
-if(/[?&]test=1/.test(location.search)) DEPOTS.push('TEST');
+let DEPOTS=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
+let TEAM='BKK', TEAMNAME='';
+
 const TASKS=[
   {k:'checkin',l:'เข้างาน',  s:'Check-in', tg:'07:00'},
   {k:'pd',     l:'PD',      s:'PD',        tg:'<07:15'},
@@ -367,14 +367,27 @@ async function login(){
   if(!/^\d{4,6}$/.test(pin)){ err.textContent='PIN ต้องเป็นตัวเลข 4–6 หลัก'; return; }
   err.textContent='กำลังตรวจสอบ...';
   try{
-    const ref=doc(db,'config','manager'), snap=await getDoc(ref);
-    if(snap.exists()){
-      if(snap.data().pin!==pin){ err.textContent='PIN ไม่ถูกต้อง'; return; }
-    } else await setDoc(ref,{pin, createdAt:Date.now()});   // ครั้งแรก = ตั้ง PIN
+    let matched=null;
+    try{
+      const ts=await getDoc(doc(db,'config','teams'));
+      if(ts.exists()){
+        const T=ts.data();
+        for(const k of Object.keys(T)){ if(T[k] && T[k].pin===pin){ matched={key:k, ...T[k]}; break; } }
+      }
+    }catch(e){}
+    if(matched){
+      TEAM=matched.key; TEAMNAME=matched.name||''; DEPOTS=(matched.depots||[]).slice();
+    } else {
+      const ref=doc(db,'config','manager'), snap=await getDoc(ref);
+      if(snap.exists()){ if(snap.data().pin!==pin){ err.textContent='PIN ไม่ถูกต้อง'; return; } }
+      else await setDoc(ref,{pin, createdAt:Date.now()});
+    }
+    if(/[?&]test=1/.test(location.search) && !DEPOTS.includes('TEST')) DEPOTS.push('TEST');
     try{ localStorage.setItem('mgPin',pin); }catch(e){}
     document.getElementById('login').style.display='none';
     start();
     setTimeout(autoBackup, 8000);
+    const tt=document.getElementById('teamTag'); if(tt&&TEAMNAME) tt.textContent=TEAMNAME+' · '+DEPOTS.length+' สาขา';
   }catch(e){ err.textContent='เชื่อมต่อไม่ได้: '+e.message; }
 }
 

@@ -125,6 +125,13 @@ textarea:focus{outline:2px solid var(--y);}
 .fitem .tx{flex:1;line-height:1.4;} .fitem .tx small{display:block;color:#a09884;font-size:11px;margin-top:1px;}
 .fitem.done{background:linear-gradient(135deg,#1c7a4d,#2e7d32);}
 .fitem.done b{color:#fff;}
+/* ---- 🛡 แถบเตือนสุขภาพระบบ ---- */
+.hbar{background:linear-gradient(135deg,#D40511,#a00d16);color:#fff;border-radius:16px;padding:12px 15px;
+  margin-bottom:11px;cursor:pointer;box-shadow:0 4px 16px rgba(212,5,17,.28);
+  animation:fadeUp .3s ease;-webkit-tap-highlight-color:transparent;}
+.hbar:active{transform:scale(.985);}
+.hbar b{display:block;font-size:14px;font-weight:900;}
+.hbar span{display:block;font-size:11.5px;opacity:.9;margin-top:3px;font-weight:600;line-height:1.5;}
 /* ---- 📣 ฟอร์มส่งประกาศ ---- */
 .lab2{font-size:11px;font-weight:800;color:#8a8272;margin:12px 0 5px;letter-spacing:.3px;}
 .nrow{display:flex;gap:5px;align-items:center;margin-bottom:6px;}
@@ -245,6 +252,7 @@ textarea:focus{outline:2px solid var(--y);}
     <button class="mtab" id="tb_data" onclick="window.__tab('data')">📋 Data</button>
   </div>
   <div id="viewLive">
+  <div id="healthBar"></div>
   <div id="kpis"></div>
   <div class="card">
     <h2>🗓 <span id="dTitle">วันนี้</span> <span class="small" id="dSub"></span></h2>
@@ -308,6 +316,23 @@ const thD=k=>{const[y,m,d]=k.split('-').map(Number);const mo=['ม.ค.','ก.�
 
 const DATA={}, COM={}, META={}, SES={};   // META = ข้อมูลสาขา · SES = ใครกำลังใช้แอปอยู่
 const ONLINE_MS = 5*60*1000;              // heartbeat ทุก 2 นาที → เกิน 5 นาที = ถือว่าออฟไลน์
+const APP_VER   = '2026.08.05-a';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
+/* 🛡 นับจำนวนเครื่องที่มีปัญหาทั้งระบบ */
+function healthIssues(){
+  const now=Date.now(), out=[];
+  DEPOTS.forEach(dep=>{
+    const cloudN=DATA[dep]? Object.keys(DATA[dep].checkins||{}).length : 0;
+    (SES[dep]||[]).forEach(s=>{
+      const online=s.at && (now-s.at)<ONLINE_MS;
+      if(s.err) out.push({dep,n:s.name,t:'Error: '+s.err,lv:'crit'});
+      else if(online && !s.ver) out.push({dep,n:s.name,t:'ยังไม่อัปเดตแอป',lv:'warn'});
+      else if(online && s.ver!==APP_VER) out.push({dep,n:s.name,t:'เวอร์ชันเก่า '+s.ver,lv:'warn'});
+      else if(online && s.nLocal!=null && cloudN && s.nLocal>cloudN)
+        out.push({dep,n:s.name,t:'ส่งข้อมูลไม่ครบ '+s.nLocal+'→'+cloudN,lv:'crit'});
+    });
+  });
+  return out;
+}
 /* คนที่กำลังออนไลน์ของสาขานั้น */
 function onlineOf(dep){
   const now=Date.now();
@@ -365,7 +390,7 @@ function start(){
     }, e=>console.warn(dep+' com',e)));
     /* 🟢 ใครกำลังเปิดแอปอยู่ (heartbeat ทุก 2 นาที) */
     unsubs.push(onSnapshot(collection(db,'depots',dep,'sessions'), s=>{
-      SES[dep]=s.docs.map(d=>({name:d.id, at:d.data().at||0, uid:d.data().uid||''})); render();
+      SES[dep]=s.docs.map(d=>({name:d.id, ...d.data()})); render();
     }, e=>console.warn(dep+' ses',e)));
   });
   render();
@@ -561,6 +586,17 @@ function render(){
       +(depOnline? '<span class="dotlive"></span>':'')+depOnline+'/'+DEPOTS.length
       +'</div><div class="l">สาขาออนไลน์ • '+userOnline+' คน</div></div>'
     +'</div>';
+
+  /* 🛡 แถบเตือนสุขภาพระบบ — ขึ้นเองเมื่อมีเครื่องผิดปกติ */
+  const hi=healthIssues();
+  const hb=document.getElementById('healthBar');
+  if(hb){
+    hb.innerHTML = hi.length
+      ? '<div class="hbar" onclick="window.__health()"><b>⚠️ ระบบมี '+hi.length+' จุดที่ต้องดู</b>'
+        + '<span>'+hi.slice(0,2).map(x=>x.dep+' · '+x.t).join(' • ')
+        + (hi.length>2? ' • และอีก '+(hi.length-2):'')+' — แตะดูรายละเอียด</span></div>'
+      : '';
+  }
 
   /* GRID */
   let h='<colgroup><col class="c-dep">'+TASKS.map(()=>'<col class="c-task">').join('')+'</colgroup>'
@@ -1515,6 +1551,41 @@ window.__noticeStatus=async ()=>{
   document.getElementById('mdl').classList.add('show');
 };
 
+/* 🛡 หน้าสรุปสุขภาพระบบทุกสาขา */
+window.__health=()=>{
+  const hi=healthIssues(), now=Date.now();
+  let b='<h2>🛡 สุขภาพระบบ</h2>'
+    +'<div class="small" style="margin-bottom:11px;">ตรวจอัตโนมัติทุก 2 นาทีจากทุกเครื่องที่เปิดแอป • เวอร์ชันล่าสุด '+APP_VER+'</div>';
+  if(hi.length){
+    b+='<div style="font-weight:800;font-size:13px;margin-bottom:6px;color:#b3121d;">⚠️ ต้องดำเนินการ</div>'
+      + hi.map(x=>'<div class="iss '+(x.lv==='crit'?'crit':'warn')+'" onclick="window.__who(\''+x.dep+'\')">'
+        +'<div class="bd"><div class="ti">'+x.dep+' — '+esc(x.n)+'</div>'
+        +'<div class="de">'+esc(x.t)+'</div></div><div class="go">ดู ›</div></div>').join('');
+  } else {
+    b+='<div class="empty" style="padding:22px 10px;">✅ ทุกเครื่องทำงานปกติ ไม่พบปัญหา</div>';
+  }
+  b+='<div style="font-weight:800;font-size:13px;margin:15px 0 6px;">📱 เครื่องทั้งหมดในระบบ</div>';
+  DEPOTS.forEach(dep=>{
+    const list=(SES[dep]||[]).slice().sort((a,b2)=>b2.at-a.at);
+    if(!list.length) return;
+    b+='<div style="font-weight:900;font-size:12px;margin:9px 0 4px;color:#8a8272;">'+dep+'</div>';
+    list.forEach(s=>{
+      const on=s.at&&(now-s.at)<ONLINE_MS;
+      const bad=!!s.err || (on && s.ver!==APP_VER);
+      b+='<div class="row-c"><div class="info"><div class="nm">'+esc(s.name)+'</div>'
+        +'<div class="sub2">'+(s.ver? 'v'+esc(s.ver):'ยังไม่อัปเดต')
+        +(s.nLocal!=null? ' • ในเครื่อง '+s.nLocal+' คน':'')
+        +(s.lastPush? ' • ส่งล่าสุด '+fmtT(s.lastPush):'')+'</div></div>'
+        +'<span class="chip '+(bad?'no':(on?'ok':''))+'">'
+        +(bad?'⚠':(on?'● Online':agoTxt(now-s.at)))+'</span></div>';
+    });
+  });
+  b+='<div style="margin-top:14px;"><button class="btn btn-o" style="width:100%;" '
+    +'onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
+  document.getElementById('mdlBody').innerHTML=b;
+  document.getElementById('mdl').classList.add('show');
+};
+
 /* 🟢 ป๊อปอัป: ใครกำลังใช้แอปอยู่ / ใช้กี่เครื่อง */
 window.__who=dep=>{
   const all=(SES[dep]||[]).slice().sort((a,b)=>b.at-a.at);
@@ -1532,12 +1603,35 @@ window.__who=dep=>{
     +'<div class="kpi"><div class="v">'+all.length+'/'+maxS+'</div><div class="l">ชื่อที่เข้าระบบ</div></div>'
     +'</div>';
 
+  /* 🛡 ตรวจสุขภาพเครื่อง */
+  const cloudN=DATA[dep]? Object.keys(DATA[dep].checkins||{}).length : 0;
+  const probs=[];
+  all.forEach(s=>{
+    if(s.err) probs.push({n:s.name, t:'มี Error: '+s.err});
+    if(s.ver && s.ver!==APP_VER) probs.push({n:s.name, t:'ใช้เวอร์ชันเก่า ('+s.ver+') — ให้ปิดแอปเปิดใหม่'});
+    if(!s.ver) probs.push({n:s.name, t:'ยังไม่ได้อัปเดตแอป — ให้ปิดแอปเปิดใหม่'});
+    if(s.nLocal!=null && cloudN && s.nLocal>cloudN)
+      probs.push({n:s.name, t:'ข้อมูลในเครื่องมากกว่าคลาวด์ ('+s.nLocal+' vs '+cloudN+') — ยังส่งไม่ครบ'});
+    if(s.lastPush && (Date.now()-s.lastPush)>20*60000 && (now-s.at)<ONLINE_MS)
+      probs.push({n:s.name, t:'เปิดแอปอยู่แต่ไม่ได้ส่งข้อมูลมา '+agoTxt(Date.now()-s.lastPush)});
+  });
+  if(probs.length){
+    b+='<div style="font-weight:800;font-size:13px;margin-bottom:6px;color:#b3121d;">⚠️ พบปัญหา '+probs.length+' รายการ</div>'
+      + probs.map(p=>'<div class="iss crit" style="cursor:default;"><div class="bd">'
+        +'<div class="ti">'+esc(p.n)+'</div><div class="de">'+esc(p.t)+'</div></div></div>').join('')
+      +'<div style="height:10px"></div>';
+  }
+
   b+='<div style="font-weight:800;font-size:13px;margin-bottom:6px;">🟢 กำลังใช้งานอยู่</div>';
   b+= onl.length ? onl.map(s=>
-        '<div class="row-c"><div class="info"><div class="nm">'+esc(s.name)+'</div>'
+        '<div class="row-c"><div class="info"><div class="nm">'+esc(s.name)
+        +(s.err?' <span style="color:#b3121d;">⚠️</span>':'')+'</div>'
         +'<div class="sub2">เครื่อง #'+esc(String(s.uid||'').slice(-6).toUpperCase()||'—')
-        +' • สัญญาณล่าสุด '+fmtT(s.at)+'</div></div>'
-        +'<span class="chip ok">● Online</span></div>').join('')
+        +' • สัญญาณ '+fmtT(s.at)
+        +(s.lastPush? ' • ส่งข้อมูลล่าสุด '+fmtT(s.lastPush):'')
+        +(s.nLocal!=null? ' • ในเครื่อง '+s.nLocal+' คน':'')
+        +'<br>เวอร์ชัน '+esc(s.ver||'เก่า (ยังไม่อัปเดต)')+'</div></div>'
+        +'<span class="chip '+(s.err?'no':'ok')+'">'+(s.err?'⚠ ปัญหา':'● Online')+'</span></div>').join('')
       : '<div class="empty" style="padding:18px 10px;">ไม่มีใครเปิดแอปอยู่ตอนนี้</div>';
 
   if(off.length){

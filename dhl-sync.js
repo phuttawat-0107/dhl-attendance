@@ -257,7 +257,12 @@ function startHeartbeat(){
         try{ localStorage.removeItem('dsStaff'); }catch(e){}
         location.reload(); return;
       }
-      await setDoc(ref,{ uid:S.uid, at:Date.now() },{merge:true});
+      /* 🛡 ส่งสถานะสุขภาพขึ้นไปด้วย — Manager จะเห็นปัญหาเองโดยไม่ต้องรอ Staff แจ้ง */
+      let nLocal=0;
+      try{ nLocal=(await getByDate(tKey())).length; }catch(e){}
+      await setDoc(ref,{ uid:S.uid, at:Date.now(),
+        ver:H.ver, lastPush:H.lastPush, lastPull:H.lastPull,
+        err:H.err||'', errAt:H.errAt||0, nLocal, taps:H.taps, saves:H.saves },{merge:true});
     }catch(e){}
   };
   beat(); S._hb=setInterval(beat,120000);
@@ -370,7 +375,8 @@ async function pullOnce(){
         if(local.length<n){ S.merging=false; await mergeRemote(snap.data()); }
       }
     }
-  }catch(e){ console.warn('pull',e); }
+    H.lastPull=Date.now();
+  }catch(e){ console.warn('pull',e); flagErr('ดึงข้อมูลจากคลาวด์ไม่สำเร็จ: '+e.message); }
 }
 
 /* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */
@@ -426,7 +432,9 @@ async function pushAll(){
     }
 
     if(Object.keys(up).length) await updateDoc(ref,up);
-  }catch(e){ console.warn('sync push',e); }
+    H.lastPush=Date.now(); H.saves++; H.err=''; H.ok=true;
+    const eb=document.getElementById('dsErrBar'); if(eb) eb.remove();
+  }catch(e){ console.warn('sync push',e); flagErr('ส่งข้อมูลขึ้นคลาวด์ไม่สำเร็จ: '+e.message); }
   S.busy=false;
 }
 let pushTimer=null;
@@ -733,6 +741,44 @@ async function mergeRemote(d){
 }
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
+/* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
+const SYNC_VER='2026.08.05-a';
+const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
+window.DHLHealth=H;
+
+/* จับ error ทุกชนิดที่หลุดมา แล้วโชว์ให้ Staff เห็นทันที ไม่ให้เงียบ */
+function flagErr(msg){
+  H.err=String(msg||'').slice(0,160); H.errAt=Date.now(); H.ok=false;
+  showErrBar();
+}
+function showErrBar(){
+  let b=document.getElementById('dsErrBar');
+  if(!b){
+    b=document.createElement('div'); b.id='dsErrBar';
+    b.style.cssText='position:fixed;left:8px;right:8px;bottom:86px;z-index:98;background:#D40511;color:#fff;'
+      +'border-radius:14px;padding:11px 14px;font-size:13px;font-weight:700;line-height:1.5;'
+      +'box-shadow:0 6px 20px rgba(212,5,17,.4);cursor:pointer;';
+    b.onclick=()=>{ b.remove(); };
+    document.body.appendChild(b);
+  }
+  b.innerHTML='⚠️ ระบบมีปัญหา — ข้อมูลอาจไม่ขึ้นคลาวด์<br>'
+    +'<span style="font-weight:500;font-size:11.5px;opacity:.9;">ลองปิดแอปแล้วเปิดใหม่ • ถ้ายังไม่หายแจ้งผู้จัดการ • แตะเพื่อปิด</span>';
+}
+window.addEventListener('error', e=>flagErr(e.message));
+window.addEventListener('unhandledrejection', e=>flagErr(e.reason&&e.reason.message||e.reason));
+
+/* ✋ ตอบสนองทันทีที่แตะปุ่มในหน้าเช็คอิน — ให้ Staff เห็นว่ากดติดแล้ว
+   และกันกดซ้ำระหว่างที่ระบบกำลังบันทึก */
+document.addEventListener('pointerdown', e=>{
+  const b=e.target.closest && e.target.closest('#ciList button, #fdelBody button, #pphBody button');
+  if(!b || b.dataset.dsBusy) return;
+  H.taps++;
+  b.dataset.dsBusy='1';
+  const old=b.innerHTML;
+  b.style.opacity='.55';
+  setTimeout(()=>{ b.style.opacity=''; delete b.dataset.dsBusy; }, 900);
+}, {capture:true, passive:true});
+
 /* 🖐 จับเวลาที่ผู้ใช้แตะจอล่าสุด — ห้ามวาดจอใหม่ระหว่างที่กำลังกด
    (สาเหตุอาการ "กดไม่ติด": ระหว่างนิ้วแตะ ระบบวาดรายชื่อใหม่ ปุ่มเดิมถูกลบทิ้ง คลิกเลยหลุด) */
 let lastTouch=0, touching=false;

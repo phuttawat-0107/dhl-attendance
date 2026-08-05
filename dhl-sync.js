@@ -707,7 +707,7 @@ async function mergeRemote(d){
     const lmap={}; local.forEach(r=>lmap[r.courierId]=r);
     /* --- เช็คอินที่ถูกลบไปแล้ว → ลบออกจากเครื่องนี้ด้วย (เฉพาะระเบียนที่เก่ากว่าเวลาที่ลบ) --- */
     const ckDel=d.ckDel||{};
-    if(date===tKey()) S.ckDel=ckDel;
+    if(date===tKey()){ S.ckDel=ckDel; S.absent=d.absent||{}; try{ localStorage.setItem('dsAbs_'+date, JSON.stringify(S.absent)); }catch(e){} }
     if(Object.keys(ckDel).length && S._rawDel){
       for(const r of local){
         if(isDeleted(ckDel, r.courierId, r.ts)){
@@ -756,7 +756,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-f';
+const SYNC_VER='2026.08.05-g';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1313,8 +1313,13 @@ function regroupCheckin(){
     const sig=rows.length+':'+rows.map(r=>(r.querySelector('button')||{}).outerHTML? (r.querySelector('button').getAttribute('onclick')||''):'').join(',');
     if(list.dataset.dsSig===sig && list.querySelector('.dsHdr')){ GRPBUSY=false; return; }
     list.dataset.dsSig=sig;
-    const todo=[], done=[];
-    rows.forEach(r=>(isDone(r)? done:todo).push(r));
+    const todo=[], done=[], absent=[];
+    const AM=absMap();
+    rows.forEach(r=>{
+      if(isDone(r)){ done.push(r); return; }
+      const cid=rowCid(r);
+      if(cid && AM[cid]) absent.push(r); else todo.push(r);
+    });
     const late=done.filter(r=>r.classList.contains('st-late')).length;
 
     const frag=document.createDocumentFragment();
@@ -1322,11 +1327,46 @@ function regroupCheckin(){
       const h=document.createElement('div'); h.className='dsHdr todo';
       h.innerHTML='<span>⚠ ยังไม่เช็คอิน '+todo.length+' คน</span><span class="c">แตะปุ่มเพื่อบันทึก</span>';
       frag.appendChild(h);
-      todo.forEach(r=>frag.appendChild(r));
+      todo.forEach(r=>{
+        const cid=rowCid(r);
+        if(cid && !r.querySelector('#dsAbsBtnRow'+cid)){
+          const nm=rowName(r);
+          const b=document.createElement('button');
+          b.id='dsAbsBtnRow'+cid; b.type='button'; b.textContent='🚫 ไม่มา';
+          b.className='dsAbsAdd';
+          b.setAttribute('style','border:1px solid #e6c9c9;background:#fff5f5;color:#a3151f;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap;margin-left:5px;');
+          b.onclick=(ev)=>{ ev.stopPropagation(); window.dsAbsOpen(cid, nm.name, nm.code); };
+          r.appendChild(b);
+        }
+        frag.appendChild(r);
+      });
     } else {
       const ok=document.createElement('div'); ok.id='dsAllDone';
       ok.textContent='✅ เช็คอินครบทุกคนแล้ว '+done.length+' คน';
       frag.appendChild(ok);
+    }
+    if(absent.length){
+      const h=document.createElement('div'); h.className='dsHdr abs';
+      h.innerHTML='<span>🚫 ไม่มาทำงาน '+absent.length+' คน</span><span class="c">ไม่นับใน %</span>';
+      frag.appendChild(h);
+      absent.forEach(r=>{
+        r.classList.add('dsAbsRow');
+        const cid=rowCid(r), info=AM[cid]||{};
+        const bx=r.querySelector('.info')||r;
+        if(!bx.querySelector('.dsAbsTag')){
+          const tg=document.createElement('span'); tg.className='dsAbsTag';
+          tg.textContent='🚫 '+(info.note||'ไม่มาทำงาน');
+          bx.appendChild(tg);
+        }
+        const btn=r.querySelector('button[onclick*="quickLog("],button[onclick*="openCamera("]');
+        if(btn && !btn.dataset.dsAbsSwap){
+          btn.dataset.dsAbsSwap='1';
+          btn.setAttribute('onclick','dsAbsClear('+cid+')');
+          btn.textContent='↩ ยกเลิก';
+          btn.style.cssText='min-height:34px;padding:6px 11px;font-size:12px;';
+        }
+        frag.appendChild(r);
+      });
     }
     if(done.length){
       const h=document.createElement('div'); h.className='dsHdr done'; h.id='dsDoneHdr';
@@ -1341,7 +1381,7 @@ function regroupCheckin(){
     list.innerHTML='';
     list.appendChild(frag);
     list.querySelectorAll('img').forEach(im=>im.setAttribute('loading','lazy'));
-    mountSummary(); paintSummary(todo.length, done.length, late);
+    mountSummary(); paintSummary(todo.length, done.length, late, absent.length);
   }catch(e){ console.warn('regroup',e); }
   GRPBUSY=false;
 }
@@ -1351,14 +1391,15 @@ function mountSummary(){
   const d=document.createElement('div'); d.id='dsSum'; d.className='go';
   anchor.parentNode.insertBefore(d, anchor);
 }
-function paintSummary(todo, done, late){
+function paintSummary(todo, done, late, abs){
   const el=document.getElementById('dsSum'); if(!el) return;
+  abs=abs||0;
   const tot=todo+done, pct= tot? Math.round(done/tot*100):0;
   const now=new Date();
   const hh=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   el.className = (todo===0 && tot>0)? 'ok':'go';
   el.innerHTML='<div><div class="pv">'+pct+'%</div>'
-    +'<div class="ps">เช็คอินแล้ว '+done+'/'+tot+' คน'
+    +'<div class="ps">เช็คอินแล้ว '+done+'/'+tot+' คน'+(abs? ' <span style="color:#8a6100">· ไม่มา '+abs+'</span>':'')
     +(late? ' <span class="lt">· สาย '+late+'</span>':'')+'</div></div>'
     +'<div><div class="tl">เวลา</div><div class="tv">'+hh+'</div></div>';
 }
@@ -1377,13 +1418,116 @@ function mountGrpBar(){
   const start=()=>{
     const list=document.getElementById('ciList');
     if(!list){ setTimeout(start,600); return; }
-    mountGrpBar(); applyPhotoMode(); regroupCheckin();
+    absLocalLoad(); mountGrpBar(); applyPhotoMode(); regroupCheckin();
     new MutationObserver(()=>{ if(!GRPBUSY) setTimeout(regroupCheckin,30); })
       .observe(list,{childList:true});
     setInterval(()=>{ mountGrpBar(); mountSummary(); regroupCheckin(); }, 3000);
     setInterval(()=>{ const l=document.getElementById('ciList'); if(!l) return;
       const rw=[...l.querySelectorAll('.row-c')];
-      const dn=rw.filter(isDone); paintSummary(rw.length-dn.length, dn.length, dn.filter(r=>r.classList.contains('st-late')).length); }, 20000);
+      const dn=rw.filter(isDone); const AM=absMap();
+      const ab=rw.filter(r=>!isDone(r) && AM[rowCid(r)]).length;
+      paintSummary(rw.length-dn.length-ab, dn.length, dn.filter(r=>r.classList.contains('st-late')).length, ab); }, 20000);
   };
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
 })();
+
+
+/* ============ 🚫 ไม่มาทำงาน (ลา/ขาด) รายวัน ============
+   เก็บแยกจากปุ่ม "พัก" ในหน้าจัดการ — มีผลเฉพาะวันนั้น พรุ่งนี้กลับมาปกติเอง
+   ตัดออกจากฐานคำนวณ % Ontime เพื่อไม่ให้ตัวเลขเพี้ยน */
+const ABS_CSS = "#dsAbsWrap{position:fixed;inset:0;z-index:99998;background:rgba(16,14,10,.8);display:none;"
++"align-items:center;justify-content:center;padding:16px;}"
++"#dsAbsWrap.show{display:flex;}"
++"#dsAbsBox{background:#fff;border-radius:22px;width:100%;max-width:420px;padding:20px 20px 18px;box-shadow:0 18px 50px rgba(0,0,0,.4);}"
++"#dsAbsBox h3{font-size:18px;font-weight:900;margin:0 0 4px;color:#1a1a1a;}"
++"#dsAbsBox .who{font-size:13.5px;color:#8a8272;font-weight:700;margin-bottom:14px;}"
++"#dsAbsBox label{display:block;font-size:12px;font-weight:800;color:#8a8272;margin-bottom:5px;}"
++"#dsAbsNote{width:100%;min-height:86px;padding:12px 13px;border:1px solid #ece5d5;border-radius:13px;"
++"background:#fbf9f4;font-family:inherit;font-size:16px;font-weight:600;color:#1a1a1a;}"
++"#dsAbsNote:focus{outline:none;border-color:#FFCC00;background:#fffdf5;}"
++"#dsAbsQuick{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0 4px;}"
++"#dsAbsQuick button{border:1px solid #efe9dc;background:#fbf9f4;color:#6b6558;border-radius:9px;"
++"padding:7px 11px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;}"
++".dsAbsAct{display:flex;gap:9px;margin-top:15px;}"
++".dsAbsAct button{flex:1;border:none;border-radius:15px;padding:15px;font-size:15.5px;font-weight:900;font-family:inherit;cursor:pointer;}"
++"#dsAbsOk{background:#D40511;color:#fff;} #dsAbsCancel{background:#f2ede2;color:#5f5a4e;}"
++".dsHdr.abs{background:#f2ede2;color:#5f5a4e;}"
++".row-c.dsAbsRow{opacity:.72;}"
++".dsAbsTag{display:block;font-size:11.5px;font-weight:700;color:#8a6100;margin-top:3px;}"
++"#dsAbsBtn{border:1px solid #e6c9c9;background:#fff5f5;color:#a3151f;border-radius:9px;padding:7px 10px;"
++"font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap;}";
+(function(){ const s=document.createElement('style'); s.textContent=ABS_CSS; document.head.appendChild(s);
+  const w=document.createElement('div'); w.id='dsAbsWrap';
+  w.innerHTML='<div id="dsAbsBox"><h3>🚫 ไม่มาทำงานวันนี้</h3><div class="who" id="dsAbsWho"></div>'
+   +'<label>สาเหตุ (ระบุให้ชัดเจน)</label>'
+   +'<textarea id="dsAbsNote" placeholder="เช่น ลาป่วย มีใบรับรองแพทย์ / ลากิจ แจ้งล่วงหน้า 1 วัน / ขาดงาน ไม่แจ้ง"></textarea>'
+   +'<div id="dsAbsQuick"></div>'
+   +'<div class="dsAbsAct"><button id="dsAbsCancel" type="button">ยกเลิก</button>'
+   +'<button id="dsAbsOk" type="button">บันทึก</button></div></div>';
+  document.body.appendChild(w);
+})();
+
+let ABS_CID=null;
+function absMap(){ return (S.absent&&typeof S.absent==='object')? S.absent : {}; }
+function absLocalSave(){
+  try{ localStorage.setItem('dsAbs_'+tKey(), JSON.stringify(absMap())); }catch(e){}
+}
+function absLocalLoad(){
+  try{ const v=localStorage.getItem('dsAbs_'+tKey()); if(v) S.absent=JSON.parse(v)||{}; }catch(e){}
+}
+window.dsAbsOpen=(cid,name,code)=>{
+  ABS_CID=String(cid);
+  document.getElementById('dsAbsWho').textContent=(code||'')+' · '+(name||'');
+  const n=document.getElementById('dsAbsNote'); n.value='';
+  const q=document.getElementById('dsAbsQuick'); q.innerHTML='';
+  ['ลาป่วย','ลากิจ','ขาดงาน ไม่แจ้ง','ลาพักร้อน','แจ้งลาล่วงหน้า'].forEach(x=>{
+    const b=document.createElement('button'); b.type='button'; b.textContent=x;
+    b.onclick=()=>{ n.value = n.value? (n.value+' · '+x) : x; n.focus(); };
+    q.appendChild(b);
+  });
+  document.getElementById('dsAbsWrap').classList.add('show');
+  setTimeout(()=>n.focus(),150);
+};
+document.addEventListener('click', e=>{
+  if(e.target && e.target.id==='dsAbsCancel'){ document.getElementById('dsAbsWrap').classList.remove('show'); ABS_CID=null; }
+  if(e.target && e.target.id==='dsAbsWrap'){ document.getElementById('dsAbsWrap').classList.remove('show'); ABS_CID=null; }
+  if(e.target && e.target.id==='dsAbsOk'){
+    const note=(document.getElementById('dsAbsNote').value||'').trim();
+    if(!note){ alert('กรุณาระบุสาเหตุ'); return; }
+    const btn=e.target; btn.disabled=true; btn.textContent='กำลังบันทึก...';
+    dsAbsSave(ABS_CID, note).finally(()=>{ btn.disabled=false; btn.textContent='บันทึก';
+      document.getElementById('dsAbsWrap').classList.remove('show'); ABS_CID=null; });
+  }
+});
+async function dsAbsSave(cid, note){
+  if(!cid) return;
+  const rec={ note, at:Date.now(), by:S.staff||'' };
+  S.absent=S.absent||{}; S.absent[String(cid)]=rec; absLocalSave();
+  try{ regroupCheckin(); }catch(e){}
+  if(!S.ready) return;
+  try{
+    await setDoc(dayRef(S.depot,tKey()), { depot:S.depot, date:tKey(),
+      absent:{ [String(cid)]: rec }, updatedAt:Date.now() }, {merge:true});
+    toast('🚫 บันทึกไม่มาทำงานแล้ว');
+  }catch(e){ flagErr('บันทึกไม่มาทำงานไม่สำเร็จ: '+e.message); }
+}
+window.dsAbsClear=async (cid)=>{
+  if(!confirm('ยกเลิกสถานะไม่มาทำงาน?\nคนนี้จะกลับไปอยู่ในรายชื่อรอเช็คอิน')) return;
+  const k=String(cid);
+  if(S.absent) delete S.absent[k];
+  absLocalSave();
+  try{ regroupCheckin(); }catch(e){}
+  if(!S.ready) return;
+  try{ await updateDoc(dayRef(S.depot,tKey()), { ['absent.'+k]: deleteField(), updatedAt:Date.now() }); }
+  catch(e){ console.warn('clr abs',e); }
+};
+function rowCid(row){
+  const b=row.querySelector('button[onclick*="quickLog("],button[onclick*="openCamera("]');
+  if(!b) return null;
+  const m=(b.getAttribute('onclick')||'').match(/\((\d+)/);
+  return m? m[1]:null;
+}
+function rowName(row){
+  const n=row.querySelector('.nm'), s=row.querySelector('.sub,.sub2');
+  return { name:(n?n.textContent:'').trim(), code:(s?s.textContent:'').split('•')[0].trim() };
+}

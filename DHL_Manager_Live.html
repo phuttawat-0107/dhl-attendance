@@ -227,7 +227,7 @@ textarea:focus{outline:2px solid var(--y);}
 <body>
 
 <div id="login"><div class="box"><div class="yb"></div>
-  <h3>DHL Manager</h3><p>ใส่ PIN ผู้จัดการเพื่อดูภาพรวมสด 7 สาขา</p>
+  <h3>DHL Manager</h3><p>ใส่ PIN ผู้จัดการ — จะเห็นเฉพาะสาขาในความดูแลของ PIN นั้น</p>
   <input id="mgPin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••••">
   <div class="err" id="mgErr"></div>
   <button class="btn btn-y btn-block" id="mgGo">เข้าใช้งาน</button>
@@ -238,9 +238,11 @@ textarea:focus{outline:2px solid var(--y);}
     <div class="mlogo">DHL <span>Live</span><small id="teamTag" style="display:block;font-size:10px;font-weight:700;color:#a09884;letter-spacing:.3px;"></small></div>
     <div class="meta" style="display:flex;align-items:center;gap:10px;">
       <div><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
+      <span id="teamTag" style="font-size:11px;font-weight:800;color:#8a8272;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
       <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__backup()" title="ข้อมูลสำรอง">💾</button>
       <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__notice()" title="ส่งประกาศถึงสาขา">📣</button>
       <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__settings()">⚙️</button>
+      <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__logout()" title="ออกจากระบบ">🚪</button>
     </div>
   </div>
 </div>
@@ -361,6 +363,11 @@ function courierMap(dep,d){
 
 /* ---------- LOGIN ---------- */
 document.getElementById('mgGo').onclick=login;
+window.__logout=()=>{
+  if(!confirm('ออกจากระบบ?\nครั้งต่อไปต้องใส่ PIN ใหม่เพื่อเข้าดู')) return;
+  try{ localStorage.removeItem('mgPin'); }catch(e){}
+  location.reload();
+};
 document.getElementById('mgPin').addEventListener('keydown',e=>{ if(e.key==='Enter') login(); });
 async function login(){
   const pin=document.getElementById('mgPin').value.trim(), err=document.getElementById('mgErr');
@@ -383,8 +390,10 @@ async function login(){
       else await setDoc(ref,{pin, createdAt:Date.now()});
     }
     if(/[?&]test=1/.test(location.search) && !DEPOTS.includes('TEST')) DEPOTS.push('TEST');
-    try{ localStorage.setItem('mgPin',pin); }catch(e){}
+    try{ localStorage.removeItem('mgPin'); }catch(e){}
     document.getElementById('login').style.display='none';
+    try{ const tt=document.getElementById('teamTag');
+      if(tt) tt.textContent = (typeof TEAMNAME!=='undefined'&&TEAMNAME)? ('ทีม '+TEAMNAME) : ''; }catch(e){}
     start();
     setTimeout(autoBackup, 8000);
     const tt=document.getElementById('teamTag'); if(tt&&TEAMNAME) tt.textContent=TEAMNAME+' · '+DEPOTS.length+' สาขา';
@@ -1871,8 +1880,7 @@ window.__savePin=async dep=>{
   try{
     if(isMg){
       await setDoc(doc(db,'config','manager'),{pin:v, updatedAt:Date.now()},{merge:true});
-      try{ localStorage.setItem('mgPin',v); }catch(e){}
-      alert('✔ เปลี่ยน PIN ผู้จัดการเป็น '+v+' แล้ว');
+            alert('✔ เปลี่ยน PIN ผู้จัดการเป็น '+v+' แล้ว');
     } else {
       await setDoc(doc(db,'depots',dep),{depot:dep, pin:v, updatedAt:Date.now()},{merge:true});
       alert('✔ ตั้ง PIN ของสาขา '+dep+' = '+v+' แล้ว');
@@ -1915,8 +1923,7 @@ setInterval(()=>{ if(MTAB==='live'){ try{ render(); }catch(e){} } },30000);
 signInAnonymously(auth).catch(e=>console.warn(e));
 onAuthStateChanged(auth,u=>{
   if(!u) return;
-  const saved=(()=>{try{return localStorage.getItem('mgPin');}catch(e){return null;}})();
-  if(saved){ document.getElementById('mgPin').value=saved; login(); }
+  try{ localStorage.removeItem('mgPin'); }catch(e){}
 });
 </script>
 </body>

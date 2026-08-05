@@ -317,7 +317,7 @@ const thD=k=>{const[y,m,d]=k.split('-').map(Number);const mo=['ม.ค.','ก.�
 
 const DATA={}, COM={}, META={}, SES={};   // META = ข้อมูลสาขา · SES = ใครกำลังใช้แอปอยู่
 const ONLINE_MS = 5*60*1000;              // heartbeat ทุก 2 นาที → เกิน 5 นาที = ถือว่าออฟไลน์
-const APP_VER   = '2026.08.05-b';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
+const APP_VER   = '2026.08.05-j';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
 /* 🛡 นับจำนวนเครื่องที่มีปัญหาทั้งระบบ */
 function healthIssues(){
   const now=Date.now(), out=[];
@@ -420,7 +420,8 @@ function taskState(dep,k){
   if(k==='checkin'){
     if(!ck.length) return {st:'none'};
     const late=ck.filter(r=>r.status==='late').length;
-    return {st: late? 'bad':'ok', v:(ck.length-late)+'/'+ck.length, s2: late? late+' สาย':'ตรงเวลา'};
+    const abN=Object.keys(d.absent||{}).length;
+    return {st: late? 'bad':'ok', v:(ck.length-late)+'/'+ck.length, s2: (late? late+' สาย':'ตรงเวลา')+(abN? ' • ไม่มา '+abN:'')};
   }
   if(k==='pd'){
     const ts=p.pd&&p.pd.ts;
@@ -707,6 +708,9 @@ function findIssues(){
         ti:dep+' มาสาย '+lateArr.length+' คน',
         de:'รวม '+sum+' นาที • สายสุด '+worst+' นาที — แตะดูรายชื่อและส่งคอมเมนต์'});
     }
+    const abs=Object.entries(d.absent||{});
+    if(abs.length>=3) out.push({dep,task:'checkin',lv:'warn',ic:'🚫',ti:dep+' ไม่มาทำงาน '+abs.length+' คน',
+      de:abs.map(([,r])=>r.note||'ไม่ระบุ').slice(0,3).join(' / ')+' — ตรวจกำลังพลว่าพอวิ่งงานหรือไม่'});
     const noUni=ck.filter(r=>r.uniform===false).length;
     if(noUni) out.push({dep,task:'checkin',lv:'warn',ic:'👕',ti:dep+' ไม่ใส่ยูนิฟอร์ม '+noUni+' คน',
       de:'ตรวจสอบและเตือนก่อนออกวิ่งงาน'});
@@ -1014,13 +1018,14 @@ function cmapAll(dep){
 }
 /* ---- รวมค่าระดับสาขา ---- */
 function aggDep(dep,dks){
-  let days=0,ckN=0,lateN=0,lateMin=0,okT=0,totT=0;
+  let days=0,ckN=0,lateN=0,lateMin=0,okT=0,totT=0,absN=0;
   const pd=[],fib=[],lib=[],dp=[],fd=[];
   dks.forEach(dk=>{
     const d=docOf(dep,dk); if(!d) return;
     const ck=Object.values(d.checkins||{}), p=d.pph||{}, rp=Object.values(p.rp||{});
     if(!ck.length && !p.inboundTs && !rp.length) return;
     days++;
+    absN += Object.keys(d.absent||{}).length;
     ck.forEach(r=>{ ckN++; const s=secOf(r.ts);
       if(r.status==='late'||s>GRACE) lateN++;
       lateMin += Math.max(0,s-CUT)/60; });
@@ -1034,7 +1039,7 @@ function aggDep(dep,dks){
     if(a2.length){ const a=av(a2.map(secOf)); fd.push(a); totT++; if(a<T_FDEL) okT++; }
   });
   if(!days) return null;
-  return { days, head: ckN? Math.round(ckN/days):0, ckN, lateN,
+  return { days, head: ckN? Math.round(ckN/days):0, ckN, lateN, absN,
     ontime: ckN? (ckN-lateN)/ckN*100 : null,
     lateAvg: ckN? lateMin/ckN : null,
     pd:av(pd), fib:av(fib), lib:av(lib), dep:av(dp), fdel:av(fd),
@@ -1046,10 +1051,11 @@ function aggPeople(deps,dks){
   deps.forEach(dep=>{
     const cm=cmapAll(dep);
     const get=cid=>{ const k=dep+'|'+cid;
-      return M[k]||(M[k]={dep,cid,c:cm[cid]||{},days:0,late:0,lateMin:0,fs:[],dp:[],fd:[]}); };
+      return M[k]||(M[k]={dep,cid,c:cm[cid]||{},days:0,abs:0,late:0,lateMin:0,fs:[],dp:[],fd:[]}); };
     dks.forEach(dk=>{
       const d=docOf(dep,dk); if(!d) return;
       const p=d.pph||{};
+      Object.keys(d.absent||{}).forEach(cid=>{ get(cid).abs++; });
       Object.entries(d.checkins||{}).forEach(([cid,r])=>{
         const o=get(cid); o.days++; const s=secOf(r.ts);
         if(r.status==='late'||s>GRACE) o.late++;
@@ -1063,7 +1069,7 @@ function aggPeople(deps,dks){
       });
     });
   });
-  return Object.values(M).filter(o=>o.days||o.fs.length||o.dp.length||o.fd.length)
+  return Object.values(M).filter(o=>o.days||o.abs||o.fs.length||o.dp.length||o.fd.length)
     .map(o=>({...o, ontime:o.days? (o.days-o.late)/o.days*100:null,
       lateAvg:o.days? o.lateMin/o.days:null,
       fsA:av(o.fs), dpA:av(o.dp), fdA:av(o.fd)}));
@@ -1081,12 +1087,13 @@ function tblDep(dks){
   if(!rows.length) return '<div class="empty">ไม่มีข้อมูลในช่วงวันที่เลือก</div>';
   rows.sort((x,y)=>(y.a.ontime??-1)-(x.a.ontime??-1));
   let h='<div class="dwrap"><table class="dtbl"><thead><tr>'
-    +'<th class="l">สาขา</th><th>วัน</th><th>คน</th><th>Ontime</th><th>สาย</th><th>นาทีสาย/คน</th>'
+    +'<th class="l">สาขา</th><th>วัน</th><th>คน</th><th>ไม่มา</th><th>Ontime</th><th>สาย</th><th>นาทีสาย/คน</th>'
     +'<th>PD</th><th>First IB</th><th>Last IB</th><th>Departure</th><th>First Del</th><th>Task ตามเป้า</th>'
     +'</tr></thead><tbody>';
   rows.forEach(({dep,a})=>{
     h+='<tr><td class="l"><div class="nm">'+dep+'</div><div class="s2">'+a.days+' วัน</div></td>'
       +'<td class="n">'+a.days+'</td><td class="n">'+a.head+'</td>'
+      +cel(a.absN,v=>v+' คน',a.absN===0)
       +cel(a.ontime,v=>Math.round(v)+'%', a.ontime>=95)
       +cel(a.lateN,v=>v+' ครั้ง', a.lateN===0)
       +cel(a.lateAvg,v=>m1(v)+' น.', a.lateAvg<=2)
@@ -1106,7 +1113,7 @@ function tblPeople(dks){
   if(!rows.length) return '<div class="empty">ไม่มีข้อมูลในช่วงวันที่เลือก</div>';
   rows.sort((a,b2)=>(b2.lateAvg??-1)-(a.lateAvg??-1));
   let h='<div class="dwrap"><table class="dtbl"><thead><tr>'
-    +'<th class="l">รหัส / ชื่อ</th><th>สาขา</th><th>ประเภทรถ</th><th>Vendor</th><th>วัน</th>'
+    +'<th class="l">รหัส / ชื่อ</th><th>สาขา</th><th>ประเภทรถ</th><th>Vendor</th><th>วัน</th><th>ไม่มา</th>'
     +'<th>Ontime</th><th>สาย</th><th>นาทีสาย/วัน</th><th>FS</th><th>Departure</th><th>First Del</th>'
     +'</tr></thead><tbody>';
   rows.forEach(o=>{
@@ -1116,6 +1123,7 @@ function tblPeople(dks){
       +'<td class="n">'+esc(o.c.type||'—')+'</td>'
       +'<td class="n">'+esc(o.c.vendor||'—')+'</td>'
       +'<td class="n">'+o.days+'</td>'
+      +cel(o.abs,v=>v+' วัน',o.abs===0)
       +cel(o.ontime,v=>Math.round(v)+'%',o.ontime>=95)
       +cel(o.late,v=>v+' ครั้ง',o.late===0)
       +cel(o.lateAvg,v=>m1(v)+' น.',o.lateAvg<=2)
@@ -1380,6 +1388,14 @@ window.__open=async (dep,task)=>{
       +(x.r.hasPhoto?'<img class="thumb" data-ph="ci_'+x.cid+'_'+DATE+'" data-dep="'+dep+'" '
         +'onclick="window.__zoom(this.src)" style="cursor:zoom-in;">':'')
       +'</div>').join('') : '<div class="empty">ยังไม่มีการเช็คอิน</div>';
+    const ab=Object.entries(d.absent||{});
+    if(ab.length){
+      b+='<div style="margin-top:15px;font-weight:800;font-size:13px;">🚫 ไม่มาทำงาน '+ab.length+' คน <span style="font-weight:600;color:#8b8271;font-size:11.5px;">(ไม่นับใน Ontime %)</span></div>'
+        + ab.map(([cid,r])=>{ const c=cmap[cid]||{};
+            return '<div class="row-c"><div class="info"><div class="nm">'+esc(c.code||('#'+cid))+' <span style="font-weight:400;">'+esc(c.name||'')+'</span></div>'
+              +'<div class="sub2">'+esc(r.note||'ไม่ระบุเหตุผล')+' • แจ้งโดย '+esc(r.by||'—')+(r.at?' '+fmtT(r.at):'')+'</div></div>'
+              +'<span class="chip no">🚫 ไม่มา</span></div>'; }).join('');
+    }
   }
   else if(task==='pd'){
     b+= p.pd&&p.pd.ts

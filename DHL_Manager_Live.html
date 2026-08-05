@@ -720,6 +720,20 @@ function findIssues(){
     const abs=Object.entries(d.absent||{});
     if(abs.length>=3) out.push({dep,task:'checkin',lv:'warn',ic:'🚫',ti:dep+' ไม่มาทำงาน '+abs.length+' คน',
       de:abs.map(([,r])=>r.note||'ไม่ระบุ').slice(0,3).join(' / ')+' — ตรวจกำลังพลว่าพอวิ่งงานหรือไม่'});
+    /* ตรวจความถูกต้องของชุดข้อมูล */
+    if(p.courierN && ck.length && Math.abs((+p.courierN)-ck.length)>3)
+      out.push({dep,task:'fib',lv:'crit',ic:'🔢',ti:dep+' จำนวน Courier ไม่ตรงกับคนเช็คอิน',
+        de:'กรอกไว้ '+p.courierN+' คน แต่เช็คอิน '+ck.length+' คน — PPH จะคำนวณผิด ให้แก้ตัวเลข Courier ในหน้า PPH'});
+    try{ const _cm=courierMap(dep,d);
+      const _or=Object.keys(d.checkins||{}).filter(cid=>!_cm[cid]).length;
+      if(_or) out.push({dep,task:'checkin',lv:'warn',ic:'❓',ti:dep+' มีเช็คอินที่ไม่มีชื่อในระบบ '+_or+' คน',
+        de:'รายงานรายบุคคลจะไม่มีชื่อ/รหัส — ตรวจว่าลบพนักงานออกไปหรือรายชื่อยังไม่ซิงค์'}); }catch(e){}
+    const _bs=Object.entries(p.rp||{}).filter(([,q])=>q.dep&&q.fdel&&q.fdel<q.dep).length;
+    if(_bs) out.push({dep,task:'fdel',lv:'warn',ic:'🔀',ti:dep+' First Del เกิดก่อน Departure '+_bs+' คน',
+      de:'เป็นไปไม่ได้จริง — เกิดจากกดปุ่มสลับลำดับหรือแก้เวลา ให้ตรวจสอบ'});
+    const _wt=Object.values(d.checkins||{}).filter(r=>{const s=secOf(r.ts); return s<4*3600||s>12*3600;}).length;
+    if(_wt) out.push({dep,task:'checkin',lv:'crit',ic:'⏱',ti:dep+' มีเช็คอินนอกช่วงเวลาทำงาน '+_wt+' คน',
+      de:'เวลาก่อน 04:00 หรือหลัง 12:00 — มักเป็นข้อมูลทดสอบ ให้ลบออกก่อนทำรายงาน'});
     const noUni=ck.filter(r=>r.uniform===false).length;
     if(noUni) out.push({dep,task:'checkin',lv:'warn',ic:'👕',ti:dep+' ไม่ใส่ยูนิฟอร์ม '+noUni+' คน',
       de:'ตรวจสอบและเตือนก่อนออกวิ่งงาน'});

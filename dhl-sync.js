@@ -756,7 +756,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-c';
+const SYNC_VER='2026.08.05-d';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1249,3 +1249,108 @@ async function boot(){
   setInterval(()=>{ const k=tKey(); if(k!==cur){ cur=k; if(S.ready){ listenDay(); pushAll(); } } },60000);
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+
+
+/* ============ 📋 จัดกลุ่มหน้าเช็คอิน (ยังไม่เช็คอิน / เช็คอินแล้ว) ============
+   ย้ายแถวที่แอปสร้างไว้แล้ว ไม่สร้างใหม่ — ปุ่มและ event เดิมทำงานครบทุกอย่าง
+   ถ้าเกิดข้อผิดพลาดใดๆ จะคืนรายชื่อเป็นแบบเดิมอัตโนมัติ */
+const GRP_CSS = "#dsGrpBar{display:flex;gap:6px;align-items:center;margin:2px 0 8px;}"
++"#dsPhoto{border:1px solid #e0d9c8;background:#fbf9f4;color:#6b6558;border-radius:9px;padding:7px 11px;"
++"font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;}"
++"#dsPhoto.on{background:#1a1a1a;color:#FFCC00;border-color:#1a1a1a;}"
++".dsHdr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 13px;"
++"border-radius:12px;margin:12px 0 7px;font-size:13.5px;font-weight:800;}"
++".dsHdr.todo{background:#fdeaea;color:#a3151f;}"
++".dsHdr.done{background:#f2ede2;color:#5f5a4e;cursor:pointer;}"
++".dsHdr .c{font-size:12px;font-weight:700;opacity:.85;}"
++".dsHdr .cv{font-size:16px;line-height:1;transition:transform .2s;}"
++".dsHdr.open .cv{transform:rotate(180deg);}"
++"#dsDone{overflow:hidden;}"
++"#dsAllDone{background:#e6f5eb;color:#12683f;border-radius:12px;padding:18px 14px;text-align:center;"
++"font-size:14.5px;font-weight:800;margin-bottom:6px;}"
++"body.dsNoPh #ciList img{display:none!important;}";
+(function(){ const s=document.createElement('style'); s.id='dsGrpCSS'; s.textContent=GRP_CSS; document.head.appendChild(s); })();
+
+let GRPBUSY=false;
+function phOn(){ try{ return localStorage.getItem('dsPhoto')==='1'; }catch(e){ return false; } }
+function doneOpen(){ try{ return localStorage.getItem('dsDoneOpen')==='1'; }catch(e){ return false; } }
+function applyPhotoMode(){
+  document.body.classList.toggle('dsNoPh', !phOn());
+  const b=document.getElementById('dsPhoto');
+  if(b){ b.classList.toggle('on', phOn()); b.textContent = phOn()? '📷 ซ่อนรูป' : '📷 แสดงรูป'; }
+}
+window.dsTogglePhoto=()=>{
+  try{ localStorage.setItem('dsPhoto', phOn()?'0':'1'); }catch(e){}
+  applyPhotoMode();
+};
+window.dsToggleDone=()=>{
+  const open=!doneOpen();
+  try{ localStorage.setItem('dsDoneOpen', open?'1':'0'); }catch(e){}
+  const d=document.getElementById('dsDone'), h=document.getElementById('dsDoneHdr');
+  if(d) d.style.display = open?'':'none';
+  if(h) h.classList.toggle('open', open);
+};
+function isDone(row){
+  return !!row.querySelector('button[onclick*="editTime("]');
+}
+function regroupCheckin(){
+  if(GRPBUSY) return;
+  const list=document.getElementById('ciList');
+  if(!list) return;
+  const rows=[...list.children].filter(e=>e.classList && e.classList.contains('row-c'));
+  if(!rows.length) return;                      // แอปยังไม่วาด หรือไม่มีรายชื่อ
+  GRPBUSY=true;
+  try{
+    const todo=[], done=[];
+    rows.forEach(r=>(isDone(r)? done:todo).push(r));
+    const late=done.filter(r=>r.classList.contains('st-late')).length;
+
+    const frag=document.createDocumentFragment();
+    if(todo.length){
+      const h=document.createElement('div'); h.className='dsHdr todo';
+      h.innerHTML='<span>⚠ ยังไม่เช็คอิน '+todo.length+' คน</span><span class="c">แตะปุ่มเพื่อบันทึก</span>';
+      frag.appendChild(h);
+      todo.forEach(r=>frag.appendChild(r));
+    } else {
+      const ok=document.createElement('div'); ok.id='dsAllDone';
+      ok.textContent='✅ เช็คอินครบทุกคนแล้ว '+done.length+' คน';
+      frag.appendChild(ok);
+    }
+    if(done.length){
+      const h=document.createElement('div'); h.className='dsHdr done'; h.id='dsDoneHdr';
+      h.setAttribute('onclick','dsToggleDone()');
+      h.innerHTML='<span>✓ เช็คอินแล้ว '+done.length+' คน'+(late? ' · สาย '+late:'')+'</span><span class="cv">⌄</span>';
+      frag.appendChild(h);
+      const box=document.createElement('div'); box.id='dsDone';
+      done.forEach(r=>box.appendChild(r));
+      frag.appendChild(box);
+      if(doneOpen()) h.classList.add('open'); else box.style.display='none';
+    }
+    list.innerHTML='';
+    list.appendChild(frag);
+    list.querySelectorAll('img').forEach(im=>im.setAttribute('loading','lazy'));
+  }catch(e){ console.warn('regroup',e); }
+  GRPBUSY=false;
+}
+function mountGrpBar(){
+  const s=document.getElementById('ciSearch');
+  if(!s || document.getElementById('dsGrpBar')) return;
+  const bar=document.createElement('div'); bar.id='dsGrpBar';
+  s.parentNode.insertBefore(bar, s);
+  bar.appendChild(s);
+  const b=document.createElement('button');
+  b.id='dsPhoto'; b.type='button'; b.setAttribute('onclick','dsTogglePhoto()');
+  bar.appendChild(b);
+  applyPhotoMode();
+}
+(function(){
+  const start=()=>{
+    const list=document.getElementById('ciList');
+    if(!list){ setTimeout(start,600); return; }
+    mountGrpBar(); applyPhotoMode(); regroupCheckin();
+    new MutationObserver(()=>{ if(!GRPBUSY) setTimeout(regroupCheckin,30); })
+      .observe(list,{childList:true});
+    setInterval(()=>{ mountGrpBar(); regroupCheckin(); }, 3000);
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();

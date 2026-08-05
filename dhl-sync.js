@@ -762,7 +762,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-i';
+const SYNC_VER='2026.08.05-j';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1532,10 +1532,14 @@ window.dsAbsClear=async (cid)=>{
   catch(e){ console.warn('clr abs',e); }
 };
 function rowCid(row){
-  const b=row.querySelector('button[onclick*="quickLog("],button[onclick*="openCamera("]');
+  if(row.dataset && row.dataset.dsCid) return row.dataset.dsCid;
+  const b=row.querySelector('button[onclick*="quickLog("],button[onclick*="openCamera("],button[onclick*="dsAbsClear("],button[onclick*="editTime("]');
   if(!b) return null;
-  const m=(b.getAttribute('onclick')||'').match(/\((\d+)/);
-  return m? m[1]:null;
+  const oc=b.getAttribute('onclick')||'';
+  const m=oc.match(/quickLog\((\d+)|openCamera\((\d+)|dsAbsClear\((\d+)/);
+  const id = m? (m[1]||m[2]||m[3]) : null;
+  if(id && row.dataset) row.dataset.dsCid=id;
+  return id;
 }
 function rowName(row){
   const n=row.querySelector('.nm'), s=row.querySelector('.sub,.sub2');

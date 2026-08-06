@@ -762,7 +762,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-j';
+const SYNC_VER='2026.08.05-k';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -846,7 +846,7 @@ function listenComments(){
       bell.textContent='💬 คอมเมนต์ใหม่ '+unread;
       if(!bell.classList.contains('on')){ bell.classList.add('on'); beep(); }
     } else bell.classList.remove('on');
-    if(document.getElementById('dsCom').classList.contains('show')) renderComments();
+    if(document.getElementById('dsCom').classList.contains('show')){ renderComments(); loadComPhotos(); }
   }, e=>console.warn('listen com',e));
 }
 function beep(){
@@ -873,13 +873,23 @@ function renderComments(){
     const hh=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
     return '<div class="cm'+(c.ackAt?' done':'')+'">'
       +'<div class="t">'+(TASK_TH[c.task]||c.task||'')+' • '+(c.date||'')+' • '+hh+'</div>'
-      +'<div class="x">'+String(c.text||'').replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]))+'</div>'
+      +(c.target? '<div class="t" style="color:#b3121d;font-weight:800;font-size:12px;">🎯 '+String(c.target).replace(/[<>&]/g,'')+'</div>':'')+'<div class="x">'+String(c.text||'').replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]))+'</div>'
+      +(c.photoId? '<img data-cph="'+c.photoId+'" style="width:100%;max-height:300px;object-fit:contain;border-radius:14px;margin:9px 0;background:#f2ede2;">':'')
       +(c.ackAt? '<div class="ok">✔ รับทราบแล้วโดย '+(c.ackBy||'')+'</div>'
                : '<button onclick="window.__dsAck(\''+c.id+'\')">✔ รับทราบ</button>')
       +'</div>';
   }).join('');
 }
-function openComments(){ document.getElementById('dsCom').classList.add('show'); renderComments(); }
+async function loadComPhotos(){
+  const els=[...document.querySelectorAll('#dsComList [data-cph]')].filter(e=>!e.src);
+  for(const e of els){
+    try{ const s=await getDoc(doc(phoCol(S.depot), e.dataset.cph));
+      if(s.exists()&&s.data().d) e.src=s.data().d; else e.style.display='none';
+    }catch(err){ e.style.display='none'; }
+    await new Promise(r=>setTimeout(r,80));
+  }
+}
+function openComments(){ document.getElementById('dsCom').classList.add('show'); renderComments(); loadComPhotos(); }
 window.__dsAck=async id=>{
   try{ await updateDoc(doc(comCol(S.depot),id),{ ackAt:Date.now(), ackBy:S.staff }); toast('✔ ส่งการรับทราบแล้ว'); }
   catch(e){ toast('ส่งไม่สำเร็จ'); }

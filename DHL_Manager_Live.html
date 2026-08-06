@@ -319,7 +319,7 @@ const thD=k=>{const[y,m,d]=k.split('-').map(Number);const mo=['ม.ค.','ก.�
 
 const DATA={}, COM={}, META={}, SES={};   // META = ข้อมูลสาขา · SES = ใครกำลังใช้แอปอยู่
 const ONLINE_MS = 5*60*1000;              // heartbeat ทุก 2 นาที → เกิน 5 นาที = ถือว่าออฟไลน์
-const APP_VER   = '2026.08.05-j';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
+const APP_VER   = '2026.08.05-k';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
 /* 🛡 นับจำนวนเครื่องที่มีปัญหาทั้งระบบ */
 function healthIssues(){
   const now=Date.now(), out=[];
@@ -1392,6 +1392,7 @@ function drawMetric(m,deps){
 
 /* ---------- DETAIL + COMMENT ---------- */
 window.__open=async (dep,task)=>{
+  window.__cmTargetId=null; window.__cmTargetLabel='';
   const d=DATA[dep], p=(d&&d.pph)||{};
   const cmap=courierMap(dep,d);
   const T=TASKS.find(t=>t.k===task)||{l:task};
@@ -1410,6 +1411,7 @@ window.__open=async (dep,task)=>{
       +'<span class="chip '+(x.r.status==='late'?'no':'ok')+'">'+(x.r.status==='late'?'✖ ':'✔ ')+fmtT(x.r.ts)+'</span>'
       +(x.r.hasPhoto?'<img class="thumb" data-ph="ci_'+x.cid+'_'+DATE+'" data-dep="'+dep+'" '
         +'onclick="window.__zoom(this.src)" style="cursor:zoom-in;">':'')
+      +'<button class="mini" style="margin-left:6px;" onclick="window.__cmT(&quot;'+(x.r.hasPhoto?('ci_'+x.cid+'_'+DATE):'')+'&quot;,&quot;'+String((x.c.code||('#'+x.cid))+' '+(x.c.name||'')).replace(/["<>&\\]/g,'')+'&quot;)">💬</button>'
       +'</div>').join('') : '<div class="empty">ยังไม่มีการเช็คอิน</div>';
     const ab=Object.entries(d.absent||{});
     if(ab.length){
@@ -1425,7 +1427,7 @@ window.__open=async (dep,task)=>{
       ? '<div class="row-c"><div class="info"><div class="nm">ถ่ายเมื่อ '+fmtT(p.pd.ts)+(p.pd.manualEdit?' *':'')+'</div>'
         +'<div class="sub2">เป้า ก่อน 07:15</div></div>'
         +'<span class="chip '+(secOf(p.pd.ts)<=PD_END?'ok':'no')+'">'+(secOf(p.pd.ts)<=PD_END?'✔ ในเวลา':'✖ เกินเวลา')+'</span></div>'
-        +(p.pd.hasPhoto? '<img class="photo" data-ph="pd_pd_'+DATE+'" data-dep="'+dep+'">':'<div class="small">ไม่มีรูปบนคลาวด์</div>')
+        +(p.pd.hasPhoto? '<img class="photo" data-ph="pd_pd_'+DATE+'" data-dep="'+dep+'"><button class="mini" style="margin-top:7px;" onclick="window.__cmT(&quot;pd_pd_'+DATE+'&quot;,&quot;รูป PD&quot;)">💬 คอมเมนต์รูปนี้</button>':'<div class="small">ไม่มีรูปบนคลาวด์</div>')
       : '<div class="empty">ยังไม่ได้ถ่าย PD</div>';
   }
   else if(task==='fib'||task==='lib'){
@@ -1462,7 +1464,7 @@ window.__open=async (dep,task)=>{
       +(c.ackAt? '<div class="ok2">✔ สาขารับทราบแล้วโดย '+esc(c.ackBy)+' เวลา '+fmtT(c.ackAt)+'</div>'
                : '<div class="t" style="color:#b3121d;margin-top:4px;">⏳ ยังไม่รับทราบ</div>')+'</div>').join('');
 
-  b+='<div style="margin-top:14px;font-weight:800;font-size:13px;margin-bottom:6px;">✍️ ส่งคอมเมนต์ถึงสาขานี้</div>'
+  b+='<div style="margin-top:14px;font-weight:800;font-size:13px;margin-bottom:6px;">✍️ ส่งคอมเมนต์ถึงสาขานี้</div><div id="cmTgt" class="small" style="margin:2px 0 7px;"></div>'
     +'<textarea id="cmTxt" placeholder="พิมพ์ข้อความถึง '+dep+' เรื่อง '+T.l+'..."></textarea>'
     +'<div style="display:flex;gap:8px;margin-top:10px;">'
     +'<button class="btn btn-r" style="flex:1;" onclick="window.__send(\''+dep+'\',\''+task+'\')">📨 ส่งคอมเมนต์</button>'
@@ -1914,12 +1916,21 @@ window.__savePin=async dep=>{
   }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
 };
 
+window.__cmTargetId=null; window.__cmTargetLabel='';
+window.__cmT=(pid,label)=>{
+  window.__cmTargetId=pid||null; window.__cmTargetLabel=label||'';
+  const el=document.getElementById('cmTgt');
+  if(el) el.innerHTML = label? '🎯 คอมเมนต์ถึง <b>'+label+'</b>'+(pid?' • แนบรูปให้ Staff เห็น':'')+' <button class="mini" onclick="window.__cmT(&quot;&quot;,&quot;&quot;)">ยกเลิก</button>' : '';
+  const t=document.getElementById('cmTxt'); if(t) t.focus();
+};
 window.__send=async (dep,task)=>{
   const t=document.getElementById('cmTxt').value.trim();
   if(!t) return;
   try{
     await addDoc(collection(db,'depots',dep,'comments'),
-      { task, date:DATE, text:t, at:Date.now(), by:'Manager', ackAt:null, ackBy:null });
+      { task, date:DATE, text:t, at:Date.now(), by:'Manager', ackAt:null, ackBy:null,
+        photoId: window.__cmTargetId||null, target: window.__cmTargetLabel||'' });
+    window.__cmTargetId=null; window.__cmTargetLabel='';
     document.getElementById('mdl').classList.remove('show');
   }catch(e){ alert('ส่งไม่สำเร็จ: '+e.message); }
 };

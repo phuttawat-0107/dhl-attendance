@@ -318,8 +318,8 @@ const todayKey=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth
 const thD=k=>{const[y,m,d]=k.split('-').map(Number);const mo=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return d+' '+mo[m-1]+' '+(y+543);};
 
 const DATA={}, COM={}, META={}, SES={};   // META = ข้อมูลสาขา · SES = ใครกำลังใช้แอปอยู่
-const ONLINE_MS = 5*60*1000;              // heartbeat ทุก 2 นาที → เกิน 5 นาที = ถือว่าออฟไลน์
-const APP_VER   = '2026.08.07-o';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
+const ONLINE_MS = 11*60*1000;              // heartbeat ทุก 2 นาที → เกิน 5 นาที = ถือว่าออฟไลน์
+const APP_VER   = '2026.08.07-q';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
 /* 🛡 นับจำนวนเครื่องที่มีปัญหาทั้งระบบ */
 function healthIssues(){
   const now=Date.now(), out=[];
@@ -1840,7 +1840,7 @@ window.__settings=async ()=>{
       if(s.exists()){ pin=s.data().pin||''; staff=s.data().staffNames||[]; maxN=(+s.data().maxStaff)||maxN; } }catch(e){}
     let act=[];
     try{ const ss=(_pf[dep]&&_pf[dep].s)||{docs:[]};
-      act=ss.docs.map(x=>({n:x.id,at:x.data().at||0})).filter(x=>now-x.at<6*60*1000).map(x=>x.n); }catch(e){}
+      act=ss.docs.map(x=>({n:x.id,at:x.data().at||0})).filter(x=>now-x.at<11*60*1000).map(x=>x.n); }catch(e){}
     rows.push('<div style="background:#fbf9f4;border-radius:18px;padding:13px;margin-bottom:9px;">'
       +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
       +'<b style="font-size:15px;">'+dep+'</b>'

@@ -433,9 +433,23 @@ async function pushAll(){
         if(Object.keys(o).length) up['pph.rp.'+cid]=o;
       });
     }
-    const couriers=getCouriers().filter(c=>c.active!==false && !(S.removed||[]).includes(Number(c.id)))
+    let couriers=getCouriers().filter(c=>c.active!==false && !(S.removed||[]).includes(Number(c.id)))
       .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'' }));
     if(couriers.length){
+      /* 🛡 รวมกับรายชื่อบนคลาวด์ก่อนเสมอ — กันเครื่องที่รายชื่อไม่ครบเขียนทับของเครื่องอื่น
+         ลบได้ทางเดียวคือผ่านปุ่มลบ (removedIds) เท่านั้น */
+      try{
+        const _snap=await getDoc(depRef(S.depot));
+        const _cloud=(_snap.exists()&&_snap.data().couriers)||[];
+        if(_cloud.length){
+          const _rm=new Set((S.removed||[]).map(Number));
+          const _by={};
+          _cloud.forEach(c=>{ const i=Number(c.id); if(!_rm.has(i)) _by[i]=c; });
+          couriers.forEach(c=>{ _by[Number(c.id)]=c; });
+          const _merged=Object.values(_by).sort((a,b)=>String(a.code||'').localeCompare(String(b.code||'')));
+          if(_merged.length>=couriers.length) couriers=_merged;
+        }
+      }catch(e){ console.warn('merge couriers',e); }
       up['couriers']=couriers;
       /* เก็บ master list ไว้ที่สาขาด้วย — Manager ใช้เป็นตัวสำรองถ้าวันไหนไม่มี */
       try{ await setDoc(depRef(S.depot),{ couriers, couriersAt:Date.now() },{merge:true}); }catch(e){}
@@ -762,7 +776,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.05-k';
+const SYNC_VER='2026.08.07-m';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 

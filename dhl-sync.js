@@ -779,7 +779,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.07-o';
+const SYNC_VER='2026.08.07-p';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -956,6 +956,7 @@ window.__dsAck=async id=>{
   catch(e){ toast('ส่งไม่สำเร็จ'); }
 };
 window.dsOpenComments=openComments;
+window.dsRemovedIds=()=>S.removed||[];
 
 /* ============ LOGOUT ============ */
 window.dsLogout=async ()=>{

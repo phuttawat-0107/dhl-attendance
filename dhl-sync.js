@@ -174,7 +174,7 @@ async function injectUI(){
 }
 
 const sesCol = dep => collection(dbF,'depots',dep,'sessions');
-const SES_TIMEOUT = 6*60*1000;       // ไม่ heartbeat เกิน 6 นาที = ถือว่าออกแล้ว
+const SES_TIMEOUT = 11*60*1000;       // ไม่ heartbeat เกิน 6 นาที = ถือว่าออกแล้ว
 
 async function loadStaffList(){
   const dep=document.getElementById('dsDep').value;
@@ -275,7 +275,7 @@ function startHeartbeat(){
         err:H.err||'', errAt:H.errAt||0, nLocal, taps:H.taps, saves:H.saves },{merge:true});
     }catch(e){}
   };
-  beat(); S._hb=setInterval(beat,120000);
+  beat(); S._hb=setInterval(beat,240000);
 }
 
 /* เครื่องที่เพิ่งเข้าใช้ครั้งแรกจะยังไม่มี dhl_settings → หน้า "จัดการ"/Dashboard จะพัง
@@ -779,7 +779,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.07-p';
+const SYNC_VER='2026.08.07-q';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 

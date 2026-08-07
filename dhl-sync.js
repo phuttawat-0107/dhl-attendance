@@ -355,8 +355,9 @@ async function afterLogin(){
   startHeartbeat();
   purgeOldPhotos30();
   setTimeout(backfill, 4000);
-  setTimeout(checkAppVer, 6000);
-  setInterval(checkAppVer, 180000);          // 🛟 กู้ข้อมูลย้อนหลังที่หายไป (ถ้ามี)
+  setTimeout(checkAppVer, 2500);
+  setInterval(checkAppVer, 60000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkAppVer(); });          // 🛟 กู้ข้อมูลย้อนหลังที่หายไป (ถ้ามี)
 }
 
 /* ดึงข้อมูลวันนี้ + รายชื่อ Courier ของสาขาลงเครื่องทันที */
@@ -778,7 +779,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.07-n';
+const SYNC_VER='2026.08.07-o';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -876,7 +877,8 @@ function showVerOverlay(want){
   d.innerHTML='<div><div style="font-size:46px;margin-bottom:14px;">🔄</div>'
     +'<div style="font-size:20px;font-weight:800;color:#FFCC00;margin-bottom:9px;">กำลังอัปเดตแอปเวอร์ชันใหม่</div>'
     +'<div style="font-size:14.5px;line-height:1.65;opacity:.92;">ระบบจะโหลดหน้าใหม่ให้อัตโนมัติ<br>ข้อมูลที่บันทึกไว้ยังอยู่ครบ ไม่ต้องกดอะไร</div>'
-    +'<div style="font-size:12px;opacity:.6;margin-top:13px;">'+SYNC_VER+' → '+want+'</div></div>';
+    +'<div style="font-size:12px;opacity:.6;margin-top:13px;">'+SYNC_VER+' → '+want+'</div>'
+    +'<button onclick="window.dsVerReload&&window.dsVerReload(\''+want+'\')" style="margin-top:18px;border:none;border-radius:99px;padding:13px 26px;font-size:15px;font-weight:800;background:#FFCC00;color:#1a1a1a;cursor:pointer;font-family:inherit;">อัปเดตเดี๋ยวนี้</button></div>';
   document.body.appendChild(d);
 }
 function showVerBar(want){
@@ -887,18 +889,23 @@ function showVerBar(want){
     document.body.appendChild(b); }
   b.textContent='🔄 มีเวอร์ชันใหม่ '+want+' — แตะที่นี่เพื่ออัปเดต';
 }
+function doVerReload(want){
+  try{ const u=new URL(location.href); u.searchParams.set('v',want||Date.now()); location.replace(u.toString()); }
+  catch(e){ location.reload(); }
+}
+window.dsVerReload=doVerReload;
 async function checkAppVer(){
   if(VERBUSY) return; VERBUSY=true;
   try{
     const s=await getDoc(doc(dbF,'config','app'));
     const want=s.exists()? String(s.data().staffVer||'') : '';
     if(want && want!==SYNC_VER){
+      showVerOverlay(want);
       const last=+(sessionStorage.getItem('dsVerReload')||0);
-      if(Date.now()-last > 10*60*1000){
+      if(Date.now()-last > 60*1000){
         sessionStorage.setItem('dsVerReload', String(Date.now()));
-        showVerOverlay(want);
-        setTimeout(()=>{ try{ const u=new URL(location.href); u.searchParams.set('v',want); location.replace(u.toString()); }catch(e){ location.reload(); } }, 2500);
-      } else showVerBar(want);
+        setTimeout(()=>doVerReload(want), 2000);
+      }
     }
   }catch(e){}
   VERBUSY=false;

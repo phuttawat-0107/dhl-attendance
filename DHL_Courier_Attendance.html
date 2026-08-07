@@ -1461,7 +1461,9 @@ function addCourier(){
   const type = document.getElementById('fType').value;
   if(!code||!name){ flash('กรอกรหัสและชื่อให้ครบ'); return; }
   if(couriers.some(c=>c.code.toLowerCase()===code.toLowerCase())){ flash('รหัสนี้มีอยู่แล้ว'); return; }
-  const id = couriers.length? Math.max(...couriers.map(c=>c.id))+1 : 1;
+  /* 🛡 ข้าม id ที่เคยถูกลบไปแล้ว — กันเพิ่มคนใหม่แล้วโดนระบบลบทิ้งทันที */
+  const _rmIds = (()=>{ try{ return (window.dsRemovedIds&&window.dsRemovedIds())||[]; }catch(e){ return []; } })();
+  const id = Math.max(0, ...couriers.map(c=>Number(c.id)||0), ...(_rmIds.map(Number).filter(n=>!isNaN(n))))+1;
   couriers.push({id, code, name, vendor:vendor||'-', type, active:true});
   saveCouriers();
   document.getElementById('fCode').value=''; document.getElementById('fName').value=''; document.getElementById('fVendor').value='';

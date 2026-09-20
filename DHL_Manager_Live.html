@@ -292,6 +292,7 @@ body{background:#f5f2ec !important;}
     <button class="mtab" id="tb_ins" onclick="window.__tab('ins')">📈 อินไซต์</button>
     <button class="mtab" id="tb_ch" onclick="window.__tab('ch')">📊 กราฟ</button>
     <button class="mtab" id="tb_data" onclick="window.__tab('data')">📋 Data</button>
+    <button class="mtab" id="tb_ot" onclick="window.__tab('ot')">⏱ On-time</button>
   </div>
   <div id="viewLive">
   <div id="healthBar"></div>
@@ -313,6 +314,7 @@ body{background:#f5f2ec !important;}
   <div id="viewIns" style="display:none;"></div>
   <div id="viewCh" style="display:none;"></div>
   <div id="viewData" style="display:none;"></div>
+  <div id="viewOt" style="display:none;"></div>
 </div>
 
 <div class="modal" id="mdl"><div class="sheet" id="mdlBody"></div></div>
@@ -707,7 +709,7 @@ function render(){
 let MTAB='live', HIST=null, histLoading=false;
 window.__tab=t=>{
   MTAB=t;
-  ['live','ins','ch','data'].forEach(k=>{
+  ['live','ins','ch','data','ot'].forEach(k=>{
     const b=document.getElementById('tb_'+(k==='live'?'live':k));
     if(b) b.classList.toggle('on',t===k);
   });
@@ -715,9 +717,11 @@ window.__tab=t=>{
   document.getElementById('viewIns').style.display = t==='ins'?'':'none';
   document.getElementById('viewCh').style.display  = t==='ch'?'':'none';
   document.getElementById('viewData').style.display= t==='data'?'':'none';
+  { const _vo=document.getElementById('viewOt'); if(_vo) _vo.style.display= t==='ot'?'':'none'; }
   if(t==='ins'){ renderIns(); if(!HIST&&!histLoading) loadHist(); }
   if(t==='ch'){ renderCh(); if(!HIST&&!histLoading) loadHist(); }
   if(t==='data'){ renderData(); ensureData(); }
+  if(t==='ot'){ if(window.__otRender) window.__otRender(); if(window.__otEnsure) window.__otEnsure(); }
 };
 
 function nowSec(){ const d=new Date(); return d.getHours()*3600+d.getMinutes()*60; }
@@ -844,7 +848,14 @@ function findIssues(){
   return out.sort((a,b)=>rank[a.lv]-rank[b.lv]);
 }
 
-async function loadHist(){
+async /* ⏱ On-time Rate module (Manager only) */
+import('./dhl-ontime.js?v=1').then(m=>{
+  m.initOntime({ db, doc, getDoc, esc, secOf,
+    get:()=>({ DEPOTS, DATA, META, DATE, MTAB }) });
+  console.log('ontime module', m.OT_VER);
+}).catch(e=>console.warn('ontime module failed', e));
+
+function loadHist(){
   histLoading=true;
   if(MTAB==='ch') renderCh(); if(MTAB==='ins') renderIns();
   const days=chDates().filter(k=>k!==DATE);

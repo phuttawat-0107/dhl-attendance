@@ -222,6 +222,38 @@ textarea:focus{outline:2px solid var(--y);}
   background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
 #mdlBody input:focus,#mdlBody select:focus,#mdlBody textarea:focus{
   outline:none;border-color:var(--y);background:#fffdf5;box-shadow:0 0 0 3px rgba(255,204,0,.18);}
+
+/* ============ 🎨 UI 2026.09.20 — Manager โฉมใหม่ ============ */
+:root{--line:#ece7dd;--sh1:0 1px 2px rgba(23,23,23,.05);--sh2:0 6px 18px rgba(23,23,23,.06);}
+body{background:#f5f2ec !important;}
+.topbar{background:#fff !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
+  box-shadow:0 1px 0 var(--line) !important;}
+.ybar{height:4px !important;}
+.hd{padding:10px 14px !important;}
+.mlogo{display:flex !important;align-items:center;gap:9px;font-size:0 !important;flex-wrap:wrap;}
+.dhlmark{height:26px;width:auto;display:block;border-radius:3px;}
+.mlogo .liveTag{font-size:19px;font-weight:900;font-style:italic;color:var(--r);letter-spacing:-.3px;}
+#teamTag{font-size:10.5px !important;width:100%;}
+.card{border-radius:20px !important;border:1px solid var(--line) !important;box-shadow:var(--sh1),var(--sh2) !important;}
+.kpi{border-radius:18px !important;border:1px solid var(--line) !important;box-shadow:var(--sh1),var(--sh2) !important;}
+.mtabs{background:#fff !important;border:1px solid var(--line);border-radius:18px !important;box-shadow:var(--sh1) !important;}
+.mtab{border-radius:13px !important;font-weight:800 !important;}
+.mtab.on{background:#171717 !important;color:var(--y) !important;}
+.btn{border-radius:13px !important;font-weight:800 !important;transition:transform .08s ease !important;}
+.btn-y{background:var(--y) !important;box-shadow:0 2px 0 #e0b400 !important;}
+.btn-r{background:var(--r) !important;box-shadow:0 2px 0 #a50a10 !important;}
+.btn-o{background:#fff !important;border:1.5px solid var(--line) !important;box-shadow:none !important;}
+.btn:active{transform:translateY(1px);}
+.row-c{border-radius:16px !important;border:1px solid var(--line) !important;box-shadow:var(--sh1) !important;}
+.sheet{border-radius:26px 26px 0 0 !important;}
+.cell{border-radius:12px !important;}
+.fitem,.hbar,.iss,.stepcard,.impcard{border-radius:16px !important;}
+.dtbl th{background:#faf8f3;}
+.wrap input,.wrap select,#mdlBody input,#mdlBody select,#mdlBody textarea{
+  border:1.5px solid var(--line) !important;border-radius:12px !important;background:#faf8f3 !important;}
+.wrap input:focus,.wrap select:focus,#mdlBody input:focus,#mdlBody textarea:focus{
+  border-color:var(--y) !important;background:#fff !important;outline:none;}
+
 </style>
 </head>
 <body>
@@ -235,7 +267,7 @@ textarea:focus{outline:2px solid var(--y);}
 
 <div class="topbar"><div class="ybar"></div>
   <div class="hd">
-    <div class="mlogo">DHL <span>Live</span><small id="teamTag" style="display:block;font-size:10px;font-weight:700;color:#a09884;letter-spacing:.3px;"></small></div>
+    <div class="mlogo"><img class="dhlmark" src="data:image/webp;base64,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" alt="DHL eCommerce"><span class="liveTag">Live</span><small id="teamTag" style="display:block;font-size:10px;font-weight:700;color:#a09884;letter-spacing:.3px;"></small></div>
     <div class="meta" style="display:flex;align-items:center;gap:10px;">
       <div><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
       <span id="teamTag" style="font-size:11px;font-weight:800;color:#8a8272;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -319,7 +351,7 @@ const thD=k=>{const[y,m,d]=k.split('-').map(Number);const mo=['ม.ค.','ก.�
 
 const DATA={}, COM={}, META={}, SES={};   // META = ข้อมูลสาขา · SES = ใครกำลังใช้แอปอยู่
 const ONLINE_MS = 11*60*1000;              // heartbeat ทุก 2 นาที → เกิน 5 นาที = ถือว่าออฟไลน์
-const APP_VER   = '2026.08.07-q';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
+const APP_VER   = '2026.09.20-c';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
 /* 🛡 นับจำนวนเครื่องที่มีปัญหาทั้งระบบ */
 function healthIssues(){
   const now=Date.now(), out=[];

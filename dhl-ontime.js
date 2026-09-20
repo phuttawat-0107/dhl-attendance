@@ -4,7 +4,7 @@
    เกณฑ์ที่ประกาศ 07:00 • โหมดทบทวนภายใน 07:10 (ไม่เปิดเผย)
    Design By Winnie
    =================================================================== */
-export const OT_VER = '2026.09.20-ot2';
+export const OT_VER = '2026.09.20-ot4';
 
 const OT_CUT   = 25200;          // 07:00:00
 const OT_GRACE = 25800;          // 07:10:00
@@ -36,6 +36,7 @@ function otDates(mon){
     const k=mon+'-'+String(i).padStart(2,'0');
     if(!OT_BACK && k<OT_START) continue;
     if(k>DATE) break;
+    if(new Date(y, m-1, i).getDay()===0) continue;   // ไม่นับวันอาทิตย์
     out.push(k);
   }
   return out;
@@ -148,7 +149,7 @@ function paint(){
   let h='<div class="card" style="border-left:4px solid var(--y)">'
     +'<div style="font-weight:800;font-size:14px">📌 โหมดเก็บข้อมูล — ยังไม่มีผลกับค่าตอบแทน</div>'
     +'<div class="s2" style="margin-top:4px">เริ่มนับ '+OT_START
-    +' • หน้านี้เห็นเฉพาะ Manager • Staff และ Courier ไม่เห็นตัวเลขนี้</div></div>';
+    +' • ไม่นับวันอาทิตย์ • หน้านี้เห็นเฉพาะ Manager • Staff และ Courier ไม่เห็นตัวเลขนี้</div></div>';
 
   h+='<div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<select id="otMon" onchange="window.__otMon(this.value)" style="height:34px;border-radius:8px;padding:0 8px;font-weight:700">'
@@ -206,6 +207,54 @@ function paint(){
   });
   h+='</tbody></table></div></div>';
 
+  const VG={};
+  A.people.forEach(o=>{
+    const key = (o.c.vendor && String(o.c.vendor).trim()) || 'ไม่ระบุ Vendor';
+    const g = VG[key] || (VG[key]={ name:key, rows:[], deps:{} });
+    g.rows.push(o); g.deps[o.dep]=1;
+  });
+  const vRows = Object.keys(VG).map(k=>{
+    const g=VG[k], rs=g.rows.filter(r=>r.rate!=null);
+    const bad=g.rows.filter(r=>r.tier==='0').length;
+    const half=g.rows.filter(r=>r.tier==='90').length;
+    return {
+      name:g.name, n:g.rows.length, deps:Object.keys(g.deps).sort(),
+      avg: rs.length? rs.reduce((s,r)=>s+r.rate,0)/rs.length : null,
+      bad, half,
+      pctBad: g.rows.length? bad/g.rows.length*100 : null,
+      pctRisk: g.rows.length? (bad+half)/g.rows.length*100 : null,
+      df: g.rows.reduce((s,r)=>s+Math.max(0,r.diff||0),0),
+      worst: rs.slice().sort((a,b)=>a.rate-b.rate)[0]
+    };
+  }).sort((x,y)=>(y.pctBad==null?-1:y.pctBad)-(x.pctBad==null?-1:x.pctBad));
+
+  if(vRows.length){
+    const vBad = vRows.filter(x=>x.pctBad>=50).length;
+    h+='<div class="card"><h2>🏭 Vendor ที่มีปัญหา <span class="small">เรียงตาม % คนที่หลุดเกณฑ์</span></h2>'
+      +(vBad? '<div class="s2" style="color:#b3261e;font-weight:700;margin-bottom:8px">🔴 '+vBad+' Vendor มีคนหลุดเกณฑ์เกินครึ่ง</div>':'')
+      +'<div class="dwrap"><table class="dtbl"><thead><tr>'
+      +'<th class="l">Vendor</th><th>สาขา</th><th>คน</th><th>On-time เฉลี่ย</th>'
+      +'<th>% หลุด &lt;90%</th><th>% เสี่ยง &lt;95%</th><th>ผลต่าง</th><th>คนแย่สุด</th>'
+      +'</tr></thead><tbody>';
+    vRows.forEach(x=>{
+      const cr = x.pctBad>=50;
+      h+='<tr'+(cr?' style="background:#fdecea"':'')+'>'
+        +'<td class="l"><div class="nm">'+esc(x.name)+(cr?' 🔴':'')+'</div>'
+        +'<div class="s2">'+x.bad+' หลุด / '+x.half+' ครึ่ง</div></td>'
+        +'<td class="n"><span class="s2">'+x.deps.join(', ')+'</span></td>'
+        +'<td class="n">'+x.n+'</td>'
+        +'<td class="'+(x.avg==null?'n':(x.avg>=95?'g':'b'))+'">'+(x.avg==null?'—':Math.round(x.avg)+'%')+'</td>'
+        +'<td class="'+(x.pctBad>0?'b':'g')+'" style="font-weight:800">'+(x.pctBad==null?'—':Math.round(x.pctBad)+'%')+'</td>'
+        +'<td class="'+(x.pctRisk>0?'b':'g')+'">'+(x.pctRisk==null?'—':Math.round(x.pctRisk)+'%')+'</td>'
+        +'<td class="'+(x.df?'b':'g')+'">฿'+B(x.df)+'</td>'
+        +'<td class="n"><span class="s2">'+(x.worst? esc(x.worst.c.code||('#'+x.worst.cid))+' · '+Math.round(x.worst.rate)+'%' : '—')+'</span></td>'
+        +'</tr>';
+    });
+    h+='</tbody></table></div>'
+      +'<div class="s2" style="margin-top:8px">% หลุด = สัดส่วนคนของ Vendor นั้นที่ On-time ต่ำกว่า 90% (ไม่ได้การันตี) • % เสี่ยง = ต่ำกว่า 95% (ได้ไม่เต็ม)</div>'
+      +'<div style="margin-top:10px"><button class="mtab" onclick="window.__otCsvV()">⬇️ CSV รายละเอียดตาม Vendor</button></div></div>';
+  }
+
   const ppl=A.people.slice().sort((a,b)=>(a.rate==null?999:a.rate)-(b.rate==null?999:b.rate));
   h+='<div class="card"><h2>👤 รายบุคคล <span class="small">เรียงจากแย่ที่สุด • '+ppl.length+' คน</span></h2>'
     +'<div class="dwrap"><table class="dtbl"><thead><tr>'
@@ -230,7 +279,7 @@ function paint(){
   });
   h+='</tbody></table></div>'
     +'<div class="s2" style="margin-top:8px">On-time Rate = (วันทำงาน − วันที่สาย) ÷ วันทำงาน • '
-    +'วันทำงาน = วันที่สาขามีข้อมูล − วันที่บันทึกว่าไม่มาทำงาน • วันที่ไม่มีบันทึกเช็คอิน นับเป็นเข้าทันตามกติกา</div>'
+    +'วันทำงาน = วันที่สาขามีข้อมูล (ไม่รวมวันอาทิตย์) − วันที่บันทึกว่าไม่มาทำงาน • วันที่ไม่มีบันทึกเช็คอิน นับเป็นเข้าทันตามกติกา</div>'
     +'<div style="margin-top:10px"><button class="mtab" onclick="window.__otCsv()">⬇️ ดาวน์โหลด CSV</button></div></div>';
 
   el.innerHTML=h;
@@ -254,6 +303,36 @@ function csv(){
   setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
 }
 
+function csvVendor(){
+  const A=otAgg(), mon=otMonth();
+  const G={};
+  A.people.forEach(o=>{
+    const k=(o.c.vendor && String(o.c.vendor).trim())||'ไม่ระบุ Vendor';
+    (G[k]||(G[k]=[])).push(o);
+  });
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const lines=['vendor,people,avgOnTime,pctBelow90,pctBelow95,totalDiff,depots'];
+  Object.keys(G).map(k=>{
+    const rows=G[k], rs=rows.filter(r=>r.rate!=null);
+    const bad=rows.filter(r=>r.tier==='0').length;
+    const half=rows.filter(r=>r.tier==='90').length;
+    return { k, n:rows.length,
+      avg: rs.length? rs.reduce((s,r)=>s+r.rate,0)/rs.length : null,
+      pb: rows.length? bad/rows.length*100 : 0,
+      pr: rows.length? (bad+half)/rows.length*100 : 0,
+      df: rows.reduce((s,r)=>s+Math.max(0,r.diff||0),0),
+      dp: Array.from(new Set(rows.map(r=>r.dep))).sort().join(' ') };
+  }).sort((x,y)=>y.pb-x.pb).forEach(x=>{
+    lines.push([x.k,x.n,(x.avg==null?'':Math.round(x.avg*10)/10),Math.round(x.pb),Math.round(x.pr),x.df,x.dp].map(q).join(','));
+  });
+  const blob=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='ontime_vendor_'+mon+'_'+(OT_MODE==='cut'?'0700':'0710')+'.csv';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+
 export function initOntime(ctx){
   C = ctx;
   window.__otRender = paint;
@@ -263,6 +342,7 @@ export function initOntime(ctx){
   window.__otMode   = v => { OT_MODE=v; paint(); };
   window.__otBack   = v => { OT_BACK=!!v; OT_MON=null; paint(); ensureOt(); };
   window.__otCsv    = csv;
+  window.__otCsvV   = csvVendor;
   window.__otVer    = OT_VER;
   return OT_VER;
 }

@@ -794,7 +794,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.09.20-b';
+const SYNC_VER='2026.09.20-c';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1037,7 +1037,7 @@ function mountDelButtons(){
     row.appendChild(b);
   });
 }
-setInterval(mountDelButtons,1200);
+setInterval(mountDelButtons,3000);
 
 /* 🧹 ล้างข้อมูลในเครื่องแล้วดึงใหม่จากคลาวด์ (ใช้เมื่อมีข้อมูลสาขาอื่นปน) */
 window.dsResync=async ()=>{
@@ -1258,7 +1258,7 @@ function paintSetInfo(){
     : '<span style="color:var(--r);font-weight:700;">⚠ ยังไม่ได้เข้าระบบ</span>'
       +'<br><span style="color:#8a8272;">แตะแถบสีแดงมุมขวาล่างเพื่อเข้าสู่ระบบ</span>';
 }
-setInterval(()=>{ try{ tidyManage(); paintSetInfo(); }catch(e){} },2000);
+setInterval(()=>{ try{ tidyManage(); paintSetInfo(); }catch(e){} },4000);
 try{ tidyManage(); paintSetInfo(); }catch(e){}
 
 /* ============ WRAP ฟังก์ชันเดิม ============ */
@@ -1311,7 +1311,7 @@ function wrap(){
 /* ============ BOOT ============ */
 async function boot(){
   await injectUI(); wrap();
-  const iv=setInterval(wrap,1500);         // เผื่อฟังก์ชันถูกนิยามทีหลัง
+  const iv=setInterval(wrap,2500);         // เผื่อฟังก์ชันถูกนิยามทีหลัง
   setTimeout(()=>clearInterval(iv),20000);
   signInAnonymously(auth).catch(e=>console.warn('anon auth',e));
   onAuthStateChanged(auth, async u=>{

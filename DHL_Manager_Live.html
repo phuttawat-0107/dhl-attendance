@@ -235,7 +235,14 @@ body{background:#f5f2ec !important;}
 .mlogo .liveTag{font-size:19px;font-weight:900;font-style:italic;color:var(--r);letter-spacing:-.3px;}
 #teamTag{font-size:10.5px !important;width:100%;}
 .card{border-radius:20px !important;border:1px solid var(--line) !important;box-shadow:var(--sh1),var(--sh2) !important;}
-.kpi{border-radius:18px !important;border:1px solid var(--line) !important;box-shadow:var(--sh1),var(--sh2) !important;}
+.kpi{border-radius:18px !important;border:1px solid var(--line) !important;position:relative;overflow:hidden;
+  box-shadow:var(--sh1),var(--sh2) !important;}
+.kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--y);}
+.kpi.red::before{background:var(--r);}
+.kpi.green::before{background:var(--g);}
+.kpi.am::before{background:var(--am,#e08a00);}
+.hd .meta>div:first-child{white-space:nowrap;}
+.live{white-space:nowrap;}
 .mtabs{background:#fff !important;border:1px solid var(--line);border-radius:18px !important;box-shadow:var(--sh1) !important;}
 .mtab{border-radius:13px !important;font-weight:800 !important;}
 .mtab.on{background:#171717 !important;color:var(--y) !important;}

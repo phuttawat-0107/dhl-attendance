@@ -436,8 +436,8 @@ async function pushAll(){
         if(Object.keys(o).length) up['pph.rp.'+cid]=o;
       });
     }
-    let couriers=getCouriers().filter(c=>c.active!==false && !(S.removed||[]).includes(Number(c.id)))
-      .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'' }));
+    let couriers=getCouriers().filter(c=>!(S.removed||[]).includes(Number(c.id)))
+      .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'', active:(c.active!==false) }));
     if(couriers.length){
       /* 🛡 รวมกับรายชื่อบนคลาวด์ก่อนเสมอ — กันเครื่องที่รายชื่อไม่ครบเขียนทับของเครื่องอื่น
          ลบได้ทางเดียวคือผ่านปุ่มลบ (removedIds) เท่านั้น */
@@ -550,23 +550,36 @@ async function runPhotoQ(){
   let got=0;
   while(photoQ.length){
     const j=photoQ.shift();
-    photoDone[j.key]=1;
+    let ok=false;
     try{
       const snap=await getDoc(doc(phoCol(S.depot),'ci_'+j.cid+'_'+j.date));
-      if(!snap.exists()||!snap.data().d) continue;
-      const recs=await getByDate(j.date);
-      const rec=recs.find(r=>String(r.courierId)===String(j.cid));
-      if(!rec||rec.photo) continue;
-      rec.photo=snap.data().d;
-      const put=S._rawPutCheckin||window.putCheckin;
-      const wasMerging=S.merging; S.merging=true;      // อย่าให้ push กลับขึ้นคลาวด์
-      try{ await put(rec); }finally{ S.merging=wasMerging; }
-      got++;
+      if(snap.exists() && snap.data().d){
+        const list = window.getByDate? await getByDate(j.date) : [];
+        const rec = list.filter(r=>Number(r.courierId)===Number(j.cid))[0];
+        if(rec && rec.photo){ ok=true; }
+        else if(rec){
+          rec.photo=snap.data().d;
+          const put=S._rawPutCheckin||window.putCheckin;
+          const wasMerging=S.merging; S.merging=true;
+          try{ await put(rec); }finally{ S.merging=wasMerging; }
+          got++; ok=true;
+        }
+      }
     }catch(e){ console.warn('photo pull',e); }
-    await new Promise(r=>setTimeout(r,120));           // เว้นจังหวะ ไม่ให้เครื่องหน่วง
+    /* 🛡 ลองใหม่ถ้ายังไม่ได้ — กันกรณีเครื่องอื่นยังอัปโหลดรูปไม่เสร็จ */
+    if(ok){ photoDone[j.key]=1; }
+    else {
+      j.tries=(j.tries||0)+1;
+      if(j.tries<=8){
+        (function(job){ setTimeout(function(){
+          if(!photoDone[job.key] && !photoQ.some(x=>x.key===job.key)){ photoQ.push(job); runPhotoQ(); }
+        }, 3000*job.tries); })(j);
+      } else { photoDone[j.key]=1; }
+    }
+    await new Promise(r=>setTimeout(r,120));
   }
   photoBusy=false;
-  if(got){ toast('📷 โหลดรูปจากเครื่องอื่นแล้ว '+got+' รูป'); repaintSoon(); }
+  if(got){ toast('📷 ดึงภาพจากเครื่องอื่นมาแล้ว '+got+' รูป'); repaintSoon(); }
 }
 
 let pdPulled={};
@@ -692,9 +705,10 @@ function mergeCouriers(list){
   let changed=false;
   list.forEach(c=>{
     if(!have[c.id]){ arr.push({ id:c.id, code:c.code, name:c.name,
-      vendor:c.vendor||'', type:c.type||'2W', active:true }); changed=true; }
+      vendor:c.vendor||'', type:c.type||'2W', active:(c.active!==false) }); changed=true; }
     else{
       const o=have[c.id];
+      if(typeof c.active==='boolean' && o.active!==c.active){ o.active=c.active; changed=true; }
       if(!o.code&&c.code){ o.code=c.code; changed=true; }
       if(!o.name&&c.name){ o.name=c.name; changed=true; }
       if(!o.vendor&&c.vendor){ o.vendor=c.vendor; changed=true; }
@@ -779,7 +793,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.08.07-q';
+const SYNC_VER='2026.09.20-a';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 

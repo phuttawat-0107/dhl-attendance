@@ -4,7 +4,7 @@
    เกณฑ์ที่ประกาศ 07:00 • โหมดทบทวนภายใน 07:10 (ไม่เปิดเผย)
    Design By Winnie
    =================================================================== */
-export const OT_VER = '2026.09.20-ot5';
+export const OT_VER = '2026.09.20-ot6';
 
 const OT_CUT   = 25200;          // 07:00:00
 const OT_GRACE = 25800;          // 07:10:00
@@ -163,7 +163,7 @@ function injectCss(){
   '#viewOt .good{color:var(--otGrn);font-weight:700}',
   '#viewOt .bad{color:var(--otRed);font-weight:800}',
   '#viewOt .dim{color:#a8a296}',
-  '#viewOt .cur{font-weight:500;opacity:.55;margin-right:2px;font-size:11px}',
+  '#viewOt .cur{font-weight:600;opacity:.5;margin-right:3px;font-size:12px;letter-spacing:.5px}',
   '#viewOt .tg{display:inline-block;padding:2.5px 9px;border-radius:999px;font:800 11px/1.35 inherit;white-space:nowrap}',
   '#viewOt .spark{display:inline-flex;gap:2px;align-items:flex-end;height:20px}',
   '#viewOt .spark i{display:block;width:4px;border-radius:1px}',

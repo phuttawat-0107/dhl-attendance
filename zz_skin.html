@@ -253,14 +253,17 @@ body{background:#f5f2ec !important;}
 .nav{background:#fff !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
   border:1px solid #ece7dd;border-radius:24px !important;padding:6px !important;
   box-shadow:0 6px 24px rgba(23,23,23,.13) !important;}
-.nav button{border-radius:16px !important;font-weight:800 !important;}
+.nav{left:6px !important;right:6px !important;}
+.nav button{border-radius:16px !important;font-weight:800 !important;font-size:10px !important;
+  padding:8px 1px 9px !important;letter-spacing:-.1px;min-width:0;overflow:hidden;white-space:nowrap;}
+.nav button .ic{font-size:18px !important;}
 .nav button.on,.nav button.active{background:var(--y) !important;color:var(--k) !important;}
 .chip{padding:6px 11px !important;font-weight:800 !important;}
 .chip.ok{background:#e9f6ee !important;color:#1c6b40 !important;}
 .chip.no{background:#fdecec !important;color:var(--r) !important;}
-input,select,textarea{border:1.5px solid #ece7dd !important;border-radius:14px !important;
-  background:#faf8f3 !important;font-size:16px !important;}
-input:focus,select:focus,textarea:focus{border-color:var(--y) !important;background:#fff !important;outline:none;}
+.view input,.view select,.view textarea,.sheet input,.sheet textarea{border:1.5px solid #ece7dd !important;
+  border-radius:14px !important;background:#faf8f3 !important;font-size:16px !important;}
+.view input:focus,.view select:focus,.view textarea:focus{border-color:var(--y) !important;background:#fff !important;outline:none;}
 .sheet{border-radius:26px 26px 0 0 !important;padding:20px !important;}
 
 </style>

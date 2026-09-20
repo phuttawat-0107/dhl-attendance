@@ -849,7 +849,7 @@ function findIssues(){
 }
 
 /* ⏱ On-time Rate module (Manager only) */
-import('./dhl-ontime.js?v=4').then(m=>{
+import('./dhl-ontime.js?v=6').then(m=>{
   m.initOntime({ db, doc, getDoc, esc, secOf,
     get:()=>({ DEPOTS, DATA, META, DATE, MTAB }) });
   console.log('ontime module', m.OT_VER);

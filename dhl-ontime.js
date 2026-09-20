@@ -4,7 +4,7 @@
    เกณฑ์ที่ประกาศ 07:00 • โหมดทบทวนภายใน 07:10 (ไม่เปิดเผย)
    Design By Winnie
    =================================================================== */
-export const OT_VER = '2026.09.20-ot1';
+export const OT_VER = '2026.09.20-ot2';
 
 const OT_CUT   = 25200;          // 07:00:00
 const OT_GRACE = 25800;          // 07:10:00
@@ -16,7 +16,7 @@ const OT_PAY = {
 };
 
 let C = null;                    // context จาก Manager
-let OT_MON=null, OT_MODE='cut', OT_ALL=false, OT_LOADING=false;
+let OT_MON=null, OT_MODE='cut', OT_ALL=false, OT_LOADING=false, OT_BACK=false;
 const OTD = {};                  // OTD['DEP|YYYY-MM-DD'] = dayDoc | null
 
 const B  = n => Math.round(n).toLocaleString('en-US');
@@ -34,7 +34,7 @@ function otDates(mon){
   const last=new Date(y,m,0).getDate(), out=[];
   for(let i=1;i<=last;i++){
     const k=mon+'-'+String(i).padStart(2,'0');
-    if(k<OT_START) continue;
+    if(!OT_BACK && k<OT_START) continue;
     if(k>DATE) break;
     out.push(k);
   }
@@ -42,7 +42,8 @@ function otDates(mon){
 }
 function otMonList(){
   const DATE=S().DATE, out=[];
-  let y=+OT_START.slice(0,4), m=+OT_START.slice(5,7);
+  const st0 = OT_BACK ? '2026-07' : OT_START;
+  let y=+st0.slice(0,4), m=+st0.slice(5,7);
   const ey=+DATE.slice(0,4), em=+DATE.slice(5,7);
   while(y<ey||(y===ey&&m<=em)){ out.push(y+'-'+String(m).padStart(2,'0')); m++; if(m>12){m=1;y++;} }
   return out.length?out:[DATE.slice(0,7)];
@@ -155,6 +156,7 @@ function paint(){
     +'</select>'
     +'<button class="mtab'+(OT_ALL?'':' on')+'" onclick="window.__otScope(0)">5 สาขานำร่อง</button>'
     +'<button class="mtab'+(OT_ALL?' on':'')+'" onclick="window.__otScope(1)">ทุกสาขา</button>'
+    +'<button class="mtab'+(OT_BACK?' on':'')+'" onclick="window.__otBack('+(OT_BACK?0:1)+')">📜 ดูย้อนหลัง</button>'
     +'<span style="flex:1"></span>'
     +'<button class="mtab'+(OT_MODE==='cut'?' on':'')+'" onclick="window.__otMode(\'cut\')">กฎ 07:00</button>'
     +'<button class="mtab'+(OT_MODE==='grace'?' on':'')+'" onclick="window.__otMode(\'grace\')">ทบทวน 07:10 🔒</button>'
@@ -259,6 +261,7 @@ export function initOntime(ctx){
   window.__otMon    = v => { OT_MON=v; paint(); ensureOt(); };
   window.__otScope  = v => { OT_ALL=!!v; paint(); ensureOt(); };
   window.__otMode   = v => { OT_MODE=v; paint(); };
+  window.__otBack   = v => { OT_BACK=!!v; OT_MON=null; paint(); ensureOt(); };
   window.__otCsv    = csv;
   window.__otVer    = OT_VER;
   return OT_VER;

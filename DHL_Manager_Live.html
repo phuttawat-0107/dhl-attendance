@@ -848,14 +848,14 @@ function findIssues(){
   return out.sort((a,b)=>rank[a.lv]-rank[b.lv]);
 }
 
-async /* ⏱ On-time Rate module (Manager only) */
+/* ⏱ On-time Rate module (Manager only) */
 import('./dhl-ontime.js?v=1').then(m=>{
   m.initOntime({ db, doc, getDoc, esc, secOf,
     get:()=>({ DEPOTS, DATA, META, DATE, MTAB }) });
   console.log('ontime module', m.OT_VER);
 }).catch(e=>console.warn('ontime module failed', e));
 
-function loadHist(){
+async function loadHist(){
   histLoading=true;
   if(MTAB==='ch') renderCh(); if(MTAB==='ins') renderIns();
   const days=chDates().filter(k=>k!==DATE);

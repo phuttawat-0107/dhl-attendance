@@ -694,6 +694,7 @@ function purgeRemovedLocal(){
   return changed;
 }
 
+const ACT={};   /* จดเวลาที่กดพัก/ยกเลิกพัก กันคลาวด์เก่าเขียนทับ */
 function mergeCouriers(list){
   if(!Array.isArray(list)||!list.length) return false;
   const arr=getCouriers();
@@ -708,7 +709,7 @@ function mergeCouriers(list){
       vendor:c.vendor||'', type:c.type||'2W', active:(c.active!==false) }); changed=true; }
     else{
       const o=have[c.id];
-      if(typeof c.active==='boolean' && o.active!==c.active){ o.active=c.active; changed=true; }
+      if(typeof c.active==='boolean' && o.active!==c.active && (Date.now()-(ACT[Number(c.id)]||0))>60000){ o.active=c.active; changed=true; }
       if(!o.code&&c.code){ o.code=c.code; changed=true; }
       if(!o.name&&c.name){ o.name=c.name; changed=true; }
       if(!o.vendor&&c.vendor){ o.vendor=c.vendor; changed=true; }
@@ -793,7 +794,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.09.20-a';
+const SYNC_VER='2026.09.20-b';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 
@@ -1262,6 +1263,15 @@ try{ tidyManage(); paintSetInfo(); }catch(e){}
 
 /* ============ WRAP ฟังก์ชันเดิม ============ */
 function wrap(){
+  /* พัก/ยกเลิกพัก — จดเวลาแล้วดันขึ้นคลาวด์ทันที */
+  if(window.toggleActive && !window.toggleActive.__ds){
+    const ot=window.toggleActive;
+    const ft=function(id){ const r=ot.apply(this,arguments);
+      try{ ACT[Number(id)]=Date.now(); }catch(e){}
+      setTimeout(function(){ try{ if(S.ready && !S.merging) pushAll(); }catch(e){} }, 400);
+      return r; };
+    ft.__ds=1; window.toggleActive=ft;
+  }
   if(window.putCheckin && !window.putCheckin.__ds){
     const o=window.putCheckin; S._rawPutCheckin=o;
     const f=async function(rec){ const r=await o(rec);

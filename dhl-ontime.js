@@ -4,7 +4,7 @@
    เกณฑ์ที่ประกาศ 07:00 • โหมดทบทวนภายใน 07:10 (ไม่เปิดเผย)
    Design By Winnie
    =================================================================== */
-export const OT_VER = '2026.09.20-ot4';
+export const OT_VER = '2026.09.20-ot5';
 
 const OT_CUT   = 25200;          // 07:00:00
 const OT_GRACE = 25800;          // 07:10:00
@@ -116,171 +116,258 @@ function otAgg(){
   return { byDep, people, dks };
 }
 
-function otBadge(t){
-  const M={'100':['#0a7a3d','#e6f6ec','100%'],'95':['#1f6feb','#e8f1ff','95–99%'],
-           '90':['#9a6b00','#fff5db','90–94%'],'0':['#b3261e','#fdecea','<90%'],'—':['#666','#eee','—']};
-  const x=M[t]||M['—'];
-  return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;color:'
-    +x[0]+';background:'+x[1]+'">'+x[2]+'</span>';
-}
-function otBar(daily){
-  if(!daily.length) return '<span class="s2">—</span>';
-  return '<span style="display:inline-flex;gap:2px;align-items:flex-end;height:22px">'+daily.map(d=>{
-    const p = d.pct==null?0:d.pct;
-    const col = p>=95?'#0a7a3d':p>=90?'#e6a700':'#d64541';
-    const h = Math.max(3, Math.round(p/100*20));
-    return '<i title="'+d.dk.slice(5)+' · '+(d.pct==null?'—':Math.round(p)+'%')+'" style="display:block;width:5px;height:'
-      +h+'px;background:'+col+';border-radius:1px"></i>';
-  }).join('')+'</span>';
+/* ---------- CSS เฉพาะแท็บ On-time (ฉีดครั้งเดียว) ---------- */
+let CSS_DONE=false;
+function injectCss(){
+  if(CSS_DONE) return; CSS_DONE=true;
+  const s=document.createElement('style');
+  s.textContent = [
+  '#viewOt{--otY:#FFCC00;--otK:#171717;--otLine:#e6e2da;--otRed:#c0392b;--otGrn:#12784a;--otAmb:#9a6b00;--otBlu:#1f6feb}',
+  '#viewOt *{box-sizing:border-box}',
+  '#viewOt .otCard{background:#fff;border:1px solid var(--otLine);border-radius:14px;padding:14px 16px;margin:0 0 12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}',
+  '#viewOt .otH{display:flex;align-items:baseline;gap:8px;margin:0 0 10px;font-size:15px;font-weight:800;color:var(--otK)}',
+  '#viewOt .otH small{font-size:11.5px;font-weight:600;color:#8a8478;letter-spacing:0}',
+  '#viewOt .otNote{font-size:12px;line-height:1.55;color:#7d776b}',
+  '#viewOt .otBar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}',
+  '#viewOt .otSel{height:34px;border:1px solid var(--otLine);border-radius:9px;padding:0 10px;font:700 13px inherit;background:#fff;color:var(--otK)}',
+  '#viewOt .otBtn{height:34px;padding:0 13px;border:1px solid var(--otLine);border-radius:9px;background:#fff;color:#55504a;font:700 12.5px inherit;cursor:pointer;white-space:nowrap;transition:.14s}',
+  '#viewOt .otBtn:hover{border-color:#bdb7ad;color:var(--otK)}',
+  '#viewOt .otBtn.on{background:var(--otK);border-color:var(--otK);color:var(--otY)}',
+  '#viewOt .otBtn.lock.on{background:var(--otRed);border-color:var(--otRed);color:#fff}',
+  '#viewOt .otSp{flex:1 1 auto;min-width:8px}',
+  '#viewOt .otKpis{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 12px}',
+  '@media(max-width:820px){#viewOt .otKpis{grid-template-columns:repeat(2,1fr)}}',
+  '#viewOt .otK1{position:relative;background:#fff;border:1px solid var(--otLine);border-radius:13px;padding:13px 12px 11px;cursor:pointer;overflow:hidden;transition:.14s;text-align:left}',
+  '#viewOt .otK1:hover{border-color:#bdb7ad;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.07)}',
+  '#viewOt .otK1::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:#d9d4cb}',
+  '#viewOt .otK1.g::before{background:var(--otGrn)}#viewOt .otK1.b::before{background:var(--otBlu)}',
+  '#viewOt .otK1.a::before{background:#e6a700}#viewOt .otK1.r::before{background:var(--otRed)}',
+  '#viewOt .otK1.sel{border-color:var(--otK);box-shadow:0 0 0 2px rgba(23,23,23,.12)}',
+  '#viewOt .otK1 .v{font:800 26px/1.05 inherit;color:var(--otK);letter-spacing:-.5px;font-variant-numeric:tabular-nums;white-space:nowrap}',
+  '#viewOt .otK1 .v.m{font-size:19px}',
+  '#viewOt .otK1 .l{margin-top:4px;font:600 11px/1.3 inherit;color:#8a8478}',
+  '#viewOt .otWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--otLine);border-radius:11px}',
+  '#viewOt table.otT{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;min-width:620px}',
+  '#viewOt table.otT th{position:sticky;top:0;z-index:1;background:#f7f5f1;color:#6f6a60;font:700 11px/1.2 inherit;text-transform:none;letter-spacing:0;padding:9px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--otLine)}',
+  '#viewOt table.otT th.l{text-align:left}',
+  '#viewOt table.otT td{padding:9px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid #f0ece5;color:#3d3932;font-variant-numeric:tabular-nums;vertical-align:middle}',
+  '#viewOt table.otT td.l{text-align:left;white-space:normal}',
+  '#viewOt table.otT tbody tr:last-child td{border-bottom:0}',
+  '#viewOt table.otT tbody tr.clk{cursor:pointer}',
+  '#viewOt table.otT tbody tr.clk:hover td{background:#fffbe8}',
+  '#viewOt table.otT tbody tr.hot td{background:#fdf1ef}',
+  '#viewOt table.otT tbody tr.hot.clk:hover td{background:#fbe6e2}',
+  '#viewOt table.otT tbody tr.sel td{background:#fff6cc}',
+  '#viewOt .nm2{font-weight:800;color:var(--otK);font-size:13px;line-height:1.25}',
+  '#viewOt .sb{font-size:11px;color:#8a8478;line-height:1.3;margin-top:1px}',
+  '#viewOt .good{color:var(--otGrn);font-weight:700}',
+  '#viewOt .bad{color:var(--otRed);font-weight:800}',
+  '#viewOt .dim{color:#a8a296}',
+  '#viewOt .cur{font-weight:500;opacity:.55;margin-right:2px;font-size:11px}',
+  '#viewOt .tg{display:inline-block;padding:2.5px 9px;border-radius:999px;font:800 11px/1.35 inherit;white-space:nowrap}',
+  '#viewOt .spark{display:inline-flex;gap:2px;align-items:flex-end;height:20px}',
+  '#viewOt .spark i{display:block;width:4px;border-radius:1px}',
+  '#viewOt .otChip{display:inline-flex;align-items:center;gap:7px;background:var(--otK);color:var(--otY);border-radius:999px;padding:5px 7px 5px 13px;font:800 12px inherit;margin:0 6px 6px 0}',
+  '#viewOt .otChip b{width:19px;height:19px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;cursor:pointer;font-size:12px}',
+  '#viewOt .otChip b:hover{background:rgba(255,255,255,.34)}',
+  '#viewOt .otEmpty{padding:26px 10px;text-align:center;color:#a8a296;font-size:13px}'
+  ].join('\n');
+  document.head.appendChild(s);
 }
 
+/* ---------- ตัวช่วยแสดงผล ---------- */
+const money = n => '<span class="cur">฿</span>' + Math.round(n).toLocaleString('en-US');
+const TIERS = {
+  '100':{t:'100%',   c:'#0a7a3d', bg:'#e6f6ec'},
+  '95' :{t:'95–99%', c:'#1f6feb', bg:'#e8f1ff'},
+  '90' :{t:'90–94%', c:'#9a6b00', bg:'#fff5db'},
+  '0'  :{t:'< 90%',  c:'#b3261e', bg:'#fdecea'},
+  '—'  :{t:'—',      c:'#8a8478', bg:'#f0ece5'}
+};
+function tag(t){ const x=TIERS[t]||TIERS['—'];
+  return '<span class="tg" style="color:'+x.c+';background:'+x.bg+'">'+x.t+'</span>'; }
+function spark(daily){
+  if(!daily.length) return '<span class="dim">—</span>';
+  return '<span class="spark">'+daily.map(d=>{
+    const p=d.pct==null?0:d.pct;
+    const col=p>=95?'#12784a':p>=90?'#e6a700':'#c0392b';
+    return '<i title="'+d.dk.slice(5)+' · '+(d.pct==null?'—':Math.round(p)+'%')
+      +'" style="height:'+Math.max(3,Math.round(p/100*18))+'px;background:'+col+'"></i>';
+  }).join('')+'</span>';
+}
+const pctCell = v => v==null ? '<td class="dim">—</td>'
+  : '<td class="'+(v>=95?'good':'bad')+'">'+ (Math.round(v*10)/10) +'%</td>';
+
+/* ---------- ตัวกรอง ---------- */
+let FILT={tier:null,dep:null,vendor:null};
+function filtOn(){ return !!(FILT.tier||FILT.dep||FILT.vendor); }
+const vnOf = o => (o.c.vendor && String(o.c.vendor).trim()) || 'ไม่ระบุ Vendor';
+function keep(o){
+  if(FILT.tier && o.tier!==FILT.tier) return false;
+  if(FILT.dep && o.dep!==FILT.dep) return false;
+  if(FILT.vendor && vnOf(o)!==FILT.vendor) return false;
+  return true;
+}
+function chips(){
+  if(!filtOn()) return '';
+  let h='<div style="margin:0 0 10px">';
+  if(FILT.tier)   h+='<span class="otChip">ระดับ '+(TIERS[FILT.tier]||{}).t+'<b onclick="window.__otFilt(\'tier\',null)">✕</b></span>';
+  if(FILT.dep)    h+='<span class="otChip">สาขา '+FILT.dep+'<b onclick="window.__otFilt(\'dep\',null)">✕</b></span>';
+  if(FILT.vendor) h+='<span class="otChip">'+FILT.vendor+'<b onclick="window.__otFilt(\'vendor\',null)">✕</b></span>';
+  h+='<button class="otBtn" onclick="window.__otFilt(\'all\',null)">ล้างตัวกรอง</button></div>';
+  return h;
+}
+
+/* ---------- วาดหน้า ---------- */
 function paint(){
   const el=document.getElementById('viewOt'); if(!el) return;
+  injectCss();
   const mon=otMonth(), A=otAgg();
-  const n100=A.people.filter(p=>p.tier==='100').length;
-  const n95 =A.people.filter(p=>p.tier==='95').length;
-  const n90 =A.people.filter(p=>p.tier==='90').length;
-  const n0  =A.people.filter(p=>p.tier==='0').length;
+  const cnt = t => A.people.filter(p=>p.tier===t).length;
+  const n100=cnt('100'), n95=cnt('95'), n90=cnt('90'), n0=cnt('0');
   const hold =A.people.reduce((s,p)=>s+Math.max(0,p.diff||0),0);
   const bonus=A.people.reduce((s,p)=>s+Math.max(0,-(p.diff||0)),0);
   const thin  =A.people.filter(p=>p.cov!=null && p.cov<70);
   const noName=A.people.filter(p=>!p.c.code);
 
-  let h='<div class="card" style="border-left:4px solid var(--y)">'
-    +'<div style="font-weight:800;font-size:14px">📌 โหมดเก็บข้อมูล — ยังไม่มีผลกับค่าตอบแทน</div>'
-    +'<div class="s2" style="margin-top:4px">เริ่มนับ '+OT_START
-    +' • ไม่นับวันอาทิตย์ • หน้านี้เห็นเฉพาะ Manager • Staff และ Courier ไม่เห็นตัวเลขนี้</div></div>';
+  let h='<div class="otCard" style="border-left:4px solid var(--otY)">'
+    +'<div style="font:800 14px inherit;color:var(--otK)">📌 โหมดเก็บข้อมูล — ยังไม่มีผลกับค่าตอบแทน</div>'
+    +'<div class="otNote" style="margin-top:4px">เริ่มนับ '+OT_START+' &nbsp;·&nbsp; ไม่นับวันอาทิตย์ &nbsp;·&nbsp; '
+    +'หน้านี้เห็นเฉพาะ Manager — Staff และ Courier ไม่เห็นตัวเลขนี้</div></div>';
 
-  h+='<div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-    +'<select id="otMon" onchange="window.__otMon(this.value)" style="height:34px;border-radius:8px;padding:0 8px;font-weight:700">'
+  h+='<div class="otCard"><div class="otBar">'
+    +'<select class="otSel" onchange="window.__otMon(this.value)">'
     + otMonList().map(m=>'<option value="'+m+'"'+(m===mon?' selected':'')+'>'+m+'</option>').join('')
     +'</select>'
-    +'<button class="mtab'+(OT_ALL?'':' on')+'" onclick="window.__otScope(0)">5 สาขานำร่อง</button>'
-    +'<button class="mtab'+(OT_ALL?' on':'')+'" onclick="window.__otScope(1)">ทุกสาขา</button>'
-    +'<button class="mtab'+(OT_BACK?' on':'')+'" onclick="window.__otBack('+(OT_BACK?0:1)+')">📜 ดูย้อนหลัง</button>'
-    +'<span style="flex:1"></span>'
-    +'<button class="mtab'+(OT_MODE==='cut'?' on':'')+'" onclick="window.__otMode(\'cut\')">กฎ 07:00</button>'
-    +'<button class="mtab'+(OT_MODE==='grace'?' on':'')+'" onclick="window.__otMode(\'grace\')">ทบทวน 07:10 🔒</button>'
+    +'<button class="otBtn'+(OT_ALL?'':' on')+'" onclick="window.__otScope(0)">5 สาขานำร่อง</button>'
+    +'<button class="otBtn'+(OT_ALL?' on':'')+'" onclick="window.__otScope(1)">ทุกสาขา</button>'
+    +'<button class="otBtn'+(OT_BACK?' on':'')+'" onclick="window.__otBack('+(OT_BACK?0:1)+')">📜 ดูย้อนหลัง</button>'
+    +'<span class="otSp"></span>'
+    +'<button class="otBtn'+(OT_MODE==='cut'?' on':'')+'" onclick="window.__otMode(\'cut\')">กฎ 07:00</button>'
+    +'<button class="otBtn lock'+(OT_MODE==='grace'?' on':'')+'" onclick="window.__otMode(\'grace\')">ทบทวน 07:10 🔒</button>'
     +'</div>'
     +(OT_MODE==='grace'
-      ? '<div class="s2" style="margin-top:8px;color:#b3261e;font-weight:700">🔒 ชุดนี้ผ่อนผัน 10 นาที — ใช้ประกอบการตัดสินใจภายใน ไม่ใช่ตัวเลขที่ประกาศ</div>' : '')
-    +(OT_LOADING? '<div class="s2" style="margin-top:8px">⏳ กำลังโหลดข้อมูลเดือน '+mon+' …</div>' : '')
+      ? '<div class="otNote" style="margin-top:9px;color:var(--otRed);font-weight:700">🔒 ชุดนี้ผ่อนผัน 10 นาที — ใช้ภายใน ไม่ใช่ตัวเลขที่ประกาศ</div>':'')
+    +(OT_LOADING? '<div class="otNote" style="margin-top:9px">⏳ กำลังโหลดข้อมูลเดือน '+mon+' …</div>':'')
     +'</div>';
 
-  h+='<div class="kpis" style="grid-template-columns:repeat(5,1fr)">'
-    +'<div class="kpi '+(n100?'green':'')+'"><div class="v">'+n100+'</div><div class="l">100% + โบนัส</div></div>'
-    +'<div class="kpi"><div class="v">'+n95+'</div><div class="l">95–99% เต็ม</div></div>'
-    +'<div class="kpi '+(n90?'am':'')+'"><div class="v">'+n90+'</div><div class="l">90–94% ครึ่ง</div></div>'
-    +'<div class="kpi '+(n0?'red':'green')+'"><div class="v">'+n0+'</div><div class="l">ต่ำกว่า 90%</div></div>'
-    +'<div class="kpi '+(hold?'red':'green')+'"><div class="v" style="font-size:20px">฿'+B(hold)+'</div><div class="l">ผลต่างจากการันตี</div></div>'
+  const kpi=(key,v,l,cl,big)=>'<div class="otK1 '+cl+(FILT.tier===key?' sel':'')+'" onclick="window.__otFilt(\'tier\','
+    +(key?'\''+key+'\'':'null')+')"><div class="v'+(big?' m':'')+'">'+v+'</div><div class="l">'+l+'</div></div>';
+  h+='<div class="otKpis">'
+    +kpi('100',n100,'100% + โบนัส','g')
+    +kpi('95', n95, '95–99% เต็ม','b')
+    +kpi('90', n90, '90–94% ครึ่ง','a')
+    +kpi('0',  n0,  'ต่ำกว่า 90%','r')
+    +'<div class="otK1"><div class="v m">'+money(hold)+'</div><div class="l">ผลต่างจากการันตี'
+    +(bonus? ' · โบนัส +'+money(bonus):'')+'</div></div>'
     +'</div>';
-  if(bonus) h+='<div class="s2" style="margin:-6px 0 10px">🎁 โบนัสที่ต้องจ่ายเพิ่ม ฿'+B(bonus)+'</div>';
+  h+='<div class="otNote" style="margin:-4px 0 12px">แตะการ์ดด้านบนเพื่อดูว่าใครอยู่ระดับนั้น</div>';
 
   const warn=[];
   if(noName.length) warn.push('มีคนเช็คอิน '+noName.length+' คนที่ไม่มีชื่อในทะเบียน — คิดเงินไม่ได้');
-  if(thin.length)   warn.push('มี '+thin.length+' คนที่บันทึกเช็คอินไม่ถึง 70% ของวันทำงาน — กติกาจะนับวันที่ไม่มีบันทึกเป็น "เข้าทัน" ให้อัตโนมัติ');
-  if(warn.length) h+='<div class="card" style="border-left:4px solid #d64541">'
-    +'<div style="font-weight:800">⚠️ ข้อมูลยังไม่พร้อมผูกกับเงิน</div>'
-    +warn.map(w=>'<div class="s2" style="margin-top:4px">• '+w+'</div>').join('')+'</div>';
+  if(thin.length)   warn.push('มี '+thin.length+' คนที่บันทึกเช็คอินไม่ถึง 70% ของวันทำงาน — กติกาจะนับวันที่ไม่มีบันทึกเป็น “เข้าทัน” ให้อัตโนมัติ');
+  if(warn.length) h+='<div class="otCard" style="border-left:4px solid var(--otRed)">'
+    +'<div style="font:800 13.5px inherit;color:var(--otK)">⚠️ ข้อมูลยังไม่พร้อมผูกกับเงิน</div>'
+    +warn.map(w=>'<div class="otNote" style="margin-top:5px">• '+w+'</div>').join('')+'</div>';
 
-  h+='<div class="card"><h2>🏢 ระดับสาขา</h2><div class="dwrap"><table class="dtbl"><thead><tr>'
-    +'<th class="l">สาขา</th><th>วันเก็บ</th><th>คน</th><th>On-time เฉลี่ย</th><th>ต่ำกว่า 90%</th><th>ผลต่าง</th><th>แนวโน้มรายวัน</th>'
-    +'</tr></thead><tbody>';
+  h+='<div class="otCard"><div class="otH">🏢 ระดับสาขา <small>แตะแถวเพื่อกรองเฉพาะสาขานั้น</small></div>'
+    +'<div class="otWrap"><table class="otT"><thead><tr>'
+    +'<th class="l">สาขา</th><th>วันเก็บ</th><th>คน</th><th>On-time เฉลี่ย</th>'
+    +'<th>ต่ำกว่า 90%</th><th>ผลต่าง</th><th class="l">แนวโน้มรายวัน</th></tr></thead><tbody>';
   otDeps().map(dep=>{
     const b=A.byDep[dep]||{active:0,rows:[],daily:[]};
     const rs=b.rows.filter(r=>r.rate!=null);
-    return {
-      dep, b,
+    return { dep, b,
       avg: rs.length? rs.reduce((s,r)=>s+r.rate,0)/rs.length : null,
       bad: b.rows.filter(r=>r.tier==='0').length,
-      df : b.rows.reduce((s,r)=>s+Math.max(0,r.diff||0),0)
-    };
+      df : b.rows.reduce((s,r)=>s+Math.max(0,r.diff||0),0) };
   }).sort((x,y)=>(x.avg==null?-1:x.avg)-(y.avg==null?-1:y.avg)).forEach(x=>{
-    const cr = x.avg!=null && x.avg<90;
-    h+='<tr'+(cr?' style="background:#fdecea"':'')+'>'
-      +'<td class="l"><div class="nm">'+x.dep+(cr?' 🔴':'')+'</div><div class="s2">'+x.b.rows.length+' คน</div></td>'
-      +'<td class="n">'+x.b.active+'</td><td class="n">'+x.b.rows.length+'</td>'
-      +'<td class="'+(x.avg==null?'n':(x.avg>=95?'g':'b'))+'">'+(x.avg==null?'—':Math.round(x.avg)+'%')+'</td>'
-      +'<td class="'+(x.bad?'b':'g')+'">'+x.bad+' คน</td>'
-      +'<td class="'+(x.df?'b':'g')+'">฿'+B(x.df)+'</td>'
-      +'<td class="n">'+otBar(x.b.daily)+'</td></tr>';
+    const hot = x.avg!=null && x.avg<90;
+    h+='<tr class="clk'+(hot?' hot':'')+(FILT.dep===x.dep?' sel':'')
+      +'" onclick="window.__otFilt(\'dep\',\''+x.dep+'\')">'
+      +'<td class="l"><div class="nm2">'+x.dep+(hot?' 🔴':'')+'</div><div class="sb">'+x.b.rows.length+' คน</div></td>'
+      +'<td class="dim">'+x.b.active+'</td><td>'+x.b.rows.length+'</td>'
+      + pctCell(x.avg)
+      +'<td class="'+(x.bad?'bad':'good')+'">'+x.bad+'</td>'
+      +'<td class="'+(x.df?'bad':'dim')+'">'+money(x.df)+'</td>'
+      +'<td class="l">'+spark(x.b.daily)+'</td></tr>';
   });
   h+='</tbody></table></div></div>';
 
   const VG={};
-  A.people.forEach(o=>{
-    const key = (o.c.vendor && String(o.c.vendor).trim()) || 'ไม่ระบุ Vendor';
-    const g = VG[key] || (VG[key]={ name:key, rows:[], deps:{} });
-    g.rows.push(o); g.deps[o.dep]=1;
-  });
-  const vRows = Object.keys(VG).map(k=>{
+  A.people.forEach(o=>{ const k=vnOf(o); (VG[k]||(VG[k]={rows:[],deps:{}})).rows.push(o); VG[k].deps[o.dep]=1; });
+  const vRows=Object.keys(VG).map(k=>{
     const g=VG[k], rs=g.rows.filter(r=>r.rate!=null);
-    const bad=g.rows.filter(r=>r.tier==='0').length;
-    const half=g.rows.filter(r=>r.tier==='90').length;
-    return {
-      name:g.name, n:g.rows.length, deps:Object.keys(g.deps).sort(),
-      avg: rs.length? rs.reduce((s,r)=>s+r.rate,0)/rs.length : null,
-      bad, half,
+    const bad=g.rows.filter(r=>r.tier==='0').length, half=g.rows.filter(r=>r.tier==='90').length;
+    return { name:k, n:g.rows.length, deps:Object.keys(g.deps).sort(),
+      avg: rs.length? rs.reduce((s,r)=>s+r.rate,0)/rs.length : null, bad, half,
       pctBad: g.rows.length? bad/g.rows.length*100 : null,
       pctRisk: g.rows.length? (bad+half)/g.rows.length*100 : null,
       df: g.rows.reduce((s,r)=>s+Math.max(0,r.diff||0),0),
-      worst: rs.slice().sort((a,b)=>a.rate-b.rate)[0]
-    };
+      worst: rs.slice().sort((a,b)=>a.rate-b.rate)[0] };
   }).sort((x,y)=>(y.pctBad==null?-1:y.pctBad)-(x.pctBad==null?-1:x.pctBad));
 
   if(vRows.length){
-    const vBad = vRows.filter(x=>x.pctBad>=50).length;
-    h+='<div class="card"><h2>🏭 Vendor ที่มีปัญหา <span class="small">เรียงตาม % คนที่หลุดเกณฑ์</span></h2>'
-      +(vBad? '<div class="s2" style="color:#b3261e;font-weight:700;margin-bottom:8px">🔴 '+vBad+' Vendor มีคนหลุดเกณฑ์เกินครึ่ง</div>':'')
-      +'<div class="dwrap"><table class="dtbl"><thead><tr>'
-      +'<th class="l">Vendor</th><th>สาขา</th><th>คน</th><th>On-time เฉลี่ย</th>'
-      +'<th>% หลุด &lt;90%</th><th>% เสี่ยง &lt;95%</th><th>ผลต่าง</th><th>คนแย่สุด</th>'
-      +'</tr></thead><tbody>';
+    const vBad=vRows.filter(x=>x.pctBad>=50).length;
+    h+='<div class="otCard"><div class="otH">🏭 Vendor ที่มีปัญหา <small>เรียงตาม % คนที่หลุดเกณฑ์ · แตะเพื่อกรอง</small></div>'
+      +(vBad? '<div class="otNote" style="color:var(--otRed);font-weight:700;margin:-4px 0 9px">🔴 '+vBad+' Vendor มีคนหลุดเกณฑ์เกินครึ่ง</div>':'')
+      +'<div class="otWrap"><table class="otT"><thead><tr>'
+      +'<th class="l">Vendor</th><th>คน</th><th>เฉลี่ย</th><th>% หลุด</th><th>% เสี่ยง</th>'
+      +'<th>ผลต่าง</th><th class="l">แย่สุด</th></tr></thead><tbody>';
     vRows.forEach(x=>{
-      const cr = x.pctBad>=50;
-      h+='<tr'+(cr?' style="background:#fdecea"':'')+'>'
-        +'<td class="l"><div class="nm">'+esc(x.name)+(cr?' 🔴':'')+'</div>'
-        +'<div class="s2">'+x.bad+' หลุด / '+x.half+' ครึ่ง</div></td>'
-        +'<td class="n"><span class="s2">'+x.deps.join(', ')+'</span></td>'
-        +'<td class="n">'+x.n+'</td>'
-        +'<td class="'+(x.avg==null?'n':(x.avg>=95?'g':'b'))+'">'+(x.avg==null?'—':Math.round(x.avg)+'%')+'</td>'
-        +'<td class="'+(x.pctBad>0?'b':'g')+'" style="font-weight:800">'+(x.pctBad==null?'—':Math.round(x.pctBad)+'%')+'</td>'
-        +'<td class="'+(x.pctRisk>0?'b':'g')+'">'+(x.pctRisk==null?'—':Math.round(x.pctRisk)+'%')+'</td>'
-        +'<td class="'+(x.df?'b':'g')+'">฿'+B(x.df)+'</td>'
-        +'<td class="n"><span class="s2">'+(x.worst? esc(x.worst.c.code||('#'+x.worst.cid))+' · '+Math.round(x.worst.rate)+'%' : '—')+'</span></td>'
+      const hot=x.pctBad>=50;
+      h+='<tr class="clk'+(hot?' hot':'')+(FILT.vendor===x.name?' sel':'')
+        +'" onclick="window.__otFilt(&quot;vendor&quot;,'+JSON.stringify(x.name).replace(/"/g,'&quot;')+')">'
+        +'<td class="l"><div class="nm2">'+esc(x.name)+(hot?' 🔴':'')+'</div>'
+        +'<div class="sb">'+x.deps.join(' · ')+'</div></td>'
+        +'<td>'+x.n+'</td>'
+        + pctCell(x.avg)
+        +'<td class="'+(x.pctBad>0?'bad':'good')+'">'+(x.pctBad==null?'—':Math.round(x.pctBad)+'%')+'</td>'
+        +'<td class="'+(x.pctRisk>0?'bad':'good')+'">'+(x.pctRisk==null?'—':Math.round(x.pctRisk)+'%')+'</td>'
+        +'<td class="'+(x.df?'bad':'dim')+'">'+money(x.df)+'</td>'
+        +'<td class="l"><span class="sb">'+(x.worst? esc(x.worst.c.code||('#'+x.worst.cid))+' · '+Math.round(x.worst.rate)+'%':'—')+'</span></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>'
-      +'<div class="s2" style="margin-top:8px">% หลุด = สัดส่วนคนของ Vendor นั้นที่ On-time ต่ำกว่า 90% (ไม่ได้การันตี) • % เสี่ยง = ต่ำกว่า 95% (ได้ไม่เต็ม)</div>'
-      +'<div style="margin-top:10px"><button class="mtab" onclick="window.__otCsvV()">⬇️ CSV รายละเอียดตาม Vendor</button></div></div>';
+      +'<div class="otNote" style="margin-top:9px">% หลุด = สัดส่วนคนที่ On-time ต่ำกว่า 90% (ไม่ได้การันตี) &nbsp;·&nbsp; % เสี่ยง = ต่ำกว่า 95% (ได้ไม่เต็ม)</div>'
+      +'<div style="margin-top:11px"><button class="otBtn" onclick="window.__otCsvV()">⬇️ CSV รายละเอียดตาม Vendor</button></div></div>';
   }
 
-  const ppl=A.people.slice().sort((a,b)=>(a.rate==null?999:a.rate)-(b.rate==null?999:b.rate));
-  h+='<div class="card"><h2>👤 รายบุคคล <span class="small">เรียงจากแย่ที่สุด • '+ppl.length+' คน</span></h2>'
-    +'<div class="dwrap"><table class="dtbl"><thead><tr>'
-    +'<th class="l">รหัส / ชื่อ</th><th>สาขา</th><th>รถ</th><th>วันทำงาน</th><th>สาย</th><th>ไม่มา</th>'
-    +'<th>On-time</th><th>ระดับ</th><th>ได้รับ</th><th>ผลต่าง</th><th>บันทึกครบ</th>'
-    +'</tr></thead><tbody>';
-  ppl.forEach(o=>{
-    h+='<tr>'
-      +'<td class="l"><div class="nm">'+esc(o.c.code||('⚠️ #'+o.cid))+'</div>'
-      +'<div class="s2">'+esc(o.c.name||'ไม่มีชื่อในทะเบียน')+'</div></td>'
-      +'<td class="n">'+o.dep+'</td><td class="n">'+o.ty+'</td>'
-      +'<td class="n">'+o.wd+'</td>'
-      +'<td class="'+(o.late?'b':'g')+'">'+o.late+'</td>'
-      +'<td class="n">'+(o.abs||'—')+'</td>'
-      +'<td class="'+(o.rate==null?'n':(o.rate>=95?'g':'b'))+'">'+(o.rate==null?'—':Math.round(o.rate*10)/10+'%')+'</td>'
-      +'<td class="n">'+otBadge(o.tier)+'</td>'
-      +'<td class="n">'+(o.amt==null?'—':'฿'+B(o.amt))+'</td>'
-      +'<td class="'+(o.diff>0?'b':(o.diff<0?'g':'n'))+'">'
-      +(o.diff==null?'—':(o.diff>0?'−฿'+B(o.diff):(o.diff<0?'+฿'+B(-o.diff):'0')))+'</td>'
-      +'<td class="'+(o.cov!=null&&o.cov<70?'b':'n')+'">'+(o.cov==null?'—':Math.round(o.cov)+'%')+'</td>'
-      +'</tr>';
-  });
-  h+='</tbody></table></div>'
-    +'<div class="s2" style="margin-top:8px">On-time Rate = (วันทำงาน − วันที่สาย) ÷ วันทำงาน • '
-    +'วันทำงาน = วันที่สาขามีข้อมูล (ไม่รวมวันอาทิตย์) − วันที่บันทึกว่าไม่มาทำงาน • วันที่ไม่มีบันทึกเช็คอิน นับเป็นเข้าทันตามกติกา</div>'
-    +'<div style="margin-top:10px"><button class="mtab" onclick="window.__otCsv()">⬇️ ดาวน์โหลด CSV</button></div></div>';
+  const all=A.people.slice().sort((a,b)=>(a.rate==null?999:a.rate)-(b.rate==null?999:b.rate));
+  const ppl=all.filter(keep);
+  h+='<div class="otCard" id="otPeople"><div class="otH">👤 รายบุคคล '
+    +'<small>'+(filtOn()? 'กรองแล้ว '+ppl.length+' / '+all.length+' คน' : 'เรียงจากแย่ที่สุด · '+all.length+' คน')+'</small></div>'
+    + chips();
+  if(!ppl.length){
+    h+='<div class="otEmpty">ไม่มีคนในเงื่อนไขนี้</div>';
+  } else {
+    h+='<div class="otWrap"><table class="otT"><thead><tr>'
+      +'<th class="l">รหัส / ชื่อ</th><th class="l">Vendor</th><th>สาขา</th><th>รถ</th>'
+      +'<th>วันทำงาน</th><th>สาย</th><th>ไม่มา</th><th>On-time</th><th>ระดับ</th>'
+      +'<th>ได้รับ</th><th>ผลต่าง</th><th>บันทึกครบ</th></tr></thead><tbody>';
+    ppl.forEach(o=>{
+      h+='<tr'+(o.tier==='0'?' class="hot"':'')+'>'
+        +'<td class="l"><div class="nm2">'+esc(o.c.code||('⚠️ #'+o.cid))+'</div>'
+        +'<div class="sb">'+esc(o.c.name||'ไม่มีชื่อในทะเบียน')+'</div></td>'
+        +'<td class="l"><span class="sb">'+esc(vnOf(o))+'</span></td>'
+        +'<td class="dim">'+o.dep+'</td><td class="dim">'+o.ty+'</td>'
+        +'<td>'+o.wd+'</td>'
+        +'<td class="'+(o.late?'bad':'good')+'">'+o.late+'</td>'
+        +'<td class="dim">'+(o.abs||'—')+'</td>'
+        + pctCell(o.rate)
+        +'<td>'+tag(o.tier)+'</td>'
+        +'<td class="dim">'+(o.amt==null?'—':money(o.amt))+'</td>'
+        +'<td class="'+(o.diff>0?'bad':(o.diff<0?'good':'dim'))+'">'
+        +(o.diff==null?'—':(o.diff>0?'−'+money(o.diff):(o.diff<0?'+'+money(-o.diff):'0')))+'</td>'
+        +'<td class="'+(o.cov!=null&&o.cov<70?'bad':'dim')+'">'+(o.cov==null?'—':Math.round(o.cov)+'%')+'</td>'
+        +'</tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  h+='<div class="otNote" style="margin-top:9px">On-time Rate = (วันทำงาน − วันที่สาย) ÷ วันทำงาน &nbsp;·&nbsp; '
+    +'วันทำงาน = วันที่สาขามีข้อมูล (ไม่รวมวันอาทิตย์) − วันที่บันทึกว่าไม่มาทำงาน &nbsp;·&nbsp; '
+    +'วันที่ไม่มีบันทึกเช็คอิน นับเป็นเข้าทันตามกติกา</div>'
+    +'<div style="margin-top:11px"><button class="otBtn" onclick="window.__otCsv()">⬇️ ดาวน์โหลด CSV</button></div></div>';
 
   el.innerHTML=h;
 }
@@ -335,12 +422,20 @@ function csvVendor(){
 
 export function initOntime(ctx){
   C = ctx;
+  const clr = () => { FILT={tier:null,dep:null,vendor:null}; };
   window.__otRender = paint;
   window.__otEnsure = ensureOt;
-  window.__otMon    = v => { OT_MON=v; paint(); ensureOt(); };
-  window.__otScope  = v => { OT_ALL=!!v; paint(); ensureOt(); };
+  window.__otMon    = v => { OT_MON=v; clr(); paint(); ensureOt(); };
+  window.__otScope  = v => { OT_ALL=!!v; clr(); paint(); ensureOt(); };
+  window.__otBack   = v => { OT_BACK=!!v; OT_MON=null; clr(); paint(); ensureOt(); };
   window.__otMode   = v => { OT_MODE=v; paint(); };
-  window.__otBack   = v => { OT_BACK=!!v; OT_MON=null; paint(); ensureOt(); };
+  window.__otFilt   = (kind,val) => {
+    if(kind==='all'){ clr(); }
+    else { FILT[kind] = (FILT[kind]===val) ? null : val; }
+    paint();
+    const t=document.getElementById('otPeople');
+    if(t && (FILT.tier||FILT.dep||FILT.vendor)) t.scrollIntoView({behavior:'smooth',block:'start'});
+  };
   window.__otCsv    = csv;
   window.__otCsvV   = csvVendor;
   window.__otVer    = OT_VER;

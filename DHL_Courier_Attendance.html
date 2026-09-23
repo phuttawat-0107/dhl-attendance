@@ -302,7 +302,8 @@ button,a,input,select,textarea,.btn,.nav button,.mini{touch-action:manipulation;
 .bigclock .t{letter-spacing:-1px;}
 
 /* ===== 2026.09.23 — ปิดปุ่มลงเวลาด่วน: ต้องถ่ายรูปทุกครั้ง ===== */
-button[onclick*="quickLog"]{display:none!important}
+button[onclick*="quickLog"],#modeQuick{display:none!important}
+#modeCam{width:100%!important}
 </style>
 </head>
 <body>
@@ -856,8 +857,9 @@ async function editTime(id){
 }
 
 /* ================= MODE (ตัวเลือกการลงเวลา) ================= */
-let ciMode = localStorage.getItem('dhl_mode') || 'cam';
-function setMode(m){ ciMode=m; localStorage.setItem('dhl_mode',m); applyMode(); renderCheckin(); }
+let ciMode = 'cam'; try{ localStorage.setItem('dhl_mode','cam'); }catch(e){};
+function setMode(m){
+  if(m==='quick') m='cam';   /* 2026.09.23 — ปิดโหมดลงเวลาก่อนถ่ายรูป */ ciMode=m; localStorage.setItem('dhl_mode',m); applyMode(); renderCheckin(); }
 function applyMode(){
   const c=document.getElementById('modeCam'), q=document.getElementById('modeQuick'), h=document.getElementById('modeHint');
   if(!c) return;

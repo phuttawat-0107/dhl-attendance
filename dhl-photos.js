@@ -4,7 +4,7 @@
    รูปเก็บในระบบ 30 วัน (ลบอัตโนมัติ) — ย้อนได้ไกลสุด 30 วัน
    Design By Winnie
    =================================================================== */
-export const PH_VER = '2026.09.23-ph2';
+export const PH_VER = '2026.09.23-ph3';
 
 const KEEP_DAYS = 30;
 const CUT = 25200;   // 07:00:00
@@ -21,14 +21,15 @@ const esc = s => C.esc(s);
 const sec = ts => C.secOf(ts);
 const pad = n => String(n).padStart(2,'0');
 const hm  = ts => { const d=new Date(ts); return pad(d.getHours())+':'+pad(d.getMinutes()); };
+const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());   /* ใช้เวลาท้องถิ่น ไม่ใช่ UTC */
 
 function todayKey(){ return S().DATE; }
 function minKey(){
   const d=new Date(todayKey()+'T00:00:00');
   d.setDate(d.getDate()-(KEEP_DAYS-1));
-  return d.toISOString().slice(0,10);
+  return ymd(d);
 }
-function shift(k,n){ const d=new Date(k+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function shift(k,n){ const d=new Date(k+'T00:00:00'); d.setDate(d.getDate()+n); return ymd(d); }
 function clampDate(k){
   if(k>todayKey()) return todayKey();
   if(k<minKey()) return minKey();

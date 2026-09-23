@@ -4,7 +4,7 @@
    รูปเก็บในระบบ 30 วัน (ลบอัตโนมัติ) — ย้อนได้ไกลสุด 30 วัน
    Design By Winnie
    =================================================================== */
-export const PH_VER = '2026.09.23-ph1';
+export const PH_VER = '2026.09.23-ph2';
 
 const KEEP_DAYS = 30;
 const CUT = 25200;   // 07:00:00
@@ -68,7 +68,10 @@ function injectCss(){
   '#viewPh .phIt{border:1px solid var(--phLine);border-radius:11px;overflow:hidden;background:#fff}',
   '#viewPh .phIt.late{border-color:#f0c5bf;background:#fffaf9}',
   '#viewPh .phImg{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:#f2efe9;cursor:zoom-in}',
-  '#viewPh .phNo{width:100%;aspect-ratio:3/4;display:grid;place-items:center;background:#f5f2ec;color:#b3ada1;font-size:11.5px;text-align:center;padding:6px}',
+  '#viewPh .phNo{width:100%;aspect-ratio:3/4;display:grid;place-items:center;background:#f5f2ec;color:#b3ada1;font-size:11.5px;line-height:1.5;text-align:center;padding:6px}',
+  '#viewPh .phNo.lost{background:#fdecea;color:#b3261e;font-weight:800}',
+  '#viewPh .phNo.never{background:#fff5db;color:#8a5d00;font-weight:800}',
+  '#viewPh .phNo small{display:block;font-weight:600;opacity:.75;font-size:10px;margin-top:3px}',
   '#viewPh .phMeta{padding:8px 9px 9px}',
   '#viewPh .phMeta .c{font:800 12.5px inherit;color:var(--phK)}',
   '#viewPh .phMeta .n{font:600 11px inherit;color:#8a8478;line-height:1.35;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
@@ -133,10 +136,16 @@ function paint(){
   const isToday = date===todayKey();
   const atMin = date<=minKey();
 
-  let tot=0, late=0;
+  let tot=0, late=0, never=0, lost=0;
   deps.forEach(dep=>{
     const d=DAYS[dep+'|'+date]; if(!d) return;
-    Object.keys(d.checkins||{}).forEach(cid=>{ tot++; if(sec(d.checkins[cid].ts)>CUT) late++; });
+    const pk=PICS[dep+'|'+date];
+    Object.keys(d.checkins||{}).forEach(cid=>{
+      const r=d.checkins[cid];
+      tot++; if(sec(r.ts)>CUT) late++;
+      if(r.hasPhoto!==true) never++;
+      else if(pk && pk!=='loading' && !pk[cid]) lost++;
+    });
   });
 
   let h='<div class="phCard"><div class="phBar">'
@@ -150,6 +159,11 @@ function paint(){
     +' &nbsp;·&nbsp; เช็คอิน '+tot+' คน'
     +(late? ' &nbsp;·&nbsp; <b style="color:#c0392b">สาย '+late+' คน</b>':(tot?' &nbsp;·&nbsp; เข้าทันทุกคน':''))
     +'</div>'
+    +((never||lost)? '<div class="phNote" style="margin-top:4px">'
+        +(never? '🚫 ลงเวลาด่วนไม่มีรูป <b style="color:#8a5d00">'+never+' คน</b>':'')
+        +((never&&lost)? ' &nbsp;·&nbsp; ':'')
+        +(lost? '⚠️ รูปหาย <b style="color:#c0392b">'+lost+' คน</b> (เปิดดูสาขาแล้วถึงจะนับครบ)':'')
+        +'</div>' : '')
     +'<div class="phNote" style="margin-top:4px">รูปเก็บในระบบ 30 วัน — ย้อนได้ถึง '+thaiDate(minKey())+'</div>'
     +(PH_LOADING? '<div class="phNote" style="margin-top:8px">⏳ กำลังโหลด…</div>':'')
     +'</div>';
@@ -186,7 +200,12 @@ function paint(){
             + (src
                ? '<img class="phImg" src="'+src+'" alt="'+code+'" onclick="window.__phZoom(this.src,'
                  + JSON.stringify(cap).replace(/"/g,'&quot;')+')">'
-               : '<div class="phNo">'+(pics? 'ไม่มีรูป':'ยังไม่ได้โหลดรูป')+'</div>')
+               : '<div class="phNo '+(pics? (x.r.hasPhoto===true?'lost':'never'):'')+'">'
+                 +(pics
+                    ? (x.r.hasPhoto===true
+                        ? '⚠️ รูปหาย<small>อัปโหลดไม่สำเร็จ</small>'
+                        : '🚫 ไม่ได้ถ่ายรูป<small>ลงเวลาด่วน</small>')
+                    : 'ยังไม่ได้โหลดรูป')+'</div>')
             +'<div class="phMeta"><div class="c">'+code+'</div>'
             +'<div class="n">'+esc(x.c.name||'—')+(x.c.vendor? ' · '+esc(x.c.vendor):'')+'</div>'
             +'<div class="t"><b>'+hm(x.r.ts)+'</b>'

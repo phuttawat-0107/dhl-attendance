@@ -604,8 +604,47 @@ async function pushPhoto(kind, cid, dataUrl){
     const date=tKey();
     const id=kind+'_'+(cid||'pd')+'_'+date;
     await setDoc(doc(phoCol(S.depot),id),{ kind, cid:cid||null, date, d:small, at:Date.now(), by:S.staff });
-  }catch(e){ console.warn('photo up',e); }
+    return true;
+  }catch(e){ console.warn('photo up',e); if(!PHQ_RETRY) phQPush(kind,cid,dataUrl); return false; }
 }
+/* ===== 📤 คิวรูปที่อัปโหลดไม่สำเร็จ — เก็บในเครื่อง ส่งใหม่อัตโนมัติ ===== */
+let PHQ_RETRY=false, PHQ_BUSY=false;
+function phQKey(){ return 'dsPhQ_'+(S.depot||'x'); }
+function phQLoad(){ try{ return JSON.parse(localStorage.getItem(phQKey())||'[]'); }catch(e){ return []; } }
+function phQSave(a){ try{ localStorage.setItem(phQKey(), JSON.stringify(a.slice(-8))); }catch(e){} }
+function phQPush(kind,cid,dataUrl){
+  try{
+    if(!dataUrl || dataUrl.length > 700000) return;
+    const a=phQLoad(), k=(kind||'')+'|'+(cid||'pd');
+    if(a.some(x=>x.k===k)) return;
+    a.push({k:k, kind:kind, cid:cid, d:dataUrl, at:Date.now()});
+    phQSave(a);
+    try{ toast('⚠️ ส่งรูปไม่สำเร็จ — เก็บไว้ส่งใหม่อัตโนมัติ'); }catch(e){}
+  }catch(e){}
+}
+window.dsPhotoQueue = function(){ try{ return phQLoad().length; }catch(e){ return 0; } };
+async function phQFlush(){
+  if(PHQ_BUSY || !S.ready) return;
+  const a=phQLoad(); if(!a.length) return;
+  PHQ_BUSY=true; PHQ_RETRY=true;
+  const keep=[]; let ok=0;
+  for(const j of a){
+    if(Date.now()-j.at > 3*86400000) continue;
+    let r=false;
+    try{ r=await pushPhoto(j.kind, j.cid, j.d); }catch(e){}
+    if(r) ok++; else keep.push(j);
+    await new Promise(x=>setTimeout(x,150));
+  }
+  PHQ_RETRY=false; PHQ_BUSY=false;
+  phQSave(keep);
+  if(ok){ try{ toast('📤 ส่งรูปที่ค้างสำเร็จ '+ok+' รูป'); }catch(e){} }
+}
+setInterval(phQFlush, 90000);
+try{
+  window.addEventListener('online', function(){ setTimeout(phQFlush, 2500); });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(phQFlush, 1500); });
+}catch(e){}
+
 async function purgeOldPhotos30(){
   try{
     const cut=new Date(Date.now()-PHOTO_KEEP_DAYS*86400000).toISOString().slice(0,10);
@@ -794,7 +833,7 @@ async function mergeRemote(d){
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
 /* ============ 🛡 ระบบเฝ้าระวังตัวเอง (กันปัญหาเงียบๆ) ============ */
-const SYNC_VER='2026.09.20-c';
+const SYNC_VER='2026.09.23-p';
 const H={ ver:SYNC_VER, lastPush:0, lastPull:0, err:'', errAt:0, taps:0, saves:0, ok:true };
 window.DHLHealth=H;
 

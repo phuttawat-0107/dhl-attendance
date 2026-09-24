@@ -4,10 +4,11 @@
    รูปเก็บในระบบ 30 วัน (ลบอัตโนมัติ) — ย้อนได้ไกลสุด 30 วัน
    Design By Winnie
    =================================================================== */
-export const PH_VER = '2026.09.23-ph3';
+export const PH_VER = '2026.09.24-ph4';
 
 const KEEP_DAYS = 30;
 const CUT = 25200;   // 07:00:00
+const GRACE = 25800; // เกณฑ์สายของระบบ (ตรงกับแท็บ Live / อินไซต์ / Data)
 
 let C = null;
 let PH_DATE = null;
@@ -143,7 +144,7 @@ function paint(){
     const pk=PICS[dep+'|'+date];
     Object.keys(d.checkins||{}).forEach(cid=>{
       const r=d.checkins[cid];
-      tot++; if(sec(r.ts)>CUT) late++;
+      tot++; if(r.status==='late'||sec(r.ts)>GRACE) late++;
       if(r.hasPhoto!==true) never++;
       else if(pk && pk!=='loading' && !pk[cid]) lost++;
     });
@@ -175,7 +176,7 @@ function paint(){
     const cm=cmapOf(dep);
     const rows=d? Object.keys(d.checkins||{}).map(cid=>({cid:cid, c:cm[cid]||{}, r:d.checkins[cid]}))
                     .sort((a,b)=>a.r.ts-b.r.ts) : [];
-    const dLate=rows.filter(x=>sec(x.r.ts)>CUT).length;
+    const dLate=rows.filter(x=>x.r.status==='late'||sec(x.r.ts)>GRACE).length;
     const pics=PICS[key];
     const op=!!OPEN[dep];
     if(rows.length) any=true;
@@ -192,7 +193,7 @@ function paint(){
       else {
         h+='<div class="phGrid">';
         rows.forEach(x=>{
-          const s=sec(x.r.ts), isLate=s>CUT;
+          const s=sec(x.r.ts), isLate=(x.r.status==='late'||s>GRACE);
           const mins=Math.max(0,Math.round((s-CUT)/60));
           const code=esc(x.c.code||('#'+x.cid));
           const src=pics? pics[x.cid] : null;

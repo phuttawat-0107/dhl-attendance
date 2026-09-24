@@ -362,7 +362,14 @@ const thD=k=>{const[y,m,d]=k.split('-').map(Number);const mo=['ม.ค.','ก.�
 
 const DATA={}, COM={}, META={}, SES={};   // META = ข้อมูลสาขา · SES = ใครกำลังใช้แอปอยู่
 const ONLINE_MS = 11*60*1000;              // heartbeat ทุก 2 นาที → เกิน 5 นาที = ถือว่าออฟไลน์
-const APP_VER   = '2026.09.20-c';         // เวอร์ชันแอป Staff ที่ควรใช้ (ต้องตรงกับ dhl-sync.js)
+let APP_VER     = '2026.09.23-q';         // เวอร์ชันแอป Staff — ซิงก์อัตโนมัติจาก config/app
+const VER_SEEN  = {};                     // จำว่าเครื่องไหนค้างเวอร์ชันเก่ามาตั้งแต่เมื่อไหร่
+const VER_GRACE = 10*60*1000;             // ให้เวลาอัปเดตอัตโนมัติ 10 นาที ก่อนจะเตือน
+function verLate(dep,name,ver){
+  const k=dep+'|'+name+'|'+ver, now=Date.now();
+  if(!VER_SEEN[k]) VER_SEEN[k]=now;
+  return now-VER_SEEN[k] > VER_GRACE;
+}
 /* 🛡 นับจำนวนเครื่องที่มีปัญหาทั้งระบบ */
 function healthIssues(){
   const now=Date.now(), out=[];
@@ -372,7 +379,8 @@ function healthIssues(){
       const online=s.at && (now-s.at)<ONLINE_MS;
       if(s.err) out.push({dep,n:s.name,t:'Error: '+s.err,lv:'crit'});
       else if(online && !s.ver) out.push({dep,n:s.name,t:'ยังไม่อัปเดตแอป',lv:'warn'});
-      else if(online && s.ver!==APP_VER) out.push({dep,n:s.name,t:'เวอร์ชันเก่า '+s.ver,lv:'warn'});
+      else if(online && s.ver!==APP_VER && verLate(dep,s.name,s.ver))
+        out.push({dep,n:s.name,t:'อัปเดตอัตโนมัติไม่สำเร็จ (ค้าง '+s.ver+')',lv:'warn'});
       else if(online && s.nLocal!=null && cloudN && s.nLocal>cloudN)
         out.push({dep,n:s.name,t:'ส่งข้อมูลไม่ครบ '+s.nLocal+'→'+cloudN,lv:'crit'});
     });
@@ -656,7 +664,7 @@ function render(){
     +'</div>';
 
   /* 🛡 แถบเตือนสุขภาพระบบ — ขึ้นเองเมื่อมีเครื่องผิดปกติ */
-  const hi=healthIssues();
+  const hi=(()=>{ const seen={}, uq=[]; healthIssues().forEach(x=>{ const k=x.dep+'|'+x.t; if(!seen[k]){ seen[k]=1; uq.push(x); } }); return uq; })();
   const hb=document.getElementById('healthBar');
   if(hb){
     hb.innerHTML = hi.length
@@ -865,6 +873,17 @@ import('./dhl-photos.js?v=3').then(m=>{
     get:()=>({ DEPOTS, DATA, META, DATE }) });
   console.log('photos module', m.PH_VER);
 }).catch(e=>console.warn('photos module failed', e));
+
+/* 🔄 ซิงก์เวอร์ชันเป้าหมายจาก config/app — กันไม่ให้ตัวเลขเพี้ยนจาก dhl-sync.js อีก */
+async function syncTargetVer(){
+  try{
+    const s = await getDoc(doc(db,'config','app'));
+    const v = s.exists()? String(s.data().staffVer||'') : '';
+    if(v && v!==APP_VER) APP_VER = v;
+  }catch(e){}
+}
+setTimeout(syncTargetVer, 3000);
+setInterval(syncTargetVer, 5*60*1000);
 
 async function loadHist(){
   histLoading=true;
@@ -1813,7 +1832,7 @@ window.__who=dep=>{
   const probs=[];
   all.forEach(s=>{
     if(s.err) probs.push({n:s.name, t:'มี Error: '+s.err});
-    if(s.ver && s.ver!==APP_VER) probs.push({n:s.name, t:'ใช้เวอร์ชันเก่า ('+s.ver+') — ให้ปิดแอปเปิดใหม่'});
+    if(s.ver && s.ver!==APP_VER) probs.push({n:s.name, t:'ค้างเวอร์ชัน '+s.ver+' — ระบบจะบังคับอัปเดตเองเมื่อเปิดแอปครั้งถัดไป'});
     if(!s.ver) probs.push({n:s.name, t:'ยังไม่ได้อัปเดตแอป — ให้ปิดแอปเปิดใหม่'});
     if(s.nLocal!=null && cloudN && s.nLocal>cloudN)
       probs.push({n:s.name, t:'ข้อมูลในเครื่องมากกว่าคลาวด์ ('+s.nLocal+' vs '+cloudN+') — ยังส่งไม่ครบ'});

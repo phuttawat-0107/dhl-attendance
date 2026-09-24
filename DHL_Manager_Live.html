@@ -1205,7 +1205,7 @@ window.__insOcc=i=>{
       }
     }
     return '<div class="row-c"><div class="info"><div class="nm">'+insTh(o.dk)+' — '+esc(o.ti)+'</div>'
-      +'<div class="s2">'+esc(o.de)+'</div>'+extra+'</div></div>';
+      +'<div class="s2">'+esc(String(o.de).replace(/\s*—\s*แตะ[\s\S]*$/,''))+'</div>'+extra+'</div></div>';
   }).join('');
   document.getElementById('mdlBody').innerHTML=b;
   document.getElementById('mdl').classList.add('show');
@@ -1225,7 +1225,7 @@ function renderIns(){
 
   if(RANGE) h+='<div class="small" style="margin:-4px 0 12px">'+(INS_LOAD? '⏳ กำลังโหลดข้อมูลทั้งช่วง…' : '📊 สรุปเฉลี่ยจาก '+insActiveDays().length+' วันทำการในช่วงที่เลือก (ไม่นับวันอาทิตย์/วันหยุด) — เรียงตามความรุนแรงและความถี่ที่เกิดซ้ำ')+'</div>';
   /* ---- ภาพรวมปัญหา ---- */
-  h+='<div class="card"><h2>🚨 ปัญหาที่ต้องแก้ <span class="small">เรียงตามความเร่งด่วน • แตะเพื่อเจาะดูและส่งคอมเมนต์</span></h2>';
+  h+='<div class="card"><h2>🚨 ปัญหาที่ต้องแก้ <span class="small">'+(RANGE? 'เรียงตามความรุนแรงและความถี่ • แตะเพื่อดูรายวันและรายชื่อ' : 'เรียงตามความเร่งด่วน • แตะเพื่อเจาะดูและส่งคอมเมนต์')+'</span></h2>';
   h+= iss.length? iss.map(x=>'<div class="iss '+x.lv+'" onclick="'+(x.gi!=null? 'window.__insOcc('+x.gi+')' : 'window.__open(\''+x.dep+'\',\''+x.task+'\')')+'">'
       +'<div class="ic">'+x.ic+'</div><div class="bd"><div class="ti">'+esc(x.ti)+'</div><div class="de">'+esc(x.de)+'</div></div>'
       +'<div class="go">ดู ›</div></div>').join('')

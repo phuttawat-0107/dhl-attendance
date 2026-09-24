@@ -901,8 +901,297 @@ async function loadHist(){
   if(MTAB==='ch') renderCh();
 }
 
+
+function findIssuesFor(DK){
+  const out=[], t=nowSec(), isToday = DK===todayKey();
+  DEPOTS.forEach(dep=>{
+    const d=docOf(dep,DK);
+    if(!d){
+      if(!isToday||t>=7*3600+30*60)
+        out.push({dep,task:'checkin',lv:'crit',ic:'📵',ti:dep+' ยังไม่ส่งข้อมูลเลย',
+          de:'ไม่พบการเช็คอินหรือบันทึกใดๆ ของวันนี้ — ตรวจว่าสาขาเปิดแอปและล็อกอินแล้วหรือยัง'});
+      return;
+    }
+    const ck=Object.values(d.checkins||{}), p=d.pph||{}, rp=Object.values(p.rp||{});
+    const nC=(+p.courierN)||ck.length||0;
+
+    /* 1) เช็คอิน */
+    const lateArr=Object.entries(d.checkins||{}).filter(([,r])=>r.status==='late');
+    if(lateArr.length){
+      const mins=lateArr.map(([,r])=>Math.max(1,Math.round((secOf(r.ts)-CUT)/60)));
+      const worst=Math.max(...mins), sum=mins.reduce((a,b)=>a+b,0);
+      out.push({dep,task:'checkin',lv:lateArr.length>=3?'crit':'warn',ic:'⏰',
+        ti:dep+' มาสาย '+lateArr.length+' คน',
+        de:'รวม '+sum+' นาที • สายสุด '+worst+' นาที — แตะดูรายชื่อและส่งคอมเมนต์'});
+    }
+    const abs=Object.entries(d.absent||{});
+    if(abs.length>=3) out.push({dep,task:'checkin',lv:'warn',ic:'🚫',ti:dep+' ไม่มาทำงาน '+abs.length+' คน',
+      de:abs.map(([,r])=>r.note||'ไม่ระบุ').slice(0,3).join(' / ')+' — ตรวจกำลังพลว่าพอวิ่งงานหรือไม่'});
+    /* ตรวจความถูกต้องของชุดข้อมูล */
+    if(p.courierN && ck.length && Math.abs((+p.courierN)-ck.length)>3)
+      out.push({dep,task:'fib',lv:'crit',ic:'🔢',ti:dep+' จำนวน Courier ไม่ตรงกับคนเช็คอิน',
+        de:'กรอกไว้ '+p.courierN+' คน แต่เช็คอิน '+ck.length+' คน — PPH จะคำนวณผิด ให้แก้ตัวเลข Courier ในหน้า PPH'});
+    try{ const _cm=courierMap(dep,d);
+      const _or=Object.keys(d.checkins||{}).filter(cid=>!_cm[cid]).length;
+      if(_or) out.push({dep,task:'checkin',lv:'warn',ic:'❓',ti:dep+' มีเช็คอินที่ไม่มีชื่อในระบบ '+_or+' คน',
+        de:'รายงานรายบุคคลจะไม่มีชื่อ/รหัส — ตรวจว่าลบพนักงานออกไปหรือรายชื่อยังไม่ซิงค์'}); }catch(e){}
+    const _bs=Object.entries(p.rp||{}).filter(([,q])=>q.dep&&q.fdel&&q.fdel<q.dep).length;
+    if(_bs) out.push({dep,task:'fdel',lv:'warn',ic:'🔀',ti:dep+' First Del เกิดก่อน Departure '+_bs+' คน',
+      de:'เป็นไปไม่ได้จริง — เกิดจากกดปุ่มสลับลำดับหรือแก้เวลา ให้ตรวจสอบ'});
+    const _wt=Object.values(d.checkins||{}).filter(r=>{const s=secOf(r.ts); return s<4*3600||s>12*3600;}).length;
+    if(_wt) out.push({dep,task:'checkin',lv:'crit',ic:'⏱',ti:dep+' มีเช็คอินนอกช่วงเวลาทำงาน '+_wt+' คน',
+      de:'เวลาก่อน 04:00 หรือหลัง 12:00 — มักเป็นข้อมูลทดสอบ ให้ลบออกก่อนทำรายงาน'});
+    const noUni=ck.filter(r=>r.uniform===false).length;
+    if(noUni) out.push({dep,task:'checkin',lv:'warn',ic:'👕',ti:dep+' ไม่ใส่ยูนิฟอร์ม '+noUni+' คน',
+      de:'ตรวจสอบและเตือนก่อนออกวิ่งงาน'});
+    const edits=ck.filter(r=>r.manualEdit).length;
+    if(edits>=2) out.push({dep,task:'checkin',lv:'warn',ic:'✏️',ti:dep+' แก้เวลาเข้างาน '+edits+' ครั้ง',
+      de:'แก้หลายครั้งผิดปกติ — ตรวจว่าเป็นเหตุผลอะไร (กล้องเสีย/ลืมกด)'});
+
+    /* 2) PD */
+    const pdTs=p.pd&&p.pd.ts;
+    if(pdTs && secOf(pdTs)>PD_END)
+      out.push({dep,task:'pd',lv:'crit',ic:'📸',ti:dep+' PD เกินเวลา ('+fmtT(pdTs)+')',
+        de:'เป้าคือก่อน 07:15 — เลยมา '+Math.round((secOf(pdTs)-PD_END)/60)+' นาที'});
+    if(!pdTs && ck.length && (!isToday || t>7*3600+20*60))
+      out.push({dep,task:'pd',lv:'crit',ic:'📸',ti:dep+' ยังไม่ถ่าย PD',
+        de:'เช็คอินแล้ว '+ck.length+' คน แต่ยังไม่มีภาพ PD — เลยเวลา 07:15 ไปแล้ว'});
+
+    /* 3) Inbound / Sort */
+    if(!p.inboundTs && ck.length && (!isToday || t>7*3600))
+      out.push({dep,task:'fib',lv:'warn',ic:'📥',ti:dep+' ยังไม่กด First Inbound',
+        de:'ระบบจะคำนวณ PPH Sort ไม่ได้จนกว่าจะกดจุดนี้'});
+    const fsDone=rp.filter(x=>x.fs).length;
+    if(p.inboundTs && nC && fsDone<nC && (!isToday || t>8*3600))
+      out.push({dep,task:'fib',lv:'warn',ic:'🔀',ti:dep+' กด FS ไม่ครบ ('+fsDone+'/'+nC+')',
+        de:'PPH Sort จะยังไม่ถูกคำนวณจนกว่าจะกด First Scan ครบทุกคน'});
+    const P=pphOf(p,nC);
+    if(P.sort!=null && P.sort<49)
+      out.push({dep,task:'fib',lv:'warn',ic:'📉',ti:dep+' PPH Sort ต่ำกว่าเป้า ('+(Math.round(P.sort*10)/10)+')',
+        de:'เป้า ≥ 49 • พัสดุ '+P.totalP+' ชิ้น ใช้คน '+P.people+' คน — ลองลดคนหรือลดเวลา Inbound→FS'});
+
+    /* 4) Route prep / DEP */
+    const deps=rp.map(x=>x.dep).filter(Boolean);
+    if(deps.length){
+      const a=av(deps.map(secOf));
+      if(deps.length>=nC && a>=T_DEP)
+        out.push({dep,task:'dep',lv:'crit',ic:'🚚',ti:dep+' Departure เฉลี่ยเกิน 08:30 ('+hmOf(a)+')',
+          de:'ออกช้า '+Math.round((a-T_DEP)/60)+' นาที — กระทบ First Del ต่อเนื่อง'});
+      const slow=Object.entries(p.rp||{}).filter(([,q])=>q.dep&&secOf(q.dep)>=T_DEP);
+      if(slow.length && slow.length<nC)
+        out.push({dep,task:'dep',lv:'warn',ic:'🐢',ti:dep+' ออกช้าเป็นรายคน '+slow.length+' คน',
+          de:'บางคนออกเกิน 08:30 — แตะดูว่าใครและช้าที่ขั้นตอนไหน'});
+    } else if(p.inboundTs && (!isToday || t>8*3600+30*60))
+      out.push({dep,task:'dep',lv:'crit',ic:'🚚',ti:dep+' ยังไม่มีใครกด DEP',
+        de:'เลย 08:30 แล้วแต่ยังไม่มีการบันทึกเวลาออก'});
+    if(P.route!=null && P.route<165)
+      out.push({dep,task:'dep',lv:'warn',ic:'📦',ti:dep+' PPH Route prep ต่ำกว่าเป้า ('+Math.round(P.route)+')',
+        de:'เป้า ≥ 165 — เวลาที่ใช้ FS→DEP นานเกินไปเทียบกับปริมาณพัสดุ'});
+
+    /* 5) First Del */
+    const fd=rp.map(x=>x.fdel).filter(Boolean);
+    if(fd.length){
+      const a=av(fd.map(secOf));
+      if(fd.length>=nC && a>=T_FDEL)
+        out.push({dep,task:'fdel',lv:'crit',ic:'🎯',ti:dep+' First Del เฉลี่ยเกิน 09:00 ('+hmOf(a)+')',
+          de:'ช้ากว่าเป้า '+Math.round((a-T_FDEL)/60)+' นาที — ตรวจ Stem Out และเส้นทางแรก'});
+      const bigStem=Object.entries(p.rp||{}).filter(([,q])=>q.dep&&q.fdel&&(q.fdel-q.dep)/60000>35);
+      if(bigStem.length)
+        out.push({dep,task:'fdel',lv:'warn',ic:'⏱',ti:dep+' Stem Out นานผิดปกติ '+bigStem.length+' คน',
+          de:'ใช้เวลาจาก DEP→จุดส่งแรกเกิน 35 นาที — อาจเป็นเส้นทางไกลหรือหลงทาง'});
+    } else if(deps.length && (!isToday || t>9*3600))
+      out.push({dep,task:'fdel',lv:'crit',ic:'🎯',ti:dep+' ยังไม่มีใครกด First Del',
+        de:'ออกไปแล้วแต่ยังไม่บันทึกการส่งชิ้นแรก — เลย 09:00 แล้ว'});
+
+    /* 6) คอมเมนต์ค้าง */
+    const pend=0;   /* คอมเมนต์ค้างเป็นสถานะปัจจุบัน ไม่นับรายวัน */
+    if(pend) out.push({dep,task:(COM[dep].find(c=>!c.ackAt)||{}).task||'checkin',lv:'warn',ic:'💬',
+      ti:dep+' ยังไม่รับทราบคอมเมนต์ '+pend+' รายการ', de:'ส่งไปแล้วแต่สาขายังไม่กดรับทราบ'});
+  });
+  const rank={crit:0,warn:1};
+  return out.sort((a,b)=>rank[a.lv]-rank[b.lv]);
+}
+
+function taskStateFor(dep,k,DK){
+  const d=docOf(dep,DK);
+  if(!d) return {st:'none'};
+  const ck=Object.values(d.checkins||{}), p=d.pph||{};
+  const rp=Object.values(p.rp||{});
+  if(k==='checkin'){
+    if(!ck.length) return {st:'none'};
+    const late=ck.filter(r=>r.status==='late').length;
+    const abN=Object.keys(d.absent||{}).length;
+    return {st: late? 'bad':'ok', v:(ck.length-late)+'/'+ck.length, s2: (late? late+' สาย':'ตรงเวลา')+(abN? ' • ไม่มา '+abN:'')};
+  }
+  if(k==='pd'){
+    const ts=p.pd&&p.pd.ts;
+    if(!ts) return {st: ck.length?'wait':'none'};
+    return {st: secOf(ts)<=PD_END?'ok':'bad', v:fmtT(ts), s2:'PD'};
+  }
+  if(k==='fib'){
+    if(!p.inboundTs) return {st: ck.length?'wait':'none'};
+    return {st:'ok', v:fmtT(p.inboundTs), s2:'First IB'};
+  }
+  if(k==='lib'){
+    if(!p.lastInboundTs) return {st: p.inboundTs?'wait':'none'};
+    return {st:'ok', v:fmtT(p.lastInboundTs), s2:'Last IB'};
+  }
+  if(k==='dep'){
+    const deps=rp.map(x=>x.dep).filter(Boolean);
+    if(!deps.length) return {st: p.inboundTs?'wait':'none'};
+    const a=av(deps.map(secOf));
+    const done=deps.length, tot=(+p.courierN)||ck.length||done;
+    return {st: done<tot? 'wait' : (a<T_DEP?'ok':'bad'), v:hmOf(a), s2:done+'/'+tot+' คน'};
+  }
+  if(k==='fdel'){
+    const fd=rp.map(x=>x.fdel).filter(Boolean);
+    if(!fd.length) return {st: rp.some(x=>x.dep)?'wait':'none'};
+    const a=av(fd.map(secOf));
+    const done=fd.length, tot=(+p.courierN)||ck.length||done;
+    return {st: done<tot? 'wait' : (a<T_FDEL?'ok':'bad'), v:hmOf(a), s2:done+'/'+tot+' คน'};
+  }
+  return {st:'none'};
+}
+
+/* ===================================================================
+   📈 อินไซต์ตามช่วงวันที่ — สรุปเฉลี่ยทั้งช่วง (2026.09.24)
+   ถ้าเลือกช่วงมากกว่า "วันนี้" ทุกส่วนของอินไซต์จะคำนวณจากทุกวันในช่วง
+   ไม่นับวันอาทิตย์ และไม่นับวันที่ไม่มีสาขาไหนส่งข้อมูลเลย (วันหยุด)
+   =================================================================== */
+let INS_LOAD=false, INS_G=[];
+const INS_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const insTh=dk=>{ const d=new Date(dk+'T00:00:00'); return ['อา','จ','อ','พ','พฤ','ศ','ส'][d.getDay()]+' '+d.getDate()+' '+INS_M[d.getMonth()]; };
+const insHM=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(Math.round(m%60)).padStart(2,'0');
+function insDays(){
+  const tk=todayKey();
+  return chDates().filter(k=>k<=tk && new Date(k+'T00:00:00').getDay()!==0);
+}
+function insRangeOn(){ const d=insDays(); return d.length>0 && !(d.length===1 && d[0]===DATE); }
+function insActiveDays(){ return insDays().filter(dk=>DEPOTS.some(dep=>docOf(dep,dk))); }
+async function insEnsure(){
+  if(INS_LOAD) return;
+  const need=[];
+  insDays().forEach(dk=>DEPOTS.forEach(dep=>{ if(dk===DATE) return; if(RC[dep+'|'+dk]===undefined) need.push([dep,dk]); }));
+  if(!need.length) return;
+  INS_LOAD=true;
+  for(let i=0;i<need.length;i+=40){
+    await Promise.all(need.slice(i,i+40).map(j=>
+      getDoc(doc(db,'depots',j[0],'days',j[1]))
+        .then(s=>{ RC[j[0]+'|'+j[1]] = s.exists()? s.data() : null; })
+        .catch(()=>{ RC[j[0]+'|'+j[1]] = null; })));
+  }
+  INS_LOAD=false;
+  if(MTAB==='ins') renderIns();
+}
+function insNorm(s){ return String(s).replace(/\(\d{1,2}:\d{2}\)/g,'(T)').replace(/\d+(?:\.\d+)?/g,'#'); }
+function insIssuesRange(){
+  const days=insActiveDays(), n=days.length, G={};
+  days.forEach(dk=>{ findIssuesFor(dk).forEach(x=>{
+    const tpl=insNorm(x.ti), key=x.dep+'|'+x.task+'|'+tpl;
+    const g=G[key]||(G[key]={dep:x.dep,task:x.task,ic:x.ic,tpl:tpl,occ:[],crit:0});
+    if(x.lv==='crit') g.crit++;
+    g.occ.push({dk:dk,ti:x.ti,de:x.de,lv:x.lv});
+  }); });
+  const numOf=o=>{ const m=o.ti.replace(/\(\d{1,2}:\d{2}\)/g,'').match(/\d+(?:\.\d+)?/); return m? +m[0] : null; };
+  const timOf=o=>{ const m=o.ti.match(/\((\d{1,2}):(\d{2})\)/); return m? (+m[1])*60+(+m[2]) : null; };
+  const out=Object.keys(G).map(key=>{
+    const g=G[key], k=g.occ.length, freq=n? k/n : 0, parts=[];
+    let ti=g.tpl;
+    const nv=g.occ.map(numOf), tv=g.occ.map(timOf);
+    const nums=nv.filter(v=>v!=null), tims=tv.filter(v=>v!=null);
+    if(nums.length){
+      const sum=nums.reduce((a,b)=>a+b,0), avg=n? sum/n : 0, mx=Math.max.apply(null,nums);
+      const av=String(Math.round(avg*10)/10);
+      ti=ti.replace(/#\s*(\S+)/, (m,u)=>'เฉลี่ย '+av+' '+u+'/วัน').replace(/#/, av);
+      parts.push('รวมทั้งช่วง '+sum);
+      parts.push('สูงสุด '+mx+' ('+insTh(g.occ[nv.indexOf(mx)].dk)+')');
+    }
+    if(tims.length){
+      const avg=tims.reduce((a,b)=>a+b,0)/tims.length, mx=Math.max.apply(null,tims);
+      ti=ti.replace('(T)','(เฉลี่ย '+insHM(avg)+')');
+      parts.push('ช้าสุด '+insHM(mx)+' ('+insTh(g.occ[tv.indexOf(mx)].dk)+')');
+    }
+    ti=ti.replace(/#/g,'').replace('(T)','').replace(/\s{2,}/g,' ').trim();
+    const last=g.occ[g.occ.length-1];
+    const lv=(g.crit && (freq>=0.3 || n<=2))? 'crit' : 'warn';
+    return { dep:g.dep, task:g.task, ic:g.ic, lv:lv, freq:freq, k:k, n:n, occ:g.occ, ti:ti,
+      de:'เกิดขึ้น '+k+' จาก '+n+' วัน ('+Math.round(freq*100)+'%)'+(parts.length? ' • '+parts.join(' • ') : '')+' • ล่าสุด '+insTh(last.dk) };
+  });
+  out.sort((a,b)=>((a.lv===b.lv)?0:(a.lv==='crit'?-1:1)) || (b.freq-a.freq) || (b.k-a.k));
+  out.forEach((x,i)=>{ x.gi=i; });
+  INS_G=out.slice();
+  try{ findIssues().filter(x=>/คอมเมนต์/.test(x.ti)).forEach(x=>out.push(Object.assign({},x,{de:x.de+' (สถานะปัจจุบัน)'}))); }catch(e){}
+  return out;
+}
+function insStepRows(k){
+  const days=insActiveDays(), tk=todayKey();
+  return DEPOTS.map(dep=>{
+    let ok=0,bad=0,none=0; const badDays=[];
+    days.forEach(dk=>{
+      let st=taskStateFor(dep,k,dk).st;
+      if(st==='wait' && dk<tk) st='bad';
+      if(st==='ok') ok++; else if(st==='bad'){ bad++; badDays.push(dk); } else none++;
+    });
+    const tot=ok+bad;
+    return {dep:dep, ok:ok, bad:bad, none:none, rate: tot? ok/tot : null, badDays:badDays};
+  });
+}
+function insStepsHTML(){
+  const n=insActiveDays().length;
+  let h='<div class="card"><h2>🔍 เจาะลึกรายขั้นตอน <span class="small">% ผ่านเป้าในช่วง '+n+' วันทำการ • แตะการ์ดเพื่อดูรายสาขา</span></h2>';
+  if(INS_LOAD) return h+'<div class="empty">⏳ กำลังโหลดข้อมูลทั้งช่วง…</div></div>';
+  h+='<div class="stepgrid">';
+  TASKS.forEach(t=>{
+    const per=insStepRows(t.k);
+    const OK=per.reduce((a,x)=>a+x.ok,0), BAD=per.reduce((a,x)=>a+x.bad,0), TOT=OK+BAD;
+    const pct=TOT? Math.round(OK/TOT*100) : null;
+    const worst=per.filter(x=>x.bad).sort((a,b)=>b.bad-a.bad).slice(0,3).map(x=>x.dep+' '+x.bad+' วัน');
+    h+='<div class="stepcard" onclick="window.__insStep(\''+t.k+'\')">'
+      +'<div class="h">'+t.l+(t.tg?' <span style="color:#D40511;font-size:10px;">'+t.tg+'</span>':'')+'</div>'
+      +'<div class="n" style="color:'+(pct==null?'#b0a892':(pct>=90?'var(--g)':(pct>=70?'#b58900':'var(--r)')))+'">'+(pct==null?'—':pct+'%')+'</div>'
+      +'<div class="s">'+(TOT? 'ผ่าน '+OK+'/'+TOT+' ครั้ง'+(worst.length? ' • เกินบ่อย: '+worst.join(', ') : '') : 'ไม่มีข้อมูล')+'</div>'
+      +'<div class="stepbar">'+per.map(x=>'<i class="'+(x.rate==null?'':(x.rate>=0.9?'ok':(x.rate>=0.7?'wait':'bad')))+'" title="'+x.dep+' '+(x.rate==null?'—':Math.round(x.rate*100)+'%')+'"></i>').join('')+'</div>'
+      +'</div>';
+  });
+  return h+'</div></div>';
+}
+window.__insStep=k=>{
+  const T=TASKS.find(t=>t.k===k)||{l:k}, n=insActiveDays().length;
+  const rows=insStepRows(k).sort((a,b)=>(a.rate==null?2:a.rate)-(b.rate==null?2:b.rate));
+  let b='<h3>🔍 '+T.l+'</h3><div class="sub">สรุป '+n+' วันทำการในช่วงที่เลือก'+(T.tg?' • เป้า '+T.tg:'')+'</div>';
+  b+=rows.map(r=>'<div class="row-c"><div class="info"><div class="nm">'+r.dep+' — '+(r.rate==null?'ไม่มีข้อมูล':Math.round(r.rate*100)+'% ผ่านเป้า')+'</div>'
+    +'<div class="s2">ผ่าน '+r.ok+' • เกินเป้า '+r.bad+' • ไม่มีข้อมูล '+r.none
+    +(r.badDays.length? ' — วันที่เกิน: '+r.badDays.slice(-8).map(insTh).join(', ') : '')+'</div></div></div>').join('');
+  document.getElementById('mdlBody').innerHTML=b;
+  document.getElementById('mdl').classList.add('show');
+};
+window.__insOcc=i=>{
+  const g=INS_G[i]; if(!g) return;
+  let b='<h3>'+g.ic+' '+esc(g.ti)+'</h3><div class="sub">'+esc(g.de)+'</div>';
+  b+=g.occ.slice().reverse().map(o=>{
+    let extra='';
+    if(g.task==='checkin' && g.ic==='⏰'){
+      const d=docOf(g.dep,o.dk);
+      if(d){
+        const cm=courierMap(g.dep,d);
+        const L=Object.keys(d.checkins||{}).filter(cid=>d.checkins[cid].status==='late').map(cid=>{
+          const r=d.checkins[cid], c=cm[cid]||{};
+          return (c.code||('#'+cid))+' '+fmtT(r.ts)+' (+'+Math.max(1,Math.round((secOf(r.ts)-CUT)/60))+' น.)';
+        });
+        if(L.length) extra='<div class="s2" style="margin-top:3px">'+esc(L.join(' • '))+'</div>';
+      }
+    }
+    return '<div class="row-c"><div class="info"><div class="nm">'+insTh(o.dk)+' — '+esc(o.ti)+'</div>'
+      +'<div class="s2">'+esc(o.de)+'</div>'+extra+'</div></div>';
+  }).join('');
+  document.getElementById('mdlBody').innerHTML=b;
+  document.getElementById('mdl').classList.add('show');
+};
+
 function renderIns(){
-  const iss=findIssues();
+  const RANGE=insRangeOn();
+  if(RANGE) insEnsure();
+  const iss= RANGE? (INS_LOAD? [] : insIssuesRange()) : findIssues();
   const crit=iss.filter(x=>x.lv==='crit').length, warn=iss.length-crit;
   let h=rangeBarHTML(false)
     +'<div class="kpis" style="grid-template-columns:repeat(3,1fr);">'
@@ -911,15 +1200,17 @@ function renderIns(){
     +'<div class="kpi '+(iss.length?'':'green')+'"><div class="v">'+DEPOTS.filter(d=>!iss.some(x=>x.dep===d)).length+'/'+DEPOTS.length+'</div><div class="l">สาขาไม่มีปัญหา</div></div>'
     +'</div>';
 
+  if(RANGE) h+='<div class="small" style="margin:-4px 0 12px">'+(INS_LOAD? '⏳ กำลังโหลดข้อมูลทั้งช่วง…' : '📊 สรุปเฉลี่ยจาก '+insActiveDays().length+' วันทำการในช่วงที่เลือก (ไม่นับวันอาทิตย์/วันหยุด) — เรียงตามความรุนแรงและความถี่ที่เกิดซ้ำ')+'</div>';
   /* ---- ภาพรวมปัญหา ---- */
   h+='<div class="card"><h2>🚨 ปัญหาที่ต้องแก้ <span class="small">เรียงตามความเร่งด่วน • แตะเพื่อเจาะดูและส่งคอมเมนต์</span></h2>';
-  h+= iss.length? iss.map(x=>'<div class="iss '+x.lv+'" onclick="window.__open(\''+x.dep+'\',\''+x.task+'\')">'
+  h+= iss.length? iss.map(x=>'<div class="iss '+x.lv+'" onclick="'+(x.gi!=null? 'window.__insOcc('+x.gi+')' : 'window.__open(\''+x.dep+'\',\''+x.task+'\')')+'">'
       +'<div class="ic">'+x.ic+'</div><div class="bd"><div class="ti">'+esc(x.ti)+'</div><div class="de">'+esc(x.de)+'</div></div>'
       +'<div class="go">ดู ›</div></div>').join('')
-    : '<div class="empty">✅ ไม่พบปัญหา ทุกสาขาทำได้ตามเป้า</div>';
+    : (RANGE&&INS_LOAD? '<div class="empty">⏳ กำลังโหลดข้อมูลทั้งช่วง…</div>' : '<div class="empty">✅ ไม่พบปัญหา ทุกสาขาทำได้ตามเป้า</div>');
   h+='</div>';
 
   /* ---- เจาะลึกรายขั้นตอน ---- */
+  if(RANGE){ h+=insStepsHTML(); } else {
   h+='<div class="card"><h2>🔍 เจาะลึกรายขั้นตอน <span class="small">แตะการ์ดเพื่อดูสาขาที่มีปัญหา</span></h2><div class="stepgrid">';
   TASKS.forEach(t=>{
     const per=DEPOTS.map(dep=>({dep,s:taskState(dep,t.k)}));
@@ -934,6 +1225,7 @@ function renderIns(){
       +'</div>';
   });
   h+='</div></div>';
+  }
 
   /* ---- ปัญหาซ้ำซาก 7 วัน ---- */
   h+='<div class="card"><h2>🔁 ปัญหาสะสมในช่วงที่เลือก <span class="small">'+rangeDays()+' วัน</span></h2>';

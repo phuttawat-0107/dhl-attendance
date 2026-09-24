@@ -501,14 +501,14 @@ function taskState(dep,k){
     if(!deps.length) return {st: p.inboundTs?'wait':'none'};
     const a=av(deps.map(secOf));
     const done=deps.length, tot=(+p.courierN)||ck.length||done;
-    return {st: done<tot? 'wait' : (a<T_DEP?'ok':'bad'), v:hmOf(a), s2:done+'/'+tot+' คน'};
+    return {st: done<tot? 'wait' : (a<T_DEP?'ok':'bad'), v:hmOf(a), s2:done+'/'+Math.max(tot,ck.length,done)+' คน'};
   }
   if(k==='fdel'){
     const fd=rp.map(x=>x.fdel).filter(Boolean);
     if(!fd.length) return {st: rp.some(x=>x.dep)?'wait':'none'};
     const a=av(fd.map(secOf));
     const done=fd.length, tot=(+p.courierN)||ck.length||done;
-    return {st: done<tot? 'wait' : (a<T_FDEL?'ok':'bad'), v:hmOf(a), s2:done+'/'+tot+' คน'};
+    return {st: done<tot? 'wait' : (a<T_FDEL?'ok':'bad'), v:hmOf(a), s2:done+'/'+Math.max(tot,ck.length,done)+' คน'};
   }
   return {st:'none'};
 }
@@ -1041,14 +1041,14 @@ function taskStateFor(dep,k,DK){
     if(!deps.length) return {st: p.inboundTs?'wait':'none'};
     const a=av(deps.map(secOf));
     const done=deps.length, tot=(+p.courierN)||ck.length||done;
-    return {st: done<tot? 'wait' : (a<T_DEP?'ok':'bad'), v:hmOf(a), s2:done+'/'+tot+' คน'};
+    return {st: done<tot? 'wait' : (a<T_DEP?'ok':'bad'), v:hmOf(a), s2:done+'/'+Math.max(tot,ck.length,done)+' คน'};
   }
   if(k==='fdel'){
     const fd=rp.map(x=>x.fdel).filter(Boolean);
     if(!fd.length) return {st: rp.some(x=>x.dep)?'wait':'none'};
     const a=av(fd.map(secOf));
     const done=fd.length, tot=(+p.courierN)||ck.length||done;
-    return {st: done<tot? 'wait' : (a<T_FDEL?'ok':'bad'), v:hmOf(a), s2:done+'/'+tot+' คน'};
+    return {st: done<tot? 'wait' : (a<T_FDEL?'ok':'bad'), v:hmOf(a), s2:done+'/'+Math.max(tot,ck.length,done)+' คน'};
   }
   return {st:'none'};
 }
@@ -1135,10 +1135,12 @@ function insIssuesRange(){
     g.occ.push({dk:dk,ti:x.ti,de:x.de,lv:x.lv});
   }); });
   const out=Object.keys(G).map(key=>{
-    const g=G[key], k=g.occ.length, freq=n? k/n : 0, b=insBuild(g.occ,n), last=g.occ[k-1];
-    const lv=(g.crit && (freq>=0.3 || n<=2))? 'crit' : 'warn';
-    return { dep:g.dep, task:g.task, ic:g.ic, lv:lv, freq:freq, k:k, n:n, occ:g.occ, ti:b.ti,
-      de:'เกิดขึ้น '+k+' จาก '+n+' วัน ('+Math.round(freq*100)+'%)'+(b.parts.length? ' • '+b.parts.join(' • ') : '')+' • ล่าสุด '+insTh(last.dk) };
+    const g=G[key], k=g.occ.length;
+    const nd=g.occ.some(o=>!docOf(g.dep,o.dk))? n : (days.filter(dk=>docOf(g.dep,dk)).length||n);
+    const freq=nd? k/nd : 0, b=insBuild(g.occ,nd), last=g.occ[k-1];
+    const lv=(g.crit && (freq>=0.3 || nd<=2))? 'crit' : 'warn';
+    return { dep:g.dep, task:g.task, ic:g.ic, lv:lv, freq:freq, k:k, n:nd, occ:g.occ, ti:b.ti,
+      de:'เกิดขึ้น '+k+' จาก '+nd+' วัน ('+Math.round(freq*100)+'%)'+(b.parts.length? ' • '+b.parts.join(' • ') : '')+' • ล่าสุด '+insTh(last.dk) };
   });
   out.sort((a,b)=>((a.lv===b.lv)?0:(a.lv==='crit'?-1:1)) || (b.freq-a.freq) || (b.k-a.k));
   out.forEach((x,i)=>{ x.gi=i; });
@@ -1223,7 +1225,7 @@ function renderIns(){
     +'<div class="kpi '+(iss.length?'':'green')+'"><div class="v">'+DEPOTS.filter(d=>!iss.some(x=>x.dep===d)).length+'/'+DEPOTS.length+'</div><div class="l">สาขาไม่มีปัญหา</div></div>'
     +'</div>';
 
-  if(RANGE) h+='<div class="small" style="margin:-4px 0 12px">'+(INS_LOAD? '⏳ กำลังโหลดข้อมูลทั้งช่วง…' : '📊 สรุปเฉลี่ยจาก '+insActiveDays().length+' วันทำการในช่วงที่เลือก (ไม่นับวันอาทิตย์/วันหยุด) — เรียงตามความรุนแรงและความถี่ที่เกิดซ้ำ')+'</div>';
+  if(RANGE) h+='<div class="small" style="margin:-4px 0 12px">'+(INS_LOAD? '⏳ กำลังโหลดข้อมูลทั้งช่วง…' : '📊 สรุปเฉลี่ยจาก '+insActiveDays().length+' วันทำการในช่วงที่เลือก (ไม่นับวันอาทิตย์/วันหยุด • แต่ละสาขาเฉลี่ยจากวันที่สาขานั้นส่งข้อมูลจริง) — เรียงตามความรุนแรงและความถี่ที่เกิดซ้ำ')+'</div>';
   /* ---- ภาพรวมปัญหา ---- */
   h+='<div class="card"><h2>🚨 ปัญหาที่ต้องแก้ <span class="small">'+(RANGE? 'เรียงตามความรุนแรงและความถี่ • แตะเพื่อดูรายวันและรายชื่อ' : 'เรียงตามความเร่งด่วน • แตะเพื่อเจาะดูและส่งคอมเมนต์')+'</span></h2>';
   h+= iss.length? iss.map(x=>'<div class="iss '+x.lv+'" onclick="'+(x.gi!=null? 'window.__insOcc('+x.gi+')' : 'window.__open(\''+x.dep+'\',\''+x.task+'\')')+'">'
@@ -1306,7 +1308,7 @@ const METRICS=[
   {k:'route', l:'PPH Route prep',  unit:'n', tgt:165,  fmt:v=>Math.round(v),      hi:true},
   {k:'dep',   l:'Departure เฉลี่ย', unit:'t', tgt:T_DEP,fmt:v=>hmOf(v),           hi:false},
   {k:'fdel',  l:'First Del เฉลี่ย', unit:'t', tgt:T_FDEL,fmt:v=>hmOf(v),          hi:false},
-  {k:'late',  l:'จำนวนคนมาสาย',    unit:'n', tgt:0,    fmt:v=>Math.round(v)+' คน',hi:false}
+  {k:'late',  l:'จำนวนคนมาสาย',    unit:'n', tgt:0,    fmt:v=>(Math.round(v*10)/10)+' คน',hi:false}
 ];
 function metricOf(d,k){
   if(!d) return null;
@@ -1562,13 +1564,15 @@ const IMET=[
   {k:'tgt',    l:'Task ตามเป้า %',  fmt:v=>Math.round(v)+'%',   hi:true,  tgt:80,    unit:'p'}
 ];
 /* คืน % พัฒนาการ (+ = ดีขึ้น) */
+/* ช่องว่างจากเป้า (0 = ถึงเป้าแล้ว) — นิยามเดียวกันทุกตัวชี้วัด (2026.09.24) */
+function impGap(m,v){ return m.hi? Math.max(0,m.tgt-v) : Math.max(0,v-m.tgt); }
+function impState(m,a,b){ if(a==null||b==null||isNaN(a)||isNaN(b)) return 'na'; const A=impGap(m,a), B=impGap(m,b); if(A<=0&&B<=0) return 'keep'; if(A>0&&B<=0) return 'reach'; if(A<=0&&B>0) return 'lost'; return 'gap'; }
+function impTxt(m,a,b,p){ const st=impState(m,a,b); if(st==='na') return '—'; if(st==='keep') return '✓ ในเป้า'; if(st==='reach') return '✓ ถึงเป้า'; if(st==='lost') return '✗ หลุดเป้า'; return (p>0?'+':'')+Math.round(clamp(p))+'%'; }
+/* คืน % ปิดช่องว่างถึงเป้า (+ = ดีขึ้น, 100 = ถึงเป้า, null = อยู่ในเป้าทั้ง 2 ช่วง) */
 function impPct(m,a,b){
   if(a==null||b==null||isNaN(a)||isNaN(b)) return null;
-  if(m.hi){ if(a<=0) return b>0?100:0; return (b-a)/Math.abs(a)*100; }
-  if(m.unit==='m'){ if(a<=0) return b<=0?0:-100; return (a-b)/a*100; }
-  /* เวลา: วัดจาก "นาทีที่เกินเป้า" */
-  const A=Math.max(0,a-m.tgt), B=Math.max(0,b-m.tgt);
-  if(A<=0) return B<=0? 0 : -100;
+  const A=impGap(m,a), B=impGap(m,b);
+  if(A<=0) return B<=0? null : -100;
   return (A-B)/A*100;
 }
 const clamp=v=>Math.max(-100,Math.min(100,v));
@@ -1643,17 +1647,17 @@ function renderData(){
         +'<div class="dp">'+r.dep+'</div><div class="bd">'
         +'<div class="t1">'+(up?'ดีขึ้น':(dn?'แย่ลง':'ทรงตัว'))
         +' • '+r.a.days+' วัน → '+r.c.days+' วัน</div>'
-        +'<div class="t2">'+(best&&best.p>1?'👍 ดีขึ้นสุด: '+best.m.l+' +'+Math.round(clamp(best.p))+'%':'')
-        +(worst&&worst!==best&&worst.p<-1?' • ⚠️ แย่ลง: '+worst.m.l+' '+Math.round(clamp(worst.p))+'%':'')
+        +'<div class="t2">'+(best&&best.p>1?'👍 ดีขึ้นสุด: '+best.m.l+' '+impTxt(best.m,best.va,best.vb,best.p):'')
+        +(worst&&worst!==best&&worst.p<-1?' • ⚠️ แย่ลง: '+worst.m.l+' '+impTxt(worst.m,worst.va,worst.vb,worst.p):'')
         +(best&&best.p<=1&&(!worst||worst.p>=-1)?'ไม่มีการเปลี่ยนแปลงชัดเจน':'')+'</div></div>'
         +pcHTML(r.score)+'</div>';
     });
     h+='</div>';
     /* ตารางละเอียด */
     if(!DLOAD && rows.length){
-      h+='<div class="card"><h2>📊 รายละเอียดตัวชี้วัด <span class="small">ก่อน → หลัง • % คือพัฒนาการ</span></h2>'
+      h+='<div class="card"><h2>📊 รายละเอียดตัวชี้วัด <span class="small">ก่อน → หลัง • % = ปิดช่องว่างจากเป้าได้เท่าไร (100% = ถึงเป้า • ติดลบ = ห่างเป้ามากขึ้น)</span></h2>'
         +'<div class="dwrap"><table class="dtbl"><thead><tr><th class="l">สาขา / ตัวชี้วัด</th>'
-        +'<th>ช่วงก่อน</th><th>ช่วงปัจจุบัน</th><th>เปลี่ยนแปลง</th><th>% พัฒนาการ</th></tr></thead><tbody>';
+        +'<th>ช่วงก่อน</th><th>ช่วงปัจจุบัน</th><th>เปลี่ยนแปลง</th><th>% ปิดช่องว่างถึงเป้า</th></tr></thead><tbody>';
       rows.forEach(r=>{
         h+='<tr><td class="l" colspan="5" style="background:#1a1a1a;color:var(--y);border-radius:12px;font-weight:900;">'
           +r.dep+' &nbsp;<span style="font-weight:600;font-size:11px;color:#a09884;">รวม '+(r.score==null?'—':(r.score>0?'+':'')+Math.round(r.score)+'%')+'</span></td></tr>';
@@ -1670,7 +1674,7 @@ function renderData(){
             +'<td class="'+(d.vb==null?'n':(d.m.hi? (d.vb>=d.m.tgt?'g':'b') : (d.vb<=d.m.tgt?'g':'b')))+'">'
             +(d.vb==null?'—':d.m.fmt(d.vb))+'</td>'
             +'<td class="'+(good?'g':(bad?'b':'n'))+'">'+diff+'</td>'
-            +'<td class="'+(good?'g':(bad?'b':'n'))+'">'+(d.p==null?'—':(d.p>0?'+':'')+Math.round(clamp(d.p))+'%')+'</td></tr>';
+            +'<td class="'+(good?'g':(bad?'b':'n'))+'">'+impTxt(d.m,d.va,d.vb,d.p)+'</td></tr>';
         });
         h+='<tr class="sep"><td colspan="5"></td></tr>';
       });
@@ -1698,7 +1702,7 @@ window.__impD=dep=>{
     x+='<div class="row-c"><div class="info"><div class="nm">'+m.l+'</div>'
       +'<div class="sub2">'+(a[m.k]==null?'—':m.fmt(a[m.k]))+' → '+(c[m.k]==null?'—':m.fmt(c[m.k]))+'</div></div>'
       +'<span class="chip '+(p!=null&&p>1?'ok':(p!=null&&p<-1?'no':''))+'">'
-      +(p==null?'—':(p>0?'+':'')+Math.round(clamp(p))+'%')+'</span></div>';
+      +impTxt(m,a[m.k],c[m.k],p)+'</span></div>';
   });
   document.getElementById('mdlBody').innerHTML=x
     +'<div style="margin-top:14px;"><button class="btn btn-o" style="width:100%;" '
@@ -1833,7 +1837,7 @@ window.__open=async (dep,task)=>{
     if(task==='fib'&&p.inboundTs){
       const fs=Object.values(p.rp||{}).map(x=>x.fs).filter(Boolean);
       if(fs.length) b+='<div class="row-c"><div class="info"><div class="nm">Avg First Scan '+hmOf(av(fs.map(secOf)))+'</div>'
-        +'<div class="sub2">กด FS แล้ว '+fs.length+'/'+((+p.courierN)||fs.length)+' คน</div></div></div>';
+        +'<div class="sub2">กด FS แล้ว '+fs.length+'/'+(Math.max(Object.keys((d&&d.checkins)||{}).length,fs.length)||(+p.courierN)||fs.length)+' คน</div></div></div>';
     }
   }
   else {

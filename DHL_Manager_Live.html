@@ -868,7 +868,7 @@ import('./dhl-ontime.js?v=6').then(m=>{
 }).catch(e=>console.warn('ontime module failed', e));
 
 /* 📷 Photo history module (Manager only) */
-import('./dhl-photos.js?v=3').then(m=>{
+import('./dhl-photos.js?v=4').then(m=>{
   m.initPhotos({ db, doc, getDoc, esc, secOf,
     get:()=>({ DEPOTS, DATA, META, DATE }) });
   console.log('photos module', m.PH_VER);

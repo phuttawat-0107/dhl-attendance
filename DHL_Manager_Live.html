@@ -1083,39 +1083,62 @@ async function insEnsure(){
   INS_LOAD=false;
   if(MTAB==='ins') renderIns();
 }
-function insNorm(s){ return String(s).replace(/\(\d{1,2}:\d{2}\)/g,'(T)').replace(/\d+(?:\.\d+)?/g,'#'); }
+function insTok(s){
+  const re=/(\d{1,2}):(\d{2})|(\d+)\/(\d+)|(\d+(?:\.\d+)?)/g, vals=[];
+  let m, tpl='', last=0;
+  while((m=re.exec(s))){
+    tpl+=s.slice(last,m.index)+'\u0001'+vals.length+'\u0002'; last=re.lastIndex;
+    if(m[1]!=null) vals.push({t:'time', v:(+m[1])*60+(+m[2]), raw:m[0]});
+    else if(m[3]!=null) vals.push({t:'frac', a:+m[3], b:+m[4], raw:m[0]});
+    else vals.push({t:'num', v:+m[5], raw:m[0]});
+  }
+  return {tpl:tpl+s.slice(last), vals:vals};
+}
+function insBuild(occ,n){
+  const toks=occ.map(o=>insTok(o.ti)), pieces=toks[0].tpl.split(/\u0001\d+\u0002/);
+  const ns=toks[0].vals.length, parts=[]; let ti=pieces[0];
+  const r1=x=>String(Math.round(x*10)/10);
+  for(let i=0;i<ns;i++){
+    const col=toks.map(t=>t.vals[i]); let next=pieces[i+1], fill;
+    const um0=(col[0].t==='num')? /^\s*(คน|ครั้ง|ราย|ชิ้น|รายการ)/.exec(next||'') : null;
+    if(!um0 && col.every(x=>x.raw===col[0].raw)){ fill=col[0].raw; }
+    else if(col[0].t==='time'){
+      const vs=col.map(x=>x.v), avg=vs.reduce((a,b)=>a+b,0)/vs.length, mx=Math.max.apply(null,vs);
+      fill='เฉลี่ย '+insHM(avg);
+      parts.push('ช้าสุด '+insHM(mx)+' ('+insTh(occ[vs.indexOf(mx)].dk)+')');
+    } else if(col[0].t==='frac'){
+      const a=col.reduce((s,x)=>s+x.a,0)/col.length, b=col.reduce((s,x)=>s+x.b,0)/col.length;
+      fill='เฉลี่ย '+r1(a)+'/'+r1(b);
+    } else {
+      const vs=col.map(x=>x.v), um=um0;
+      if(um){
+        const sum=vs.reduce((a,b)=>a+b,0), avg=n? sum/n : 0, mx=Math.max.apply(null,vs);
+        fill='เฉลี่ย '+r1(avg)+' '+um[1]+'/วัน'; next=next.slice(um[0].length);
+        parts.push('รวมทั้งช่วง '+sum+' '+um[1]);
+        parts.push('สูงสุด '+mx+' '+um[1]+' ('+insTh(occ[vs.indexOf(mx)].dk)+')');
+      } else {
+        const avg=vs.reduce((a,b)=>a+b,0)/vs.length, mn=Math.min.apply(null,vs), mx=Math.max.apply(null,vs);
+        fill='เฉลี่ย '+r1(avg);
+        parts.push('ช่วง '+mn+'–'+mx);
+      }
+    }
+    ti+=fill+(next||'');
+  }
+  return {ti:ti.replace(/\s{2,}/g,' ').trim(), parts:parts};
+}
 function insIssuesRange(){
   const days=insActiveDays(), n=days.length, G={};
   days.forEach(dk=>{ findIssuesFor(dk).forEach(x=>{
-    const tpl=insNorm(x.ti), key=x.dep+'|'+x.task+'|'+tpl;
-    const g=G[key]||(G[key]={dep:x.dep,task:x.task,ic:x.ic,tpl:tpl,occ:[],crit:0});
+    const key=x.dep+'|'+x.task+'|'+insTok(x.ti).tpl;
+    const g=G[key]||(G[key]={dep:x.dep,task:x.task,ic:x.ic,occ:[],crit:0});
     if(x.lv==='crit') g.crit++;
     g.occ.push({dk:dk,ti:x.ti,de:x.de,lv:x.lv});
   }); });
-  const numOf=o=>{ const m=o.ti.replace(/\(\d{1,2}:\d{2}\)/g,'').match(/\d+(?:\.\d+)?/); return m? +m[0] : null; };
-  const timOf=o=>{ const m=o.ti.match(/\((\d{1,2}):(\d{2})\)/); return m? (+m[1])*60+(+m[2]) : null; };
   const out=Object.keys(G).map(key=>{
-    const g=G[key], k=g.occ.length, freq=n? k/n : 0, parts=[];
-    let ti=g.tpl;
-    const nv=g.occ.map(numOf), tv=g.occ.map(timOf);
-    const nums=nv.filter(v=>v!=null), tims=tv.filter(v=>v!=null);
-    if(nums.length){
-      const sum=nums.reduce((a,b)=>a+b,0), avg=n? sum/n : 0, mx=Math.max.apply(null,nums);
-      const av=String(Math.round(avg*10)/10);
-      ti=ti.replace(/#\s*(\S+)/, (m,u)=>'เฉลี่ย '+av+' '+u+'/วัน').replace(/#/, av);
-      parts.push('รวมทั้งช่วง '+sum);
-      parts.push('สูงสุด '+mx+' ('+insTh(g.occ[nv.indexOf(mx)].dk)+')');
-    }
-    if(tims.length){
-      const avg=tims.reduce((a,b)=>a+b,0)/tims.length, mx=Math.max.apply(null,tims);
-      ti=ti.replace('(T)','(เฉลี่ย '+insHM(avg)+')');
-      parts.push('ช้าสุด '+insHM(mx)+' ('+insTh(g.occ[tv.indexOf(mx)].dk)+')');
-    }
-    ti=ti.replace(/#/g,'').replace('(T)','').replace(/\s{2,}/g,' ').trim();
-    const last=g.occ[g.occ.length-1];
+    const g=G[key], k=g.occ.length, freq=n? k/n : 0, b=insBuild(g.occ,n), last=g.occ[k-1];
     const lv=(g.crit && (freq>=0.3 || n<=2))? 'crit' : 'warn';
-    return { dep:g.dep, task:g.task, ic:g.ic, lv:lv, freq:freq, k:k, n:n, occ:g.occ, ti:ti,
-      de:'เกิดขึ้น '+k+' จาก '+n+' วัน ('+Math.round(freq*100)+'%)'+(parts.length? ' • '+parts.join(' • ') : '')+' • ล่าสุด '+insTh(last.dk) };
+    return { dep:g.dep, task:g.task, ic:g.ic, lv:lv, freq:freq, k:k, n:n, occ:g.occ, ti:b.ti,
+      de:'เกิดขึ้น '+k+' จาก '+n+' วัน ('+Math.round(freq*100)+'%)'+(b.parts.length? ' • '+b.parts.join(' • ') : '')+' • ล่าสุด '+insTh(last.dk) };
   });
   out.sort((a,b)=>((a.lv===b.lv)?0:(a.lv==='crit'?-1:1)) || (b.freq-a.freq) || (b.k-a.k));
   out.forEach((x,i)=>{ x.gi=i; });

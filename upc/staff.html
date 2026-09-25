@@ -247,6 +247,7 @@ async function doLogin(){
   try { await fb.signIn(depotEmail(dep, p.ver||1), pin); }
   catch(e){ $('dsPin').value=''; return fail(e.code==='auth/network-request-failed' ? 'เชื่อมต่อไม่ได้ — ตรวจสอบอินเทอร์เน็ต' : e.code==='auth/too-many-requests' ? 'ลองผิดหลายครั้ง — รอสักครู่แล้วลองใหม่' : 'PIN ไม่ถูกต้อง'); }
   lsSet('dsDepot', dep); lsSet('dsStaff', staff);
+  err.textContent = ''; $('dsPin').value = '';
   $('dsLogin').classList.remove('show');
   afterLogin();
 }

@@ -377,6 +377,7 @@ async function createDepot(code, name, region, province, pin, staff){
   if (staff && staff.length) await fb.set('pubstaff/'+code, { names: staff });
   PUB[code] = { ver: 1, name };
   if (!SCOPE.includes(code)) { SCOPE.push(code); SCOPE.sort(); watchDep(code); TUNS.push(fb.listen(`depots/${code}/days/${TKEY}`, d => { TODAY[code] = d || {}; sched(); })); }
+  $('teamTag').textContent = 'UPC · '+ME.name+' · '+SCOPE.length+' สาขา';
 }
 window.__aDepSave = async code => {
   const err = t => { $('dErr').textContent = t; $('dGo').disabled = false; };

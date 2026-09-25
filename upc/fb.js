@@ -5,7 +5,7 @@
                  ใช้ทดสอบระบบ และใช้ฝึก UPC Manager / Staff ก่อนใช้งานจริง
    Design By Winnie
    =================================================================== */
-export const FB_VER = '2026.09.25-b';
+export const FB_VER = '2026.09.25-c';
 export const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* ⚙️ ค่าเชื่อมต่อโปรเจกต์ Firebase ใหม่ของ UPC — วางค่าจาก Firebase Console ตรงนี้ */
@@ -93,7 +93,7 @@ async function makeReal() {
 
 /* ============================ โหมด Demo ============================ */
 function makeDemo() {
-  const KEY = 'upcDemoDB_v2', SES = 'upcDemoUid';
+  const KEY = 'upcDemoDB_v3', SES = 'upcDemoUid';
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('upc-demo') : null;
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } };
   let DB = load();
@@ -217,7 +217,11 @@ function makeDemo() {
       { code: 'CNX1', name: 'เชียงใหม่ 1', region: 'เหนือ', province: 'เชียงใหม่', pin: '111111' },
       { code: 'CNX2', name: 'เชียงใหม่ 2', region: 'เหนือ', province: 'เชียงใหม่', pin: '222222' },
       { code: 'LPG1', name: 'ลำปาง', region: 'เหนือ', province: 'ลำปาง', pin: '333333' },
-      { code: 'KKN1', name: 'ขอนแก่น', region: 'อีสาน', province: 'ขอนแก่น', pin: '444444' }
+      { code: 'KKN1', name: 'ขอนแก่น', region: 'อีสาน', province: 'ขอนแก่น', pin: '444444' },
+      { code: 'AYA1', name: 'อยุธยา', region: 'กลาง', province: 'พระนครศรีอยุธยา', pin: '555555' },
+      { code: 'CBI1', name: 'ชลบุรี', region: 'ตะวันออก', province: 'ชลบุรี', pin: '666666' },
+      { code: 'HDY1', name: 'หาดใหญ่', region: 'ใต้', province: 'สงขลา', pin: '777777' },
+      { code: 'UDN1', name: 'อุดรธานี', region: 'อีสาน', province: 'อุดรธานี', pin: '888888' }
     ];
     const vendors = ['เวนเดอร์ A', 'เวนเดอร์ B', 'เวนเดอร์ C'];
     const first = ['สมชาย', 'สมศักดิ์', 'วิชัย', 'ประเสริฐ', 'อนุชา', 'ธนพล', 'กิตติ', 'สุรชัย', 'ชัยวัฒน์', 'ณัฐพล', 'ปิยะ', 'เอกชัย', 'วีระ', 'ศักดิ์ดา'];
@@ -250,10 +254,18 @@ function makeDemo() {
       db.docs['pubstaff/' + d.code] = { names: ['หัวหน้า ' + d.code, 'ผู้ช่วย ' + d.code] };
     });
     db.docs['pub/depots'] = pub;
-    const m1 = addUser(mgrEmail('123456'), mgrPw('123456'));
-    db.docs['managers/' + m1] = { name: 'UPC ภาคเหนือ (ตัวอย่าง)', role: 'upc', depots: ['CNX1', 'CNX2', 'LPG1'] };
-    const m2 = addUser(mgrEmail('654321'), mgrPw('654321'));
-    db.docs['managers/' + m2] = { name: 'UPC อีสาน (ตัวอย่าง)', role: 'upc', depots: ['KKN1'] };
+    /* UPC Manager แต่ละภาค (รายชื่อจริง — PIN ในโหมดทดลองเท่านั้น) */
+    const UPC = [
+      ['K.Kobkiat Doungthong','กลาง','110001'], ['K.Prasitchai Krobsuan','กลาง','110002'],
+      ['K.Phongthep Sendi','ตะวันออก','120001'], ['K.Suttipong Kongchiyapoom','ตะวันออก','120002'],
+      ['K.Khanaphot Chaiwong','เหนือ','130001'], ['K.Piyaphan Chosinmingson','เหนือ','130002'],
+      ['K.Aummarin Auppakarat','อีสาน','140001'], ['K.Sant Pimma','อีสาน','140002'], ['K.Suphasil Nanthong','อีสาน','140003'], ['K.Wanchai Prukrunggroj','อีสาน','140004'],
+      ['K.Kittisak Chanakul','ใต้','150001'], ['K.Srichon Chaiyasad','ใต้','150002']
+    ];
+    UPC.forEach(([name, region, pin]) => {
+      const id = addUser(mgrEmail(pin), mgrPw(pin));
+      db.docs['managers/' + id] = { name, role: 'upc', region, depots: depots.filter(d => d.region === region).map(d => d.code) };
+    });
     return db;
   }
 }

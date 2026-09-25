@@ -194,6 +194,7 @@ function kicked(msg){ stop(); fb.signOut(); renderLogin(msg || 'PIN ของส
 /* ---------------- หน้าหลัก ---------------- */
 function start(){
   CODE = localStorage.getItem('upc_code'); ME = localStorage.getItem('upc_name');
+  TAB = 'list'; FILTER = 'all'; Q = '';
   app.innerHTML = shell();
   UNSUB.push(fb.listen('depots/'+CODE, (d, m) => {
     if (m && m.error) return kicked(m.error.code==='permission-denied' ? 'บัญชีนี้ไม่มีสิทธิ์แล้ว (PIN อาจถูกรีเซ็ต) — เข้าสู่ระบบใหม่' : 'เชื่อมต่อไม่ได้: '+m.error.code);

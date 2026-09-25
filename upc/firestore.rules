@@ -1,0 +1,75 @@
+rules_version = '2';
+// ===================================================================
+//  DHL UPC Attendance Lite — กฎความปลอดภัย Firestore
+//  วางทั้งไฟล์นี้ใน Firebase Console → Firestore Database → Rules → Publish
+//
+//  หลักการ
+//   • สาขา  : ล็อกอินด้วยบัญชีของสาขา → อ่าน/เขียนได้เฉพาะสาขาตัวเอง
+//   • Manager: อ่านได้เฉพาะสาขาที่อยู่ในรายชื่อของตัวเอง (แก้ข้อมูลเช็คอินไม่ได้)
+//   • Admin  : จัดการสาขา / Manager / ตั้งค่าได้ทั้งหมด
+//   • บัญชีที่ไม่ได้ผูกกับสาขาหรือ Manager → อ่านอะไรไม่ได้เลย
+//   • รีเซ็ต PIN สาขา = สร้างบัญชีใหม่แล้วเปลี่ยน authUid → บัญชีเก่าถูกตัดสิทธิ์ทันที
+// ===================================================================
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function signedIn()   { return request.auth != null; }
+    function mgr()        { return get(/databases/$(db)/documents/managers/$(request.auth.uid)).data; }
+    function hasMgr()     { return signedIn() && exists(/databases/$(db)/documents/managers/$(request.auth.uid)); }
+    function isAdmin()    { return hasMgr() && mgr().role == 'admin'; }
+    function isMgrOf(dep) { return hasMgr() && (mgr().role == 'admin' || dep in mgr().depots); }
+    function isDepot(dep) {
+      return signedIn()
+        && exists(/databases/$(db)/documents/depots/$(dep))
+        && get(/databases/$(db)/documents/depots/$(dep)).data.authUid == request.auth.uid;
+    }
+
+    // ข้อมูลสาธารณะที่ไม่ลับ: รายชื่อรหัสสาขา + รุ่นบัญชี (ใช้ประกอบอีเมลตอนล็อกอิน)
+    match /pub/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ตั้งค่าแอป (เวอร์ชันบังคับอัปเดต, เวลาเข้างาน)
+    match /config/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ล็อกผู้ดูแลคนแรก — สร้างได้ครั้งเดียวตลอดอายุระบบ
+    match /config/adminLock {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /managers/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow update, delete: if isAdmin();
+      // Admin สร้าง Manager ได้ / หรือคนแรกสุดที่ถือล็อกผู้ดูแลสร้างตัวเองเป็น admin
+      allow create: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.role == 'admin'
+            && get(/databases/$(db)/documents/config/adminLock).data.uid == request.auth.uid);
+    }
+
+    match /depots/{dep} {
+      allow read: if isDepot(dep) || isMgrOf(dep);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isDepot(dep) && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['roster', 'staffNames', 'updatedAt', 'lastPurge']));
+
+      match /days/{day} {
+        allow read: if isDepot(dep) || isMgrOf(dep);
+        allow write: if isDepot(dep) || isAdmin();
+      }
+
+      match /photos/{pid} {
+        allow read: if isDepot(dep) || isMgrOf(dep);
+        allow create, update: if isDepot(dep);
+        allow delete: if isDepot(dep) || isAdmin();
+      }
+    }
+  }
+}

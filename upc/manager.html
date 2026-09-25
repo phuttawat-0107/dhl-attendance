@@ -197,7 +197,7 @@ window.__logout = async () => { if (!confirm('ออกจากระบบ?'))
 function stopAll(){ UNS.forEach(u=>u&&u()); UNS=[]; TUNS.forEach(u=>u&&u()); TUNS=[]; DEPS={}; TODAY={}; }
 
 function startMgr(){
-  stopAll();
+  stopAll(); TAB = 'live'; REG = ''; QQ = ''; OT = null; HD = null; HDEP = null;
   SCOPE = (ME.role==='admin' ? Object.keys(PUB) : (ME.depots||[])).slice().sort();
   app.innerHTML = `${DEMO?'<div class="demoRib">🧪 โหมดทดลอง — ข้อมูลไม่ใช่ของจริง</div>':''}<div id="upd"></div>
   <header><div class="hrow"><span class="dhl">DHL</span><div class="who"><b>UPC Manager</b><small>👤 ${esc(ME.name)}${ME.role==='admin'?' · ผู้ดูแลระบบ':''} · ${SCOPE.length} สาขา</small></div>
@@ -227,6 +227,7 @@ function checkVer(){
 const TABS = [['live','🟢 วันนี้'],['hist','📷 ย้อนหลัง'],['ot','⏱ On-time'],['admin','⚙️ แอดมิน']];
 window.__tab = t => { TAB = t; render(); scrollTo(0,0); };
 function render(){
+  if (TAB==='admin' && ME.role!=='admin') TAB = 'live';
   $('#tabs').innerHTML = TABS.filter(t => t[0]!=='admin' || ME.role==='admin').map(t=>`<button class="${TAB===t[0]?'on':''}" onclick="__tab('${t[0]}')">${t[1]}</button>`).join('');
   if (TAB==='live') renderLive(); else if (TAB==='hist') renderHist(); else if (TAB==='ot') renderOt(); else renderAdmin();
 }

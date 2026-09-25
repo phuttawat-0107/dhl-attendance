@@ -146,27 +146,34 @@ function aggPeople(deps,dks){
     ontime: o.days? (o.days-o.late)/o.days*100 : null, lateAvg: o.days? o.lateMin/o.days : null, arrA: av(o.arr) }));
 }
 
-/* ---- % พัฒนาการ (สูตรเดียวกับหน้า Manager เดิม: ปิดช่องว่างถึงเป้า) ---- */
+/* ---- % พัฒนาการ: สเกลคงที่ + ช่วงทรงตัว (deadband) ----
+   เปลี่ยนน้อยกว่า db = "ทรงตัว" (0%) • เปลี่ยนถึง full = ±100%
+   ไม่ใช้ % ของฐาน → ค่าฐานน้อยๆ ไม่ทำให้ % พุ่ง และตัวชี้วัดเดียวไม่ลากคะแนนรวม            */
 const IMET=[
-  {k:'ontime',    l:'Ontime %',          fmt:v=>Math.round(v)+'%',     hi:true,  tgt:95,  unit:'p'},
-  {k:'latePerDay',l:'คนสาย / วัน',        fmt:v=>m1(v)+' คน',          hi:false, tgt:0,   unit:'n'},
-  {k:'lateAvg',   l:'นาทีสาย / คน',       fmt:v=>m1(v)+' น.',          hi:false, tgt:0,   unit:'m'},
-  {k:'arr',       l:'เวลาเข้างานเฉลี่ย',    fmt:hmOf,                    hi:false, tgt:CUT, unit:'t'},
-  {k:'abRate',    l:'ขาด / ลา %',         fmt:v=>m1(v)+'%',            hi:false, tgt:5,   unit:'p'}
+  {k:'ontime',    l:'Ontime %',          fmt:v=>Math.round(v)+'%', hi:true,  tgt:95,  unit:'p', db:2,   full:10,  du:'จุด'},
+  {k:'latePerDay',l:'คนสาย / วัน',        fmt:v=>m1(v)+' คน',      hi:false, tgt:0,   unit:'n', db:0.5, full:3,   du:'คน'},
+  {k:'lateAvg',   l:'นาทีสาย / คน',       fmt:v=>m1(v)+' น.',      hi:false, tgt:0,   unit:'m', db:1,   full:10,  du:'น.'},
+  {k:'arr',       l:'เวลาเข้างานเฉลี่ย',    fmt:hmOf,                hi:false, tgt:CUT, unit:'t', db:180, full:900, du:'นาที'},
+  {k:'abRate',    l:'ขาด / ลา %',         fmt:v=>m1(v)+'%',        hi:false, tgt:5,   unit:'p', db:2,   full:10,  du:'จุด'}
 ];
-function impGap(m,v){ return m.hi? Math.max(0,m.tgt-v) : Math.max(0,v-m.tgt); }
+const inT=(m,v)=> m.hi? v>=m.tgt : v<=m.tgt;
 function impState(m,a,b){
   if(a==null||b==null||isNaN(a)||isNaN(b)) return 'na';
-  const A=impGap(m,a), B=impGap(m,b);
-  if(A<=0&&B<=0) return 'keep'; if(A>0&&B<=0) return 'reach'; if(A<=0&&B>0) return 'lost'; return 'gap';
+  const A=inT(m,a), B=inT(m,b);
+  if(A&&B) return 'keep'; if(!A&&B) return 'reach'; if(A&&!B) return 'lost'; return 'gap';
 }
-function impPct(m,a,b){ const st=impState(m,a,b); if(st==='na'||st==='keep') return null; const A=impGap(m,a), B=impGap(m,b); if(A<=0) return -100; return (A-B)/A*100; }
+function impPct(m,a,b){
+  if(a==null||b==null||isNaN(a)||isNaN(b)) return null;
+  const d = m.hi? b-a : a-b, ad=Math.abs(d);
+  if(ad<=m.db) return 0;
+  return Math.sign(d)*Math.min(100,(ad-m.db)/(m.full-m.db)*100);
+}
 const clamp=v=>Math.max(-100,Math.min(100,v));
 function impTxt(m,a,b){ const st=impState(m,a,b), p=impPct(m,a,b);
-  if(st==='na') return '—'; if(st==='keep') return '✓ ในเป้า'; if(st==='reach') return '✓ ถึงเป้า'; if(st==='lost') return '✗ หลุดเป้า';
-  return (p>0?'+':'')+Math.round(clamp(p))+'%'; }
-function impCls(m,a,b){ const st=impState(m,a,b), p=impPct(m,a,b);
-  if(st==='keep'||st==='reach') return 'g'; if(st==='lost') return 'b'; if(p==null) return 'n'; return p>1?'g':(p<-1?'b':'n'); }
+  if(st==='na') return '—';
+  const tag= st==='reach'?' ✓ ถึงเป้า' : st==='lost'?' ✗ หลุดเป้า' : st==='keep'?' ✓ ในเป้า' : '';
+  return (p===0?'• ทรงตัว':(p>0?'+':'−')+Math.round(Math.abs(p))+'%')+tag; }
+function impCls(m,a,b){ const p=impPct(m,a,b); if(p==null) return 'n'; return p>0?'g':(p<0?'b':'n'); }
 function pcHTML(p){ if(p==null) return '<span class="pc eq">—</span>'; const c=p>1?'up':(p<-1?'dn':'eq'), s=p>1?'▲':(p<-1?'▼':'•'); return '<span class="pc '+c+'">'+s+' '+Math.abs(Math.round(p))+'%</span>'; }
 
 /* ================= 📈 อินไซต์ ================= */
@@ -379,7 +386,7 @@ function cmpRows(){
     if(!a||!c) return null;
     const det=IMET.map(m=>({m, va:a[m.k], vb:c[m.k], p:impPct(m,a[m.k],c[m.k])}));
     const ps=det.map(d=>d.p).filter(p=>p!=null).map(clamp);
-    return {dep,a,c,det,score: ps.length? av(ps) : null};
+    return {dep,a,c,det,nA:A.length,nB:B.length,score: ps.length? av(ps) : null};
   }).filter(Boolean);
 }
 function renderData(){
@@ -414,21 +421,24 @@ function renderData(){
     else rows.forEach(r=>{
       const up=r.score>1, dn=r.score<-1;
       const lost=r.det.filter(d=>impState(d.m,d.va,d.vb)==='lost'), reach=r.det.filter(d=>impState(d.m,d.va,d.vb)==='reach');
-      const gp=r.det.filter(d=>impState(d.m,d.va,d.vb)==='gap');
-      const best=gp.slice().sort((a,b)=>b.p-a.p)[0], worst=gp.slice().sort((a,b)=>a.p-b.p)[0];
-      const t2=[]; if(reach.length) t2.push('✓ ถึงเป้า: '+reach.map(d=>d.m.l).join(', '));
-      if(best&&best.p>1) t2.push('👍 '+best.m.l+' +'+Math.round(clamp(best.p))+'%');
+      const ok=r.det.filter(d=>d.p!=null);
+      const best=ok.slice().sort((a,b)=>b.p-a.p)[0], worst=ok.slice().sort((a,b)=>a.p-b.p)[0];
+      const t2=[];
+      if(best&&best.p>0) t2.push('👍 '+best.m.l+' +'+Math.round(best.p)+'%');
+      if(worst&&worst.p<0) t2.push('⚠️ '+worst.m.l+' −'+Math.round(-worst.p)+'%');
+      if(reach.length) t2.push('✓ ถึงเป้า: '+reach.map(d=>d.m.l).join(', '));
       if(lost.length) t2.push('✗ หลุดเป้า: '+lost.map(d=>d.m.l).join(', '));
-      if(worst&&worst.p<-1&&worst!==best) t2.push('⚠️ '+worst.m.l+' '+Math.round(clamp(worst.p))+'%');
+      const thin = r.a.days < Math.ceil(r.nA/2) || r.c.days < Math.ceil(r.nB/2);
       h+='<div class="impcard '+(up?'up':(dn?'dn':''))+'" onclick="window.__anImp(\''+r.dep+'\')"><div class="dp">'+r.dep+'</div><div class="bd">'
-        +'<div class="t1">'+(up?'ดีขึ้น':(dn?'แย่ลง':'ทรงตัว'))+' • '+r.a.days+' วัน → '+r.c.days+' วัน</div>'
+        +'<div class="t1">'+(up?'ดีขึ้น':(dn?'แย่ลง':'ทรงตัว'))+' • '+r.a.days+' วัน → '+r.c.days+' วัน'+(thin?' • <span style="color:#b3121d">⚠️ ข้อมูลน้อย ใช้ตัดสินไม่ได้</span>':'')+'</div>'
         +'<div class="t2">'+(t2.join(' • ')||'ไม่มีการเปลี่ยนแปลงชัดเจน')+'</div></div>'+pcHTML(r.score)+'</div>';
     });
     h+='</div>';
     if(!LOADING && rows.length){
-      h+='<div class="card"><h2>📊 รายละเอียดตัวชี้วัด <span class="small">ก่อน → หลัง • % ปิดช่องว่างถึงเป้า</span></h2>'
-        +'<div class="small" style="margin:-4px 0 8px">% = ปิดช่องว่างถึงเป้าได้กี่ % (100% = ถึงเป้าแล้ว) • ✓ ในเป้า = อยู่ในเป้าทั้งสองช่วง</div>'
-        +'<div class="dwrap"><table class="dtbl"><thead><tr><th class="l">สาขา / ตัวชี้วัด</th><th>ช่วงก่อน</th><th>ช่วงปัจจุบัน</th><th>เปลี่ยนแปลง</th><th>% ปิดช่องว่างถึงเป้า</th></tr></thead><tbody>';
+      h+='<div class="card"><h2>📊 รายละเอียดตัวชี้วัด <span class="small">ก่อน → หลัง • % พัฒนาการ</span></h2>'
+        +'<div class="small" style="margin:-4px 0 8px;line-height:1.6">% พัฒนาการวัดจากขนาดการเปลี่ยนแปลงจริง: '
+        + IMET.map(m=>m.l+' ทรงตัว ±'+(m.unit==='t'?m.db/60:m.db)+' '+m.du+' / เต็ม 100% ที่ '+(m.unit==='t'?m.full/60:m.full)+' '+m.du).join(' • ')+'</div>'
+        +'<div class="dwrap"><table class="dtbl"><thead><tr><th class="l">สาขา / ตัวชี้วัด</th><th>ช่วงก่อน</th><th>ช่วงปัจจุบัน</th><th>เปลี่ยนแปลง</th><th>% พัฒนาการ</th></tr></thead><tbody>';
       rows.forEach(r=>{
         h+='<tr><td class="l" colspan="5" style="background:#1a1a1a;color:var(--y);border-radius:12px;font-weight:900;">'+r.dep
           +' &nbsp;<span style="font-weight:600;font-size:11px;color:#a09884;">รวม '+(r.score==null?'—':(r.score>0?'+':'')+Math.round(r.score)+'%')+'</span></td></tr>';

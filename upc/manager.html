@@ -238,7 +238,7 @@ function ctx(){
 let MODS = false;
 function initModules(){
   if (MODS) return; MODS = true;
-  import('./upc-analytics.js?v=1').then(m => { m.initAnalytics(ctx()); if (['ins','ch','data'].includes(TAB)) window.__anRender(); }).catch(e => console.warn('analytics', e));
+  import('./upc-analytics.js?v=2').then(m => { m.initAnalytics(ctx()); if (['ins','ch','data'].includes(TAB)) window.__anRender(); }).catch(e => console.warn('analytics', e));
   import('../dhl-photos.js?v=4').then(m => m.initPhotos(ctx())).catch(e => console.warn('photos', e));
 }
 const VIEWS = { live:'viewLive', ins:'viewIns', ch:'viewCh', data:'viewData', ph:'viewPh' };

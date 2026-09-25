@@ -57,7 +57,9 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
 <div class="wrap">
   <div class="mtabs">
     <button class="mtab on" id="tb_live" onclick="window.__tab('live')">🔴 Live</button>
-    <button class="mtab" id="tb_ot" onclick="window.__tab('ot')">⏱ On-time</button>
+    <button class="mtab" id="tb_ins" onclick="window.__tab('ins')">📈 อินไซต์</button>
+    <button class="mtab" id="tb_ch" onclick="window.__tab('ch')">📊 กราฟ</button>
+    <button class="mtab" id="tb_data" onclick="window.__tab('data')">📋 Data</button>
     <button class="mtab" id="tb_ph" onclick="window.__tab('ph')">📷 ย้อนหลัง</button>
   </div>
   <div id="viewLive">
@@ -70,7 +72,9 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
       <div class="legend"><span><i style="background:#e6f5eb"></i>ครบ / ทัน</span><span><i style="background:#fff6d6"></i>รอ / ขาด-ลา</span><span><i style="background:#fdeaea"></i>สาย / ยังไม่ลง (เลยเวลา)</span><span>แตะช่องเพื่อดูรายชื่อ + รูป</span></div>
     </div>
   </div>
-  <div id="viewOt" style="display:none"></div>
+  <div id="viewIns" style="display:none"></div>
+  <div id="viewCh" style="display:none"></div>
+  <div id="viewData" style="display:none"></div>
   <div id="viewPh" style="display:none"></div>
 </div>
 
@@ -181,7 +185,10 @@ function listenToday(){
   TUNS.forEach(u=>u&&u()); TUNS=[]; TODAY={}; TKEY = todayKey();
   SCOPE.forEach(dep => TUNS.push(fb.listen(`depots/${dep}/days/${TKEY}`, d => { TODAY[dep] = d || {}; sched(); })));
 }
-function sched(){ clearTimeout(RT); RT = setTimeout(() => { if (TAB==='live') renderLive(); if (OPENDEP) openDep(OPENDEP, true); }, 200); }
+function sched(){ clearTimeout(RT); RT = setTimeout(() => {
+  if (TAB==='live') renderLive();
+  else if ((TAB==='ins' || TAB==='data') && window.__anRepaint && !$('mdl').classList.contains('show')) window.__anRepaint();
+  if (OPENDEP) openDep(OPENDEP, true); }, 400); }
 setInterval(() => { $('clk').textContent = hms(Date.now()); if (ME && todayKey()!==TKEY) listenToday(); }, 1000);
 
 function checkVer(){
@@ -199,28 +206,27 @@ function ctx(){
     db: null,
     doc: (db, ...p) => p.join('/'),
     getDoc: async p => { const d = await fb.get(p); return { exists: () => !!d, data: () => d }; },
-    esc, secOf,
+    esc, secOf, toMs, fb,
+    modal, close: () => window.__close(),
     get: () => {
       const META = {}, DATA = {};
       SCOPE.forEach(d => { META[d] = { couriers: (DEPS[d] && DEPS[d].roster) || [] }; DATA[d] = TODAY[d] || {}; });
-      return { DEPOTS: depsInView(), DATA, META, DATE: TKEY, MTAB: TAB };
+      return { DEPOTS: depsInView(), DATA, META, TODAY: DATA, DATE: TKEY, MTAB: TAB };
     }
   };
 }
 let MODS = false;
 function initModules(){
   if (MODS) return; MODS = true;
-  import('./upc-ontime.js?v=1').then(m => m.initOntime(ctx())).catch(e => console.warn('ontime', e));
+  import('./upc-analytics.js?v=1').then(m => { m.initAnalytics(ctx()); if (['ins','ch','data'].includes(TAB)) window.__anRender(); }).catch(e => console.warn('analytics', e));
   import('../dhl-photos.js?v=4').then(m => m.initPhotos(ctx())).catch(e => console.warn('photos', e));
 }
+const VIEWS = { live:'viewLive', ins:'viewIns', ch:'viewCh', data:'viewData', ph:'viewPh' };
 window.__tab = t => {
   TAB = t;
-  ['live','ot','ph'].forEach(x => { $('tb_'+x).classList.toggle('on', x===t); });
-  $('viewLive').style.display = t==='live' ? '' : 'none';
-  $('viewOt').style.display = t==='ot' ? '' : 'none';
-  $('viewPh').style.display = t==='ph' ? '' : 'none';
+  Object.keys(VIEWS).forEach(x => { $('tb_'+x).classList.toggle('on', x===t); $(VIEWS[x]).style.display = x===t ? '' : 'none'; });
   if (t==='live') renderLive();
-  if (t==='ot' && window.__otRender) { window.__otRender(); window.__otEnsure(); }
+  if (['ins','ch','data'].includes(t) && window.__anRender) window.__anRender();
   if (t==='ph' && window.__phRender) { window.__phRender(); window.__phEnsure(); }
 };
 

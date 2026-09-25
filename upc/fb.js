@@ -5,7 +5,7 @@
                  ใช้ทดสอบระบบ และใช้ฝึก UPC Manager / Staff ก่อนใช้งานจริง
    Design By Winnie
    =================================================================== */
-export const FB_VER = '2026.09.25-c';
+export const FB_VER = '2026.09.25-d';
 export const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* ⚙️ ค่าเชื่อมต่อโปรเจกต์ Firebase ใหม่ของ UPC — วางค่าจาก Firebase Console ตรงนี้ */
@@ -29,9 +29,13 @@ export const mgrEmail   = pin => 'm' + String(pin).replace(/\D/g, '') + '@mgr.up
 export const mgrPw      = pin => 'upc#' + String(pin).replace(/\D/g, '');
 /* สถานะแบบเดียวกับแอปเดิม: ontime ถ้าไม่เกิน 07:10 (ผ่อนผันภายใน ไม่แสดงบนหน้าจอ) */
 export const CUT = 25200, GRACE = 25800;
-export function calcStatus(ms) {
+/* เวลาเข้างานตั้งได้รายสาขา (เช่น SRN 07:30) — ผ่อนผันภายใน +10 นาทีเสมอ */
+export const GRACE_ADD = 600;
+export const cutOf = dep => (dep && +dep.cut) || CUT;
+export const hmCut = s => String(Math.floor(s / 3600)).padStart(2, '0') + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0');
+export function calcStatus(ms, cut = CUT) {
   const d = new Date(ms), s = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
-  return s <= GRACE ? { status: 'ontime', buffer: s > CUT } : { status: 'late', buffer: false };
+  return s <= cut + GRACE_ADD ? { status: 'ontime', buffer: s > cut } : { status: 'late', buffer: false };
 }
 
 let impl = null;
@@ -93,7 +97,7 @@ async function makeReal() {
 
 /* ============================ โหมด Demo ============================ */
 function makeDemo() {
-  const KEY = 'upcDemoDB_v3', SES = 'upcDemoUid';
+  const KEY = 'upcDemoDB_v4', SES = 'upcDemoUid';
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('upc-demo') : null;
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } };
   let DB = load();
@@ -213,27 +217,40 @@ function makeDemo() {
     db.docs['config/adminLock'] = { uid: admin, at: Date.now() };
     db.docs['managers/' + admin] = { name: 'วินนี่ (Admin)', role: 'admin', depots: [] };
     db.docs['config/app'] = { staffVer: '', managerVer: '', cut: '07:00', grace: '07:10', keepDays: 30 };
+    /* upc = UPC ผู้ดูแลสาขา • cut = เวลาเข้างานของสาขา (วินาที) • staff = ชื่อผู้บันทึก */
+    const W = 'K.Wanchai Prukrunggroj';
+    const NE3 = ['K.Aummarin Auppakarat', 'K.Sant Pimma', 'K.Suphasil Nanthong'];
     const depots = [
-      { code: 'CNX1', name: 'เชียงใหม่ 1', region: 'เหนือ', province: 'เชียงใหม่', pin: '111111' },
-      { code: 'CNX2', name: 'เชียงใหม่ 2', region: 'เหนือ', province: 'เชียงใหม่', pin: '222222' },
-      { code: 'LPG1', name: 'ลำปาง', region: 'เหนือ', province: 'ลำปาง', pin: '333333' },
-      { code: 'KKN1', name: 'ขอนแก่น', region: 'อีสาน', province: 'ขอนแก่น', pin: '444444' },
-      { code: 'AYA1', name: 'อยุธยา', region: 'กลาง', province: 'พระนครศรีอยุธยา', pin: '555555' },
-      { code: 'CBI1', name: 'ชลบุรี', region: 'ตะวันออก', province: 'ชลบุรี', pin: '666666' },
-      { code: 'HDY1', name: 'หาดใหญ่', region: 'ใต้', province: 'สงขลา', pin: '777777' },
-      { code: 'UDN1', name: 'อุดรธานี', region: 'อีสาน', province: 'อุดรธานี', pin: '888888' }
+      { code: 'CNX1', name: 'เชียงใหม่ 1', region: 'เหนือ', province: 'เชียงใหม่', pin: '111111', upc: ['K.Khanaphot Chaiwong', 'K.Piyaphan Chosinmingson'] },
+      { code: 'CNX2', name: 'เชียงใหม่ 2', region: 'เหนือ', province: 'เชียงใหม่', pin: '222222', upc: ['K.Khanaphot Chaiwong', 'K.Piyaphan Chosinmingson'] },
+      { code: 'LPG1', name: 'ลำปาง', region: 'เหนือ', province: 'ลำปาง', pin: '333333', upc: ['K.Khanaphot Chaiwong', 'K.Piyaphan Chosinmingson'] },
+      { code: 'KKN1', name: 'ขอนแก่น', region: 'อีสาน', province: 'ขอนแก่น', pin: '444444', upc: NE3 },
+      { code: 'AYA1', name: 'อยุธยา', region: 'กลาง', province: 'พระนครศรีอยุธยา', pin: '555555', upc: ['K.Kobkiat Doungthong', 'K.Prasitchai Krobsuan'] },
+      { code: 'CBI1', name: 'ชลบุรี', region: 'ตะวันออก', province: 'ชลบุรี', pin: '666666', upc: ['K.Phongthep Sendi', 'K.Suttipong Kongchiyapoom'] },
+      { code: 'HDY1', name: 'หาดใหญ่', region: 'ใต้', province: 'สงขลา', pin: '777777', upc: ['K.Kittisak Chanakul', 'K.Srichon Chaiyasad'] },
+      { code: 'UDN1', name: 'อุดรธานี', region: 'อีสาน', province: 'อุดรธานี', pin: '888888', upc: NE3 },
+      /* สาขาของ K.Wanchai (ข้อมูลจริงจากตาราง) */
+      { code: 'BRM', name: 'BRM', region: 'อีสาน', province: '', pin: '210001', upc: [W], staff: ['K.Pongsak Kodram', 'K.Atitiya Inta'] },
+      { code: 'CCI', name: 'CCI', region: 'อีสาน', province: '', pin: '210002', upc: [W], staff: ['K.Oakkharachai Sroising', 'K.Anan Saenwanna'] },
+      { code: 'NMA', name: 'NMA', region: 'อีสาน', province: '', pin: '210003', upc: [W], staff: ['K.Sarawut Siripru', 'K.Sarawut Suraphopphisit', 'K.Ratchadakorn Vittayaphonpipat'] },
+      { code: 'NRG', name: 'NRG', region: 'อีสาน', province: '', pin: '210004', upc: [W], staff: ['K.Pakasupang Suksawang', 'K.Chalitta Chaengprachak'] },
+      { code: 'PCG', name: 'PCG', region: 'อีสาน', province: '', pin: '210005', upc: [W], staff: ['K.Thanyaporn Yotkhwan'] },
+      { code: 'SNN', name: 'SNN', region: 'อีสาน', province: '', pin: '210006', upc: [W], staff: ['K.Chainarong Janpotia', 'K.Jutamas Ratsungnoen'] },
+      { code: 'SRN', name: 'SRN', region: 'อีสาน', province: '', pin: '210007', upc: [W], staff: ['K.Jatuporn Kertsup', 'K.Kornkrit Tantiworasri'], cut: 27000 },
+      { code: 'TLK', name: 'TLK', region: 'อีสาน', province: '', pin: '210008', upc: [W], staff: ['K.Piyawat Phonkong', 'K.Natthakran Jaroenram'] }
     ];
     const vendors = ['เวนเดอร์ A', 'เวนเดอร์ B', 'เวนเดอร์ C'];
     const first = ['สมชาย', 'สมศักดิ์', 'วิชัย', 'ประเสริฐ', 'อนุชา', 'ธนพล', 'กิตติ', 'สุรชัย', 'ชัยวัฒน์', 'ณัฐพล', 'ปิยะ', 'เอกชัย', 'วีระ', 'ศักดิ์ดา'];
     const pub = {};
     depots.forEach((d, di) => {
       const uidD = addUser(depotEmail(d.code, 1), d.pin);
+      const cut = d.cut || CUT;
       pub[d.code] = { ver: 1, name: d.name };
+      const staff = d.staff || ['หัวหน้า ' + d.code, 'ผู้ช่วย ' + d.code];
       const roster = [];
-      const n = 10 + di * 2;
+      const n = 8 + (di * 3) % 9;
       for (let i = 1; i <= n; i++) roster.push({ id: i, code: d.code + 'C' + String(i).padStart(2, '0'), name: first[(i + di) % first.length] + ' ' + d.code + i, vendor: vendors[(i + di) % 3], type: i % 5 === 0 ? '4W' : '2W', active: true });
-      db.docs['depots/' + d.code] = { code: d.code, name: d.name, region: d.region, province: d.province, authUid: uidD, authVer: 1, roster, staffNames: ['หัวหน้า ' + d.code], createdAt: Date.now() };
-      // ย้อนหลัง 20 วัน (ไม่รวมอาทิตย์ และไม่รวมวันนี้)
+      db.docs['depots/' + d.code] = { code: d.code, name: d.name, region: d.region, province: d.province, cut, upc: d.upc || [], authUid: uidD, authVer: 1, roster, createdAt: Date.now() };
       for (let k = 1; k <= 24; k++) {
         const dt = new Date(); dt.setHours(0, 0, 0, 0); dt.setDate(dt.getDate() - k);
         if (dt.getDay() === 0) continue;
@@ -241,17 +258,16 @@ function makeDemo() {
         const ck = {}, ab = {};
         roster.forEach((c, i) => {
           const r = (k * 31 + i * 17 + di * 7) % 100;
-          if (r < 5) { ab[c.id] = { note: 'ลาป่วย', by: 'หัวหน้า ' + d.code, at: dt.getTime() + 6 * 3600e3 }; return; }
-          const lateBias = di === 3 ? 45 : (di === 0 ? 8 : 20);
+          if (r < 5) { ab[c.id] = { note: 'ลาป่วย', by: staff[0], at: dt.getTime() + 6 * 3600e3 }; return; }
+          const lateBias = di === 3 ? 45 : (di % 4 === 0 ? 8 : 20);
           const mins = r < lateBias ? 3 + ((k * 7 + i * 3) % 40) : -(2 + ((k + i) % 25));
-          const t = dt.getTime() + 7 * 3600e3 + mins * 60e3 + ((i * 13) % 60) * 1000;
-          // ตัวอย่างเครื่องที่ตั้งนาฬิกาผิด (เวลาในเครื่องเร็วกว่าเวลาจริง 18 นาที) — ให้ Manager เห็นธงเตือน
+          const t = dt.getTime() + cut * 1000 + mins * 60e3 + ((i * 13) % 60) * 1000;
           const skew = (di === 3 && i === 2 && k % 3 === 0) ? 18 * 60e3 : 800;
-          ck[c.id] = { ts: t, srv: t + skew, ...calcStatus(t), staff: 'หัวหน้า ' + d.code, hasPhoto: true, demoPhoto: true };
+          ck[c.id] = { ts: t, srv: t + skew, cut, ...calcStatus(t, cut), staff: staff[i % staff.length], hasPhoto: true, demoPhoto: true };
         });
         db.docs['depots/' + d.code + '/days/' + key] = { date: key, depot: d.code, checkins: ck, absent: ab };
       }
-      db.docs['pubstaff/' + d.code] = { names: ['หัวหน้า ' + d.code, 'ผู้ช่วย ' + d.code] };
+      db.docs['pubstaff/' + d.code] = { names: staff };
     });
     db.docs['pub/depots'] = pub;
     /* UPC Manager แต่ละภาค (รายชื่อจริง — PIN ในโหมดทดลองเท่านั้น) */
@@ -264,7 +280,7 @@ function makeDemo() {
     ];
     UPC.forEach(([name, region, pin]) => {
       const id = addUser(mgrEmail(pin), mgrPw(pin));
-      db.docs['managers/' + id] = { name, role: 'upc', region, depots: depots.filter(d => d.region === region).map(d => d.code) };
+      db.docs['managers/' + id] = { name, role: 'upc', region, depots: depots.filter(d => (d.upc || []).includes(name)).map(d => d.code) };
     });
     return db;
   }

@@ -169,7 +169,7 @@
 <div class="flash" id="flash"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT } from './fb.js?v=2026.09.25-c';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.25-d';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 const $ = id => document.getElementById(id);
@@ -298,8 +298,9 @@ setInterval(() => {
   const now = Date.now(), s = new Date(); const sec = s.getHours()*3600+s.getMinutes()*60+s.getSeconds();
   $('hdClock').textContent = fmtSec(now); $('bigTime').textContent = fmtSec(now);
   const cc = $('clockCard');
-  cc.className = 'card ' + (sec > CUT ? 'c-late' : sec >= CUT - 600 ? 'c-warn' : 'c-ok');
-  $('bigMsg').textContent = sec > CUT ? 'เลยเวลาเข้างาน 07:00 น.' : sec >= CUT - 600 ? 'ใกล้เวลาเข้างาน 07:00 น.' : 'เวลาเข้างาน 07:00 น.';
+  const K = cutOf(DEP), tt = hmCut(K);
+  cc.className = 'card ' + (sec > K ? 'c-late' : sec >= K - 600 ? 'c-warn' : 'c-ok');
+  $('bigMsg').textContent = (sec > K ? 'เลยเวลาเข้างาน ' : sec >= K - 600 ? 'ใกล้เวลาเข้างาน ' : 'เวลาเข้างาน ') + tt + ' น.';
   const t = $('dsSumT'); if (t) t.textContent = fmtTime(now);
   if (READY && todayKey() !== DAYKEY) listenDay();
 }, 1000);
@@ -466,11 +467,11 @@ window.captureFile = inp => {
   img.src = url;
 };
 function save(ts, photo){
-  const c = camCourier, id = String(c.id), st = calcStatus(ts);
+  const c = camCourier, id = String(c.id), K = cutOf(DEP), st = calcStatus(ts, K);
   if (DAY.checkins && DAY.checkins[id] && DAY.checkins[id].ts) { closeCamera(); flash('คนนี้เช็คอินแล้ววันนี้'); return; }
   PH['ci_'+id+'_'+DAYKEY] = photo;
   track(fb.set(phPath(id), { d: photo, kind: 'ci', cid: id, date: DAYKEY, at: NOW, by: STAFF, expireAt: new Date(Date.now()+(KEEP_DAYS+1)*864e5) }, false));
-  track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, checkins: { [id]: { ts, srv: NOW, status: st.status, buffer: st.buffer, staff: STAFF, hasPhoto: true, off: !navigator.onLine } }, absent: { [id]: DEL } }));
+  track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, checkins: { [id]: { ts, srv: NOW, cut: K, status: st.status, buffer: st.buffer, staff: STAFF, hasPhoto: true, off: !navigator.onLine } }, absent: { [id]: DEL } }));
   closeCamera();
   flash(c.name+' — '+fmtTime(ts)+' '+(st.status==='ontime'?'✔ Ontime':'✖ Late'));
 }

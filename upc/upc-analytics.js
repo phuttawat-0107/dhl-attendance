@@ -6,7 +6,7 @@
    • ไม่นับวันอาทิตย์ทุกส่วน • สาย = เกิน 07:10 (ตรงกับแท็บ Live / ย้อนหลัง)
    Design By Winnie
    =================================================================== */
-export const AN_VER = '2026.09.25-an1';
+export const AN_VER = '2026.09.25-an3';
 
 const CUT = 25200, GRACE = 25800;          // 07:00 / 07:10
 let C = null;
@@ -91,33 +91,36 @@ const TAB = () => S().MTAB;
 /* ================= คำนวณ ================= */
 function roster(dep){ return ((S().META[dep]||{}).couriers)||[]; }
 function clockOff(r){ const s=C.toMs(r.srv); if(!s||!r.ts) return 0; const d=(s-r.ts)/60000; if(r.off) return d<-2?1:0; return Math.abs(d)>5?1:0; }
-const isLate = r => r.status==='late' || secOf(r.ts)>GRACE;
-function dayStat(d){
-  if(!d) return null;
+const cutD = dep => ((S().META[dep]||{}).cut) || CUT;          /* เวลาเข้างานของสาขา */
+const isLate = (r,cut) => r.status ? r.status==='late' : secOf(r.ts) > (r.cut||cut)+600;
+const relFmt = v => Math.round(v)===0 ? 'ตรงเวลา' : (v<0 ? 'ก่อน '+m1(-v)+' น.' : 'หลัง '+m1(v)+' น.');
+function dayStat(d,cut){
+  if(!d) return null; cut=cut||CUT;
   const cks=d.checkins||{}, ck=Object.values(cks).filter(r=>r&&r.ts);
   const ab=Object.keys(d.absent||{}).filter(id=>!(cks[id]&&cks[id].ts)).length;
   if(!ck.length && !ab) return null;
-  let late=0, lm=0, lmL=0, flag=0; const arr=[];
-  ck.forEach(r=>{ const s=secOf(r.ts); if(isLate(r)){ late++; lmL+=(s-CUT)/60; } lm+=Math.max(0,s-CUT)/60; arr.push(s); flag+=clockOff(r); });
-  return { n:ck.length, late, lm, lmL, arr, ab, flag };
+  let late=0, lm=0, lmL=0, flag=0; const arr=[], rel=[];
+  ck.forEach(r=>{ const s=secOf(r.ts), k=r.cut||cut; if(isLate(r,cut)){ late++; lmL+=Math.max(0,s-k)/60; } lm+=Math.max(0,s-k)/60; arr.push(s); rel.push((s-k)/60); flag+=clockOff(r); });
+  return { n:ck.length, late, lm, lmL, arr, rel, ab, flag };
 }
 function metricOf(st,k){
   if(!st) return null;
   if(k==='ontime') return st.n? (st.n-st.late)/st.n*100 : null;
   if(k==='late')   return st.n? st.late : null;
   if(k==='lateAvg')return st.n? st.lm/st.n : null;
-  if(k==='arr')    return st.arr.length? av(st.arr) : null;
+  if(k==='arr')    return st.rel.length? av(st.rel) : null;
   if(k==='ab')     return st.ab;
   return null;
 }
 function mergeStats(list){
   const L=list.filter(Boolean); if(!L.length) return null;
-  return L.reduce((a,s)=>({ n:a.n+s.n, late:a.late+s.late, lm:a.lm+s.lm, lmL:a.lmL+s.lmL, arr:a.arr.concat(s.arr), ab:a.ab+s.ab, flag:a.flag+s.flag }),
-    { n:0, late:0, lm:0, lmL:0, arr:[], ab:0, flag:0 });
+  return L.reduce((a,s)=>({ n:a.n+s.n, late:a.late+s.late, lm:a.lm+s.lm, lmL:a.lmL+s.lmL, arr:a.arr.concat(s.arr), rel:a.rel.concat(s.rel), ab:a.ab+s.ab, flag:a.flag+s.flag }),
+    { n:0, late:0, lm:0, lmL:0, arr:[], rel:[], ab:0, flag:0 });
 }
 function aggDep(dep,dks){
   let days=0; const sts=[];
-  dks.forEach(dk=>{ const s=dayStat(docOf(dep,dk)); if(s){ days++; sts.push(s); } });
+  const cut=cutD(dep);
+  dks.forEach(dk=>{ const s=dayStat(docOf(dep,dk),cut); if(s){ days++; sts.push(s); } });
   if(!days) return null;
   const m=mergeStats(sts);
   return { days, head: Math.round(m.n/days), ckN:m.n, lateN:m.late, abN:m.ab, flag:m.flag,
@@ -125,7 +128,7 @@ function aggDep(dep,dks){
     lateAvg: m.n? m.lm/m.n : null,
     lateMinPer: m.late? m.lmL/m.late : null,
     latePerDay: m.late/days,
-    arr: av(m.arr),
+    arr: av(m.arr), arrRel: av(m.rel), cut,
     abRate: (m.n+m.ab)? m.ab/(m.n+m.ab)*100 : null,
     missing: dks.filter(dk=>!(dk===TODAY() && nowSec()<7.5*3600)).length - days };
 }
@@ -133,17 +136,18 @@ function aggPeople(deps,dks){
   const M={};
   deps.forEach(dep=>{
     const cm={}; roster(dep).forEach(c=>{ cm[c.id]=c; });
-    const get=cid=>{ const k=dep+'|'+cid; return M[k]||(M[k]={dep,cid,c:cm[cid]||{},days:0,late:0,lateMin:0,arr:[],ab:0}); };
+    const cut=cutD(dep);
+    const get=cid=>{ const k=dep+'|'+cid; return M[k]||(M[k]={dep,cid,c:cm[cid]||{},days:0,late:0,lateMin:0,arr:[],rel:[],ab:0,cut}); };
     dks.forEach(dk=>{
       const d=docOf(dep,dk); if(!d) return;
       const cks=d.checkins||{};
       Object.entries(cks).forEach(([cid,r])=>{ if(!r||!r.ts) return; const o=get(cid), s=secOf(r.ts);
-        o.days++; if(isLate(r)) o.late++; o.lateMin+=Math.max(0,s-CUT)/60; o.arr.push(s); });
+        const k=r.cut||cut; o.days++; if(isLate(r,cut)) o.late++; o.lateMin+=Math.max(0,s-k)/60; o.arr.push(s); o.rel.push((s-k)/60); });
       Object.keys(d.absent||{}).forEach(cid=>{ if(!(cks[cid]&&cks[cid].ts)) get(cid).ab++; });
     });
   });
   return Object.values(M).filter(o=>o.days||o.ab).map(o=>({...o,
-    ontime: o.days? (o.days-o.late)/o.days*100 : null, lateAvg: o.days? o.lateMin/o.days : null, arrA: av(o.arr) }));
+    ontime: o.days? (o.days-o.late)/o.days*100 : null, lateAvg: o.days? o.lateMin/o.days : null, arrA: av(o.arr), relA: av(o.rel) }));
 }
 
 /* ---- % พัฒนาการ: สเกลคงที่ + ช่วงทรงตัว (deadband) ----
@@ -153,7 +157,7 @@ const IMET=[
   {k:'ontime',    l:'Ontime %',          fmt:v=>Math.round(v)+'%', hi:true,  tgt:95,  unit:'p', db:2,   full:10,  du:'จุด'},
   {k:'latePerDay',l:'คนสาย / วัน',        fmt:v=>m1(v)+' คน',      hi:false, tgt:0,   unit:'n', db:0.5, full:3,   du:'คน'},
   {k:'lateAvg',   l:'นาทีสาย / คน',       fmt:v=>m1(v)+' น.',      hi:false, tgt:0,   unit:'m', db:1,   full:10,  du:'น.'},
-  {k:'arr',       l:'เวลาเข้างานเฉลี่ย',    fmt:hmOf,                hi:false, tgt:CUT, unit:'t', db:180, full:900, du:'นาที'},
+  {k:'arrRel',    l:'เข้าก่อน/หลังเวลาเข้างาน', fmt:relFmt,            hi:false, tgt:0,   unit:'m', db:3,   full:15,  du:'นาที'},
   {k:'abRate',    l:'ขาด / ลา %',         fmt:v=>m1(v)+'%',        hi:false, tgt:5,   unit:'p', db:2,   full:10,  du:'จุด'}
 ];
 const inT=(m,v)=> m.hi? v>=m.tgt : v<=m.tgt;
@@ -211,7 +215,7 @@ function issues(){
 const STEPS=[
   {k:'ontime', l:'⏱ On-time ≥ 95%',    st:a=>a.ontime>=95,          v:a=>Math.round(a.ontime)+'%'},
   {k:'nolate', l:'🙅 ไม่มีคนสาย',       st:a=>a.lateN===0,            v:a=>a.lateN+' ครั้ง'},
-  {k:'arr',    l:'🕖 เข้างานเฉลี่ย ≤ 07:00', st:a=>a.arr<=CUT,          v:a=>hmOf(a.arr)},
+  {k:'arr',    l:'🕖 เข้าก่อนเวลาเข้างาน', st:a=>a.arrRel<=0,       v:a=>relFmt(a.arrRel)},
   {k:'ab',     l:'🚫 ขาด/ลา ≤ 5%',      st:a=>(a.abRate||0)<=5,       v:a=>m1(a.abRate||0)+'%'},
   {k:'full',   l:'📅 ลงเวลาครบทุกวัน',   st:a=>a.missing<=0,           v:a=>(a.days)+' วัน'}
 ];
@@ -271,7 +275,7 @@ window.__anOpen = dep => {
   b+='<div class="kpis" style="grid-template-columns:repeat(4,1fr);">'
     +'<div class="kpi '+(a.ontime>=95?'green':'red')+'"><div class="v">'+Math.round(a.ontime)+'%</div><div class="l">On-time</div></div>'
     +'<div class="kpi '+(a.lateN?'red':'green')+'"><div class="v">'+a.lateN+'</div><div class="l">สาย (ครั้ง)</div></div>'
-    +'<div class="kpi"><div class="v">'+hmOf(a.arr)+'</div><div class="l">เข้าเฉลี่ย</div></div>'
+    +'<div class="kpi"><div class="v">'+hmOf(a.arr)+'</div><div class="l">เข้าเฉลี่ย (เวลาเข้างาน '+hmOf(a.cut)+')</div></div>'
     +'<div class="kpi am"><div class="v">'+a.abN+'</div><div class="l">ขาด/ลา</div></div></div>';
   b+=P.map(o=>'<div class="row-c"><div class="info"><div class="nm">'+esc(o.c.code||'#'+o.cid)+' · '+esc(o.c.name||'')+'</div>'
       +'<div class="sub2">'+esc(o.c.vendor||'-')+' • '+o.days+' วัน • เข้าเฉลี่ย '+(o.arrA!=null?hmOf(o.arrA):'—')+(o.ab?' • ขาด/ลา '+o.ab:'')+(o.late?' • สายเฉลี่ย '+m1(o.lateAvg)+' น./วัน':'')+'</div></div>'
@@ -285,7 +289,7 @@ const METRICS=[
   {k:'ontime', l:'Ontime %',              unit:'%', tgt:95,   fmt:v=>Math.round(v)+'%',  hi:true},
   {k:'late',   l:'จำนวนคนมาสาย',           unit:'n', tgt:0,    fmt:v=>Math.round(v)+' คน', hi:false},
   {k:'lateAvg',l:'นาทีสายเฉลี่ย / คน',      unit:'n', tgt:0,    fmt:v=>m1(v)+' น.',       hi:false},
-  {k:'arr',    l:'เวลาเข้างานเฉลี่ย',        unit:'t', tgt:CUT,  fmt:v=>hmOf(v),           hi:false},
+  {k:'arr',    l:'เข้าก่อน/หลังเวลาเข้างาน (นาที)', unit:'r', tgt:0, fmt:relFmt,           hi:false},
   {k:'ab',     l:'ขาด / ลา',               unit:'n', tgt:null, fmt:v=>Math.round(v)+' คน', hi:false}
 ];
 function renderCh(){
@@ -294,7 +298,7 @@ function renderCh(){
   let h=rangeBarHTML(true);
   METRICS.forEach(m=>{
     h+='<div class="card"><h2>'+m.l+' <span class="small">'
-      +(m.tgt==null?'ยิ่งน้อยยิ่งดี':(m.k==='late'||m.k==='lateAvg')?'ยิ่งน้อยยิ่งดี • เป้า 0':(m.hi?'เป้า ≥ '+m.tgt+'%':'เป้า ไม่เกิน '+hmOf(m.tgt)))+'</span></h2>'
+      +(m.tgt==null?'ยิ่งน้อยยิ่งดี':(m.k==='late'||m.k==='lateAvg')?'ยิ่งน้อยยิ่งดี • เป้า 0':m.unit==='r'?'ติดลบ = มาก่อนเวลา • เป้า ≤ 0 (เทียบเวลาเข้างานของแต่ละสาขา)':(m.hi?'เป้า ≥ '+m.tgt+'%':'เป้า ไม่เกิน '+hmOf(m.tgt)))+'</span></h2>'
       +'<canvas id="ch_'+m.k+'" style="width:100%;height:150px;"></canvas><div class="small" id="lg_'+m.k+'" style="margin-top:6px;"></div></div>';
   });
   el.innerHTML=h;
@@ -307,7 +311,7 @@ function cvx(id,hpx){ const c=document.getElementById(id); if(!c) return null; c
 function drawMetric(m,series){
   const cv=cvx('ch_'+m.k,150); if(!cv) return;
   const {x,w,h}=cv, dks=chDates(), PB=20,PT=12,PL=44,PR=10, D=S().DEPOTS;
-  series.forEach(s=>{ s.pts=dks.map(dk=> metricOf(s.dep==='all'? mergeStats(D.map(dep=>dayStat(docOf(dep,dk)))) : dayStat(docOf(s.dep,dk)), m.k)); });
+  series.forEach(s=>{ s.pts=dks.map(dk=> metricOf(s.dep==='all'? mergeStats(D.map(dep=>dayStat(docOf(dep,dk),cutD(dep)))) : dayStat(docOf(s.dep,dk),cutD(s.dep)), m.k)); });
   const vals=series.flatMap(s=>s.pts).filter(v=>v!=null), lg=document.getElementById('lg_'+m.k);
   if(!vals.length){ x.fillStyle='#c4bca6'; x.font='13px Segoe UI'; x.textAlign='center'; x.fillText(LOADING?'กำลังโหลด…':'ยังไม่มีข้อมูลในช่วงนี้', w/2, h/2); if(lg) lg.textContent=''; return; }
   const hasT=m.tgt!=null;
@@ -321,9 +325,10 @@ function drawMetric(m,series){
   x.strokeStyle='#f0ead9'; x.lineWidth=1;
   [0,.5,1].forEach(f=>{ const v=vmin+(vmax-vmin)*f; x.beginPath(); x.moveTo(PL,Y(v)); x.lineTo(w-PR,Y(v)); x.stroke();
     x.fillStyle='#c4bca6'; x.font='9.5px Segoe UI'; x.textAlign='right'; x.textBaseline='middle'; x.fillText(m.unit==='t'? hmOf(v) : (Math.round(v*10)/10), PL-5, Y(v)); });
+  if(m.unit==='r' && vmin>0) vmin=0;
   if(hasT && !(m.unit==='n' && m.tgt===0)){
     x.setLineDash([5,4]); x.strokeStyle='#2e7d32'; x.lineWidth=1.5; x.beginPath(); x.moveTo(PL,Y(m.tgt)); x.lineTo(w-PR,Y(m.tgt)); x.stroke(); x.setLineDash([]);
-    x.fillStyle='#2e7d32'; x.font='700 9.5px Segoe UI'; x.textAlign='left'; x.textBaseline='bottom'; x.fillText('เป้า', PL+2, Y(m.tgt)-2);
+    x.fillStyle='#2e7d32'; x.font='700 9.5px Segoe UI'; x.textAlign='left'; x.textBaseline='bottom'; x.fillText(m.unit==='r'?'เวลาเข้างาน':'เป้า', PL+2, Y(m.tgt)-2);
   }
   const good=v=> !hasT ? v===0 : (m.hi? v>=m.tgt : (m.unit==='n'? v<=m.tgt : v<=m.tgt));
   const one=series.length===1;
@@ -357,12 +362,12 @@ function tblDep(dks){
   const rows=S().DEPOTS.map(dep=>({dep,a:aggDep(dep,dks)})).filter(x=>x.a);
   if(!rows.length) return '<div class="empty">'+(LOADING?'กำลังโหลดข้อมูล…':'ไม่มีข้อมูลในช่วงวันที่เลือก')+'</div>';
   rows.sort((x,y)=>(y.a.ontime??-1)-(x.a.ontime??-1));
-  let h='<div class="dwrap"><table class="dtbl"><thead><tr><th class="l">สาขา</th><th>วัน</th><th>คน/วัน</th><th>Ontime</th><th>สาย</th><th>คนสาย/วัน</th><th>นาทีสาย/คน</th><th>เข้าเฉลี่ย</th><th>ขาด/ลา</th></tr></thead><tbody>';
+  let h='<div class="dwrap"><table class="dtbl"><thead><tr><th class="l">สาขา</th><th>วัน</th><th>คน/วัน</th><th>Ontime</th><th>สาย</th><th>คนสาย/วัน</th><th>นาทีสาย/คน</th><th>เวลาเข้างาน</th><th>เข้าเฉลี่ย</th><th>ขาด/ลา</th></tr></thead><tbody>';
   rows.forEach(({dep,a})=>{
     h+='<tr><td class="l"><div class="nm">'+dep+'</div><div class="s2">'+a.days+' วัน'+(a.missing>0?' • ขาดข้อมูล '+a.missing+' วัน':'')+'</div></td>'
       +'<td class="n">'+a.days+'</td><td class="n">'+a.head+'</td>'
       +cel(a.ontime,v=>Math.round(v)+'%',a.ontime>=95)+cel(a.lateN,v=>v+' ครั้ง',a.lateN===0)+cel(a.latePerDay,v=>m1(v),a.latePerDay===0)
-      +cel(a.lateAvg,v=>m1(v)+' น.',a.lateAvg<=2)+cel(a.arr,hmOf,a.arr<=CUT)+cel(a.abRate,v=>a.abN+' ('+m1(v)+'%)',a.abRate<=5)+'</tr>';
+      +cel(a.lateAvg,v=>m1(v)+' น.',a.lateAvg<=2)+'<td class="n">'+hmOf(a.cut)+'</td>'+cel(a.arr,v=>hmOf(v)+' ('+relFmt(a.arrRel)+')',a.arrRel<=0)+cel(a.abRate,v=>a.abN+' ('+m1(v)+'%)',a.abRate<=5)+'</tr>';
   });
   return h+'</tbody></table></div>';
 }
@@ -375,7 +380,7 @@ function tblPeople(dks){
     h+='<tr><td class="l"><div class="nm">'+esc(o.c.code||('#'+o.cid))+'</div><div class="s2">'+esc(o.c.name||'—')+'</div></td>'
       +'<td class="n">'+o.dep+'</td><td class="n">'+esc(o.c.type||'—')+'</td><td class="n">'+esc(o.c.vendor||'—')+'</td><td class="n">'+o.days+'</td>'
       +cel(o.ontime,v=>Math.round(v)+'%',o.ontime>=95)+cel(o.late,v=>v+' ครั้ง',o.late===0)+cel(o.lateAvg,v=>m1(v)+' น.',o.lateAvg<=2)
-      +cel(o.arrA,hmOf,o.arrA<=CUT)+'<td class="n">'+(o.ab||'—')+'</td></tr>';
+      +cel(o.arrA,hmOf,o.relA<=0)+'<td class="n">'+(o.ab||'—')+'</td></tr>';
   });
   return h+'</tbody></table><div class="small" style="margin-top:8px;">เรียงจากคนที่สายบ่อยสุด → น้อยสุด</div></div>';
 }
@@ -411,7 +416,7 @@ function renderData(){
     h+='<div class="card"><h2>'+(DLEVEL==='dep'?'🏢 ข้อมูลรายสาขา':'👤 ข้อมูลรายบุคคล')+' <span class="small">'+dks.length+' วันทำงาน • '+thD(RFROM)+(RFROM===RTO?'':' → '+thD(RTO))+(LOADING?' • กำลังโหลด...':'')+'</span></h2>'
       +(DLEVEL==='dep'? tblDep(dks) : tblPeople(dks))
       +'<div class="dlg"><span><i style="background:#e6f5eb"></i>Ontime / ตามเป้า</span><span><i style="background:#fdeaea"></i>Late / ไม่ถึงเป้า</span>'
-      +'<span>เป้า: เข้างาน 07:00 • On-time ≥ 95% • ขาด/ลา ≤ 5%</span></div>'
+      +'<span>เป้า: เข้างานตามเวลาของแต่ละสาขา • On-time ≥ 95% • ขาด/ลา ≤ 5%</span></div>'
       +'<div class="quick" style="margin-top:10px"><button class="qbtn" onclick="window.__anCsv()">⬇️ ดาวน์โหลด CSV</button></div></div>';
   } else {
     const rows=cmpRows(); rows.sort((a,b)=>(b.score??-999)-(a.score??-999));
@@ -446,6 +451,7 @@ function renderData(){
           const cls=impCls(d.m,d.va,d.vb); let diff='—';
           if(d.va!=null&&d.vb!=null){
             if(d.m.unit==='t'){ const mm=Math.round((d.vb-d.va)/60); diff=(mm>0?'+':'')+mm+' นาที'; }
+            else if(d.m.k==='arrRel'){ const mm=m1(d.vb-d.va); diff=(mm>0?'ช้าลง '+mm:'เร็วขึ้น '+(-mm))+' นาที'; }
             else if(d.m.unit==='m'){ diff=((d.vb-d.va)>0?'+':'')+m1(d.vb-d.va)+' น.'; }
             else if(d.m.unit==='n'){ diff=((d.vb-d.va)>0?'+':'')+m1(d.vb-d.va)+' คน'; }
             else { diff=((d.vb-d.va)>0?'+':'')+m1(d.vb-d.va)+' จุด'; }
@@ -472,9 +478,9 @@ window.__anImp = dep => {
 function csv(){
   const dks=chDates(), q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"', lines=[];
   if(DLEVEL==='dep'){
-    lines.push(['depot','days','headPerDay','ontimePct','lateCount','latePerDay','lateMinPerHead','avgArrival','absent','absentPct'].join(','));
+    lines.push(['depot','startTime','days','headPerDay','ontimePct','lateCount','latePerDay','lateMinPerHead','avgArrival','arrivalVsStartMin','absent','absentPct'].join(','));
     S().DEPOTS.forEach(dep=>{ const a=aggDep(dep,dks); if(!a) return;
-      lines.push([dep,a.days,a.head,m1(a.ontime),a.lateN,m1(a.latePerDay),m1(a.lateAvg),hmOf(a.arr),a.abN,m1(a.abRate||0)].map(q).join(',')); });
+      lines.push([dep,hmOf(a.cut),a.days,a.head,m1(a.ontime),a.lateN,m1(a.latePerDay),m1(a.lateAvg),hmOf(a.arr),m1(a.arrRel),a.abN,m1(a.abRate||0)].map(q).join(',')); });
   } else {
     lines.push(['depot','code','name','vendor','type','days','ontimePct','lateCount','lateMinPerDay','avgArrival','absent'].join(','));
     aggPeople(S().DEPOTS,dks).forEach(o=>lines.push([o.dep,o.c.code||'#'+o.cid,o.c.name||'',o.c.vendor||'',o.c.type||'',o.days,o.ontime==null?'':m1(o.ontime),o.late,o.lateAvg==null?'':m1(o.lateAvg),o.arrA==null?'':hmOf(o.arrA),o.ab].map(q).join(',')));

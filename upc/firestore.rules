@@ -30,6 +30,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // รายชื่อผู้บันทึก (Staff) ของแต่ละสาขา — ใช้แสดงในหน้าเข้าสู่ระบบ (เหมือนแอปเดิม)
+    match /pubstaff/{dep} {
+      allow read: if true;
+      allow write: if isDepot(dep) || isMgrOf(dep);
+    }
+
     // ตั้งค่าแอป (เวอร์ชันบังคับอัปเดต, เวลาเข้างาน)
     match /config/{id} {
       allow read: if true;

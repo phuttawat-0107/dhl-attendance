@@ -5,7 +5,7 @@
                  ใช้ทดสอบระบบ และใช้ฝึก UPC Manager / Staff ก่อนใช้งานจริง
    Design By Winnie
    =================================================================== */
-export const FB_VER = '2026.09.25-a';
+export const FB_VER = '2026.09.25-b';
 export const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* ⚙️ ค่าเชื่อมต่อโปรเจกต์ Firebase ใหม่ของ UPC — วางค่าจาก Firebase Console ตรงนี้ */
@@ -24,7 +24,15 @@ export const toMs = v => (v && typeof v.toMillis === 'function') ? v.toMillis() 
 
 /* อีเมลภายในสำหรับบัญชี (ผู้ใช้ไม่เห็น) */
 export const depotEmail = (code, ver) => code.toLowerCase().replace(/[^a-z0-9]/g, '') + (ver > 1 ? '.v' + ver : '') + '@depot.upc.dhl';
-export const mgrEmail   = (user, ver) => user.toLowerCase().replace(/[^a-z0-9._-]/g, '') + (ver > 1 ? '.v' + ver : '') + '@mgr.upc.dhl';
+/* Manager เข้าด้วย PIN 6 หลักอย่างเดียว (เหมือนหน้า Manager เดิม) — PIN แต่ละคนไม่ซ้ำกัน */
+export const mgrEmail   = pin => 'm' + String(pin).replace(/\D/g, '') + '@mgr.upc.dhl';
+export const mgrPw      = pin => 'upc#' + String(pin).replace(/\D/g, '');
+/* สถานะแบบเดียวกับแอปเดิม: ontime ถ้าไม่เกิน 07:10 (ผ่อนผันภายใน ไม่แสดงบนหน้าจอ) */
+export const CUT = 25200, GRACE = 25800;
+export function calcStatus(ms) {
+  const d = new Date(ms), s = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+  return s <= GRACE ? { status: 'ontime', buffer: s > CUT } : { status: 'late', buffer: false };
+}
 
 let impl = null;
 export async function initFB() {
@@ -85,7 +93,7 @@ async function makeReal() {
 
 /* ============================ โหมด Demo ============================ */
 function makeDemo() {
-  const KEY = 'upcDemoDB_v1', SES = 'upcDemoUid';
+  const KEY = 'upcDemoDB_v2', SES = 'upcDemoUid';
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('upc-demo') : null;
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } };
   let DB = load();
@@ -181,7 +189,7 @@ function makeDemo() {
 
   /* รูปจำลองสำหรับข้อมูลย้อนหลังในโหมด Demo (ไม่กินพื้นที่เครื่อง) */
   function synth(p) {
-    const m = /^depots\/([^/]+)\/photos\/(\d+)_(\d{4}-\d{2}-\d{2})$/.exec(p);
+    const m = /^depots\/([^/]+)\/photos\/ci_(\d+)_(\d{4}-\d{2}-\d{2})$/.exec(p);
     if (!m) return null;
     const day = DB.docs['depots/' + m[1] + '/days/' + m[3]];
     if (!day || !day.checkins || !day.checkins[m[2]] || !day.checkins[m[2]].demoPhoto) return null;
@@ -201,9 +209,9 @@ function makeDemo() {
   function seed() {
     const db = { users: {}, docs: {} };
     const addUser = (email, pw) => { const id = 'u' + Math.random().toString(36).slice(2, 10); db.users[email] = { pw, uid: id }; return id; };
-    const admin = addUser(mgrEmail('admin'), 'admin123');
+    const admin = addUser(mgrEmail('999999'), mgrPw('999999'));
     db.docs['config/adminLock'] = { uid: admin, at: Date.now() };
-    db.docs['managers/' + admin] = { name: 'วินนี่ (Admin)', role: 'admin', depots: [], user: 'admin' };
+    db.docs['managers/' + admin] = { name: 'วินนี่ (Admin)', role: 'admin', depots: [] };
     db.docs['config/app'] = { staffVer: '', managerVer: '', cut: '07:00', grace: '07:10', keepDays: 30 };
     const depots = [
       { code: 'CNX1', name: 'เชียงใหม่ 1', region: 'เหนือ', province: 'เชียงใหม่', pin: '111111' },
@@ -235,17 +243,17 @@ function makeDemo() {
           const t = dt.getTime() + 7 * 3600e3 + mins * 60e3 + ((i * 13) % 60) * 1000;
           // ตัวอย่างเครื่องที่ตั้งนาฬิกาผิด (เวลาในเครื่องเร็วกว่าเวลาจริง 18 นาที) — ให้ Manager เห็นธงเตือน
           const skew = (di === 3 && i === 2 && k % 3 === 0) ? 18 * 60e3 : 800;
-          ck[c.id] = { ts: t, srv: t + skew, by: 'หัวหน้า ' + d.code, hasPhoto: true, demoPhoto: true };
+          ck[c.id] = { ts: t, srv: t + skew, ...calcStatus(t), staff: 'หัวหน้า ' + d.code, hasPhoto: true, demoPhoto: true };
         });
         db.docs['depots/' + d.code + '/days/' + key] = { date: key, depot: d.code, checkins: ck, absent: ab };
       }
+      db.docs['pubstaff/' + d.code] = { names: ['หัวหน้า ' + d.code, 'ผู้ช่วย ' + d.code] };
     });
     db.docs['pub/depots'] = pub;
-    const m1 = addUser(mgrEmail('upc.north'), 'north123');
-    db.docs['managers/' + m1] = { name: 'UPC ภาคเหนือ (ตัวอย่าง)', role: 'upc', depots: ['CNX1', 'CNX2', 'LPG1'], user: 'upc.north' };
-    const m2 = addUser(mgrEmail('upc.isan'), 'isan123');
-    db.docs['managers/' + m2] = { name: 'UPC อีสาน (ตัวอย่าง)', role: 'upc', depots: ['KKN1'], user: 'upc.isan' };
-    db.docs['pub/mgrs'] = { 'admin': 1, 'upc.north': 1, 'upc.isan': 1 };
+    const m1 = addUser(mgrEmail('123456'), mgrPw('123456'));
+    db.docs['managers/' + m1] = { name: 'UPC ภาคเหนือ (ตัวอย่าง)', role: 'upc', depots: ['CNX1', 'CNX2', 'LPG1'] };
+    const m2 = addUser(mgrEmail('654321'), mgrPw('654321'));
+    db.docs['managers/' + m2] = { name: 'UPC อีสาน (ตัวอย่าง)', role: 'upc', depots: ['KKN1'] };
     return db;
   }
 }

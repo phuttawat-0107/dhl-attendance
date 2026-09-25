@@ -1,521 +1,602 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#FFCC00">
-<title>DHL UPC · ลงเวลาเข้างาน</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<title>DHL eCommerce — Courier Attendance</title>
+<!-- ธีมเดียวกับแอป Staff ต้นฉบับ (ดึงจาก DHL_Courier_Attendance.html) -->
+<link rel="stylesheet" href="theme.css?v=1">
 <style>
-:root{--y:#FFCC00;--r:#D40511;--ink:#171717;--mut:#6b6b6b;--bg:#f3f3f1;--line:#e4e4e0;--ok:#0a8a3a;--card:#fff}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Sarabun,system-ui,sans-serif;font-size:15px}
-b,h1,h2,h3,.pf{font-family:Prompt,Sarabun,sans-serif}
-button{font:inherit;cursor:pointer;border:0}
-input,select,textarea{font:inherit;width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
-input:focus,textarea:focus,select:focus{outline:none;border-color:var(--y);box-shadow:0 0 0 3px #ffcc0040}
-.btn-y{background:var(--y) !important;color:#171717 !important;font-family:Prompt;font-weight:700;padding:13px;border-radius:12px;width:100%;box-shadow:0 2px 0 #e0b400 !important}
-.btn-r{background:var(--r);color:#fff;font-family:Prompt;font-weight:600;padding:12px;border-radius:12px;width:100%}
-.btn-g{background:#fff;color:var(--ink);border:1.5px solid var(--line);font-family:Prompt;font-weight:600;padding:12px;border-radius:12px;width:100%}
-.btn-y:disabled{opacity:.5}
-.dhl{font-family:Prompt;font-weight:700;font-style:italic;color:var(--r);font-size:26px;letter-spacing:-1px}
-/* login */
-.login{max-width:420px;margin:0 auto;padding:28px 20px 40px}
-.brand{display:flex;gap:12px;align-items:center;background:var(--y);margin:-28px -20px 22px;padding:26px 20px}
-.brand b{display:block;font-size:18px}.brand small{color:#5a4a00}
-.login label{display:block;font-size:13px;color:var(--mut);margin:14px 0 5px}
-.err{color:var(--r);min-height:22px;margin:10px 0 6px;font-weight:600}
-.foot{text-align:center;color:#a0a09a;font-size:12px;margin-top:22px}
-.demo{background:#fff4c2;border:1px dashed #d9ad00;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.55}
-.demo code{background:#fff;padding:1px 5px;border-radius:5px}
-/* shell */
-header{position:sticky;top:0;z-index:5;background:var(--y);padding:10px 14px 10px;box-shadow:0 2px 0 #e0b400}
-.hrow{display:flex;align-items:center;gap:10px}
-.hdep{flex:1;min-width:0}.hdep b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hdep small{color:#5a4a00;font-size:12px}
-.clock{font-family:Prompt;font-weight:700;font-size:20px;text-align:right;line-height:1}
-.clock small{display:block;font-family:Sarabun;font-weight:600;font-size:11px;color:#5a4a00;margin-top:3px}
-.icon{background:#0000000f;border-radius:10px;width:38px;height:38px;font-size:17px}
-.net{font-size:12px;padding:5px 14px;display:flex;gap:8px;align-items:center}
-.net.off{background:#fff0c7;color:#7a5a00}.net.pend{background:#e8f1ff;color:#1a4c9a}.net.ok{display:none}
-.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px 4px}
-.chip{background:#fff;border-radius:12px;padding:8px 4px;text-align:center;border:2px solid transparent}
-.chip b{display:block;font-size:20px;line-height:1.1}.chip small{font-size:11.5px;color:var(--mut)}
-.chip.on{border-color:var(--ink)}
-.chip.c-in b{color:var(--ok)}.chip.c-ab b{color:#7a7a7a}.chip.c-no b{color:var(--r)}
-.srch{padding:8px 12px}
-main{padding:0 12px 96px}
-.row{display:flex;align-items:center;gap:11px;background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:7px;border:1px solid var(--line)}
-.row:active{transform:scale(.99)}
-.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-family:Prompt;font-weight:700;background:#eee;color:#555;flex:none;font-size:14px}
-.av.in{background:#dff5e6;color:var(--ok)}.av.late{background:#fde2e4;color:var(--r)}.av.ab{background:#ececec;color:#888}
-.nm{flex:1;min-width:0}.nm b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nm small{color:var(--mut);font-size:12.5px}
-.pill{font-family:Prompt;font-weight:600;font-size:13.5px;padding:6px 11px;border-radius:999px;white-space:nowrap}
-.pill.ok{background:#dff5e6;color:var(--ok)}.pill.late{background:#fde2e4;color:var(--r)}
-.pill.ab{background:#eee;color:#666}.pill.go{background:var(--ink);color:var(--y)}
-.row.off{opacity:.5}
-.empty{text-align:center;color:var(--mut);padding:40px 10px}
-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:6}
-nav button{flex:1;background:none;padding:10px 0 12px;font-family:Prompt;font-size:13px;color:var(--mut)}
-nav button i{display:block;font-style:normal;font-size:20px}
-nav button.on{color:var(--ink);font-weight:700;box-shadow:inset 0 3px 0 var(--y)}
-.rtools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:10px 0}
-.rtools button{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:10px 4px;font-family:Prompt;font-size:13px;font-weight:600}
-/* sheet */
-#bd{position:fixed;inset:0;background:#0007;z-index:20;display:none}
-#sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:#fff;border-radius:20px 20px 0 0;padding:8px 16px calc(18px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto;transform:translateY(105%);transition:transform .22s}
-#sheet.on{transform:none}
-#sheet .grab{width:44px;height:5px;background:#ddd;border-radius:9px;margin:4px auto 12px}
-#sheet h3{margin:0 0 4px;font-size:18px}
-#sheet .sub{color:var(--mut);margin-bottom:14px;font-size:13.5px}
-.stack{display:grid;gap:9px}
-.reasons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.reasons button{background:#f4f4f2;border-radius:12px;padding:13px 6px;font-family:Prompt;font-weight:600}
-.phbox{background:#f4f4f2;border-radius:14px;min-height:120px;display:grid;place-items:center;margin-bottom:12px;overflow:hidden}
-.phbox img{width:100%;display:block}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px;margin-bottom:14px}.kv span{color:var(--mut)}
-.frm label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-/* camera */
-#cam{position:fixed;inset:0;background:#000;z-index:40;display:flex;flex-direction:column}
-#cam[hidden]{display:none}
-.camtop{display:flex;align-items:center;gap:10px;padding:12px 14px;color:#fff;background:#111}
-.camtop b{flex:1;font-size:15px}.camtop button{background:#ffffff22;color:#fff;border-radius:10px;width:40px;height:40px;font-size:18px}
-#cv,#cimg{flex:1;width:100%;min-height:0;object-fit:contain;background:#000}
-.cambar{display:flex;align-items:center;justify-content:space-around;padding:16px 10px calc(20px + env(safe-area-inset-bottom));background:#111}
-.shut{width:74px;height:74px;border-radius:50%;background:#fff;box-shadow:0 0 0 5px #ffffff55}
-.cb2{background:#ffffff22;color:#fff;border-radius:50%;width:52px;height:52px;display:grid;place-items:center;font-size:22px}
-.cambar .btn-y,.cambar .btn-g{width:auto;flex:1;margin:0 6px}
-.camhint{color:#ffcc00;text-align:center;font-size:13px;padding:6px;background:#111}
-#toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#171717;color:#fff;padding:11px 16px;border-radius:12px;z-index:60;font-size:14px;max-width:90vw;display:none;box-shadow:0 6px 20px #0005}
-.updbar{background:var(--r);color:#fff;text-align:center;padding:8px;font-size:13px}
-.demoRib{background:#171717;color:var(--y);text-align:center;font-size:12px;padding:4px}
+/* เสริมเล็กน้อยสำหรับ UPC — ใช้คลาส/สีเดียวกับต้นฉบับ */
+.dsAbsBtnC{border:1px solid #e6c9c9;background:#fff5f5;color:#a3151f;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap;min-height:44px;}
+#dsLogin select#dsDep{letter-spacing:0;text-align:left;}
+#dsLogin .demo{background:#fff8d9;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.6;color:#6b5a1a;margin:0 0 14px;}
+#dsLogin .demo b{color:#1a1a1a;} #dsLogin .demo a{color:#D40511;font-weight:800;}
+#dsLogin .ver{font-size:10.5px;color:#c4bca6;text-align:center;margin-top:12px;}
+.demoRib{position:fixed;left:10px;bottom:96px;z-index:60;background:#FFCC00;color:#1a1a1a;font-size:11px;font-weight:800;padding:6px 11px;border-radius:99px;box-shadow:0 3px 12px rgba(0,0,0,.2);}
+#dsBadge.off{background:#D40511 !important;color:#fff !important;}
+#updBar{display:none;background:#D40511;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:700;}
+#camFile{display:none;}
+.cam-flip.fb{width:auto;padding:0 14px;border-radius:22px;font-size:14px;font-weight:700;}
+.hrow{cursor:pointer;}
 </style>
 </head>
 <body>
-<div id="app"><div class="empty">กำลังโหลด…</div></div>
-<div id="bd" onclick="__close()"></div>
-<div id="sheet"></div>
-<div id="cam" hidden></div>
-<div id="toast"></div>
+
+<div id="updBar"></div>
+<div class="topbar">
+  <div class="ybar"></div>
+  <div class="hd">
+    <div class="logo"><img class="dhlmark" src="logo.webp" alt="DHL eCommerce"><span class="dhl-logo-slot"><span class="depot-logo" id="hdDepCode">UPC</span></span></div>
+    <div class="meta"><b id="hdDepot">Courier Attendance</b><span id="hdClock">--:--:--</span></div>
+  </div>
+</div>
+
+<!-- ============ CHECK-IN ============ -->
+<div class="view active" id="view-checkin">
+  <div class="card" id="clockCard">
+    <div class="bigclock">
+      <div class="t" id="bigTime">--:--:--</div>
+      <div class="m" id="bigMsg">เวลาเข้างาน 07:00 น.</div>
+    </div>
+  </div>
+  <div class="card" style="padding:10px 14px;">
+    <div class="small" style="margin-bottom:6px;font-weight:700;">โหมดลงเวลา</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-block btn-y" id="modeCam" type="button">📷 ถ่ายทันที</button>
+    </div>
+    <div class="small" style="margin-top:6px;">ถ่ายภาพแล้วบันทึกเวลาทันที (มาตรฐาน)</div>
+  </div>
+  <div class="card">
+    <h2>เช็คอินเข้างานวันนี้ <span class="small" id="ciDate"></span></h2>
+    <div class="small">Staff เป็นผู้ถ่ายภาพและบันทึกเวลา</div>
+    <div class="progress-wrap"><div class="progress-bar" id="ciProg" style="width:0%"></div></div>
+    <div class="small" id="ciProgTxt" style="margin-top:5px;">เช็คอินแล้ว 0/0 คน</div>
+  </div>
+  <div id="dsSum" class="go"></div>
+  <div id="dsGrpBar"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" onclick="dsTogglePhoto()">📷 ซ่อนรูป</button></div>
+  <div id="ciList"></div>
+</div>
+
+<!-- ============ HISTORY ============ -->
+<div class="view" id="view-hist">
+  <div class="card"><h2>ประวัติรายวัน</h2><div class="small">แตะวันที่เพื่อดูรายชื่อย้อนหลัง (30 วัน)</div></div>
+  <div id="histList"></div>
+</div>
+
+<!-- ============ MANAGE ============ -->
+<div class="view" id="view-manage">
+  <div class="card">
+    <h2>เพิ่มพนักงาน Courier</h2>
+    <input id="fCode" placeholder="รหัสพนักงาน เช่น CNX001">
+    <input id="fName" placeholder="ชื่อ-นามสกุล">
+    <input id="fVendor" placeholder="ชื่อ Vendor" list="dlVendor"><datalist id="dlVendor"></datalist>
+    <select id="fType"><option value="2W">2W (มอเตอร์ไซค์)</option><option value="4W">4W (รถยนต์)</option></select>
+    <button class="btn btn-y btn-block" onclick="addCourier()">+ เพิ่มพนักงาน</button>
+  </div>
+  <div class="card">
+    <h2>📥 นำเข้ารายชื่อจาก Excel</h2>
+    <div class="small" style="margin-bottom:8px;">คอลัมน์: <b>รหัส · ชื่อ-นามสกุล · Vendor · ประเภท (2W/4W)</b> — เลือกไฟล์ หรือคัดลอกจาก Excel มาวาง</div>
+    <label class="btn btn-o btn-block" style="text-align:center;margin-bottom:8px;">📂 เลือกไฟล์ Excel / CSV<input type="file" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="impFile(this)"></label>
+    <textarea id="impText" rows="4" placeholder="วางข้อมูลจาก Excel ที่นี่" oninput="impParse(this.value)" style="width:100%;padding:12px;border-radius:12px;font-family:inherit;"></textarea>
+    <label class="small" style="display:flex;gap:8px;align-items:center;margin:8px 0;"><input type="checkbox" id="impOff" style="width:auto;margin:0;min-height:0;"> พักคนที่ไม่มีในไฟล์</label>
+    <div class="small" id="impPrev" style="margin-bottom:8px;"></div>
+    <button class="btn btn-y btn-block" id="impGo" disabled onclick="impSave()">นำเข้า</button>
+  </div>
+  <div class="card"><h2>รายชื่อพนักงาน (<span id="mCount">0</span>)</h2>
+    <div style="display:flex;gap:6px;margin-bottom:8px;"><button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="exportCsv()">⬇ ส่งออก CSV</button></div>
+    <div id="mList"></div></div>
+  <div class="card">
+    <h2>ชื่อผู้บันทึก (Staff)</h2>
+    <div class="small" style="margin-bottom:8px;">รายชื่อนี้จะแสดงในหน้าเข้าสู่ระบบของสาขา</div>
+    <div id="stList"></div>
+    <div style="display:flex;gap:6px;margin-top:6px;"><input id="stNew" placeholder="เพิ่มชื่อ Staff" style="margin:0;"><button class="btn btn-y" style="flex-shrink:0;" onclick="addStaffName()">+ เพิ่ม</button></div>
+  </div>
+  <div class="card" id="dsLogoutCard">
+    <h2>☁ บัญชีผู้ใช้</h2>
+    <div class="small" id="dsWho" style="margin-bottom:9px;"></div>
+    <button class="btn btn-o btn-block" style="color:var(--r);border-color:var(--r);" onclick="dsLogout()">🚪 ออกจากระบบ</button>
+    <div class="small" style="margin-top:7px;">ใช้เมื่อเปลี่ยนคนใช้เครื่องนี้ หรือย้ายไปเครื่องอื่น</div>
+  </div>
+</div>
+
+<!-- bottom nav -->
+<div class="nav">
+  <button class="on" data-v="checkin" onclick="nav('checkin')"><span class="ic">1️⃣</span>เช็คอิน</button>
+  <button data-v="hist" onclick="nav('hist')"><span class="ic">🗓</span>ประวัติ</button>
+  <button data-v="manage" onclick="nav('manage')"><span class="ic">👥</span>จัดการ</button>
+</div>
+
+<!-- camera -->
+<div class="overlay" id="camOverlay">
+  <video id="camVideo" autoplay playsinline muted></video>
+  <div class="cam-top">
+    <div><b id="camName">—</b><div class="small" style="color:#ddd" id="camSub"></div></div>
+    <button class="cam-x" onclick="closeCamera()">✕</button>
+  </div>
+  <div class="cam-bottom">
+    <button class="cam-flip" onclick="flipCamera()">🔄</button>
+    <button class="shutter" onclick="capture()"></button>
+    <label class="cam-flip fb" id="camFb" style="display:none;align-items:center;justify-content:center;">📱<input id="camFile" type="file" accept="image/*" capture="environment" onchange="captureFile(this)"></label>
+  </div>
+</div>
+
+<!-- generic sheet (history / detail) -->
+<div class="modal" id="sheetModal" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="sheet" id="sheetBody"></div>
+</div>
+
+<!-- edit courier modal -->
+<div class="modal" id="editModal">
+  <div class="sheet">
+    <h2>✏️ แก้ไขข้อมูลพนักงาน</h2>
+    <label class="small">รหัสพนักงาน</label><input id="eCode">
+    <label class="small">ชื่อ-นามสกุล</label><input id="eName">
+    <label class="small">Vendor</label><input id="eVendor" list="dlVendor">
+    <label class="small">Type</label>
+    <select id="eType"><option value="2W">2W (มอเตอร์ไซค์)</option><option value="4W">4W (รถยนต์)</option></select>
+    <div style="height:6px"></div>
+    <button class="btn btn-y btn-block" onclick="saveEdit()">💾 บันทึกการแก้ไข</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-o btn-block" onclick="document.getElementById('editModal').classList.remove('show')">ยกเลิก</button>
+    <div style="height:12px"></div>
+  </div>
+</div>
+
+<!-- absent dialog (แบบเดียวกับต้นฉบับ) -->
+<div id="dsAbsWrap"><div id="dsAbsBox">
+  <h3>บันทึกว่าไม่มาทำงาน</h3>
+  <div class="who" id="dsAbsWho"></div>
+  <label>เหตุผล</label>
+  <textarea id="dsAbsNote" placeholder="เช่น ลาป่วย"></textarea>
+  <div id="dsAbsQuick"><button type="button">ลาป่วย</button><button type="button">ลากิจ</button><button type="button">ขาดงาน</button><button type="button">วันหยุด</button></div>
+  <div class="dsAbsAct"><button id="dsAbsCancel" type="button">ยกเลิก</button><button id="dsAbsOk" type="button">บันทึก</button></div>
+</div></div>
+
+<!-- login (แบบเดียวกับต้นฉบับ) -->
+<div id="dsLogin"><div class="box"><div class="yb"></div>
+  <h3>เข้าสู่ระบบ</h3><p>ใส่ PIN ของสาขา แล้วเลือกชื่อของคุณ</p>
+  <div id="dsDemo"></div>
+  <label>สาขา</label><select id="dsDep"></select>
+  <label>PIN สาขา (6 หลัก)</label><input id="dsPin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off">
+  <label>ชื่อผู้บันทึก</label><select id="dsStaff"><option value="">— เลือกชื่อ —</option></select>
+  <div class="err" id="dsErr"></div>
+  <button id="dsGo">เข้าใช้งาน</button>
+  <div class="ver" id="dsVer"></div>
+</div></div>
+<div id="dsBadge"></div>
+<div class="flash" id="flash"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail } from './fb.js?v=2026.09.25-a';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT } from './fb.js?v=2026.09.25-b';
 
-const APP_VER = FB_VER;
-const CUT = 7*3600;                 // เวลาเข้างานตามกฎ 07:00
-const KEEP_DAYS = 30;               // เก็บรูป 30 วัน
-const $ = s => document.querySelector(s);
-const app = $('#app');
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const APP_VER = FB_VER, KEEP_DAYS = 30;
+const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,'0');
 const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const todayKey = () => ymd(new Date());
-const hm = ms => { const d=new Date(ms); return pad(d.getHours())+':'+pad(d.getMinutes()); };
-const hms = ms => { const d=new Date(ms); return hm(ms)+':'+pad(d.getSeconds()); };
-const secOf = ms => { const d=new Date(ms); return d.getHours()*3600+d.getMinutes()*60+d.getSeconds(); };
-const TH_D = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
-const TH_M = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-const thDate = d => TH_D[d.getDay()]+' '+d.getDate()+' '+TH_M[d.getMonth()]+' '+(d.getFullYear()+543);
-const LS = { get:(k,d)=>{ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} },
-             set:(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} } };
+const fmtTime = ts => { const d=new Date(ts); return pad(d.getHours())+':'+pad(d.getMinutes()); };
+const fmtSec  = ts => { const d=new Date(ts); return fmtTime(ts)+':'+pad(d.getSeconds()); };
+function thDate(key){ const [y,m,dd]=key.split('-').map(Number); const mo=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; return dd+' '+mo[m-1]+' '+(y+543); }
+function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function flash(msg){ const f=$('flash'); f.textContent=msg; f.style.display='block'; clearTimeout(f._t); f._t=setTimeout(()=>f.style.display='none',2200); }
+window.flash = flash;
+const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet = (k,v) => { try{ localStorage.setItem(k,v); }catch(e){} };
 
-let fb, PUB = {}, CFG = {}, CODE = '', ME = '', DEP = null, DAY = null, DAYKEY = '';
-let TAB = 'list', FILTER = 'all', Q = '', UNSUB = [], DAYUNSUB = null, PENDING = 0, SYNCPEND = false, NAMED = false;
+let fb, PUB = {}, CFG = {}, DEP = null, DAY = {}, DAYKEY = '', CODE = '', STAFF = '', READY = false;
+let UNS = [], DAYUNS = null, PENDING = 0, SHOWDONE = lsGet('dsShowDone') !== '0';
+const PH = {};   // cache รูปวันนี้
 
-function toast(t, ms=2600){ const e=$('#toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>e.style.display='none', ms); }
-function track(p){ PENDING++; netBar(); return p.then(()=>{ PENDING--; netBar(); }).catch(e=>{ PENDING--; netBar(); toast('⚠️ บันทึกไม่สำเร็จ ('+(e.code||e.message)+') — ลองใหม่อีกครั้ง', 5000); }); }
+function track(p){ PENDING++; badge(); return p.then(()=>{ PENDING--; badge(); }).catch(e=>{ PENDING--; badge(); flash('⚠️ บันทึกไม่สำเร็จ — ลองใหม่อีกครั้ง'); console.warn(e); }); }
 
-/* ---------------- เริ่มต้น ---------------- */
+/* ================= LOGIN ================= */
 (async function boot(){
+  $('dsVer').textContent = 'v'+APP_VER+' · Design By Winnie';
   try { fb = await initFB(); }
-  catch(e){ app.innerHTML = '<div class="login"><div class="brand"><span class="dhl">DHL</span><div><b>UPC Attendance</b></div></div><div class="err">'+esc(e.message)+'</div></div>'; return; }
-  PUB = LS.get('upc_pub', {});
-  try { PUB = (await fb.get('pub/depots')) || PUB; LS.set('upc_pub', PUB); } catch(e){}
+  catch(e){ $('dsErr').textContent = e.message; $('dsLogin').classList.add('show'); return; }
+  if (DEMO) {
+    document.body.insertAdjacentHTML('beforeend','<div class="demoRib">🧪 โหมดทดลอง</div>');
+    $('dsDemo').innerHTML = '<div class="demo">🧪 <b>โหมดทดลอง</b> — ข้อมูลจำลอง ไม่กระทบระบบจริง<br>สาขา <b>CNX1</b> PIN <b>111111</b> · <b>KKN1</b> PIN <b>444444</b><br><a href="#" onclick="window.__resetDemo();return false">↺ ล้างข้อมูลทดลอง</a></div>';
+  }
+  try { PUB = JSON.parse(lsGet('upc_pub')||'{}'); } catch(e){}
+  try { PUB = (await fb.get('pub/depots')) || PUB; lsSet('upc_pub', JSON.stringify(PUB)); } catch(e){}
+  fillDepots();
   fb.onAuth(uid => {
-    if (uid && localStorage.getItem('upc_code') && localStorage.getItem('upc_name')) { if (!CODE) start(); }
-    else if (!uid) { stop(); renderLogin(); }
+    if (uid && lsGet('dsDepot') && lsGet('dsStaff')) { if (!READY) afterLogin(); }
+    else { stopAll(); $('dsLogin').classList.add('show'); }
   });
 })();
-
-function demoHint(){
-  return '<div class="demo">🧪 <b>โหมดทดลอง</b> — ข้อมูลจำลอง ไม่กระทบระบบจริง<br>ลองสาขา <code>CNX1</code> PIN <code>111111</code> · <code>KKN1</code> PIN <code>444444</code>'
-       + '<br><a href="#" onclick="__resetDemo();return false">↺ ล้างข้อมูลทดลอง</a></div>';
-}
 window.__resetDemo = () => { if (confirm('ล้างข้อมูลทดลองทั้งหมด?')) { fb.resetDemo(); location.reload(); } };
 
-function renderLogin(msg){
+function fillDepots(){
   const codes = Object.keys(PUB).sort();
-  const names = LS.get('upc_names', []);
-  app.innerHTML = `<div class="login">
-    <div class="brand"><span class="dhl">DHL</span><div><b>UPC Attendance</b><small>ลงเวลาเข้างาน · สำหรับสาขา</small></div></div>
-    ${DEMO ? demoHint() : ''}
-    <label>รหัสสาขา</label>
-    <input id="lg_code" list="dl_codes" autocapitalize="characters" autocomplete="off" value="${esc(localStorage.getItem('upc_code')||'')}" placeholder="เช่น CNX1">
-    <datalist id="dl_codes">${codes.map(c=>`<option value="${esc(c)}">${esc(PUB[c].name||'')}</option>`).join('')}</datalist>
-    <label>PIN สาขา (ตัวเลข 6 หลัก)</label>
-    <input id="lg_pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off">
-    <label>ชื่อผู้ลงเวลา (คนที่ถือเครื่องนี้)</label>
-    <input id="lg_name" list="dl_names" autocomplete="off" value="${esc(localStorage.getItem('upc_name')||'')}" placeholder="ชื่อของคุณ">
-    <datalist id="dl_names">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
-    <div class="err" id="lg_err">${esc(msg||'')}</div>
-    <button class="btn-y" id="lg_btn" onclick="__login()">เข้าสู่ระบบ</button>
-    <div class="foot">v${APP_VER} · Design By Winnie</div></div>`;
-  $('#lg_pin').addEventListener('keydown', e => { if (e.key==='Enter') window.__login(); });
+  $('dsDep').innerHTML = codes.length ? codes.map(c=>'<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+' · '+escapeHtml(PUB[c].name||'')+'</option>').join('') : '<option value="">— ยังไม่มีสาขา —</option>';
+  const cur = lsGet('dsDepot'); if (cur && PUB[cur]) $('dsDep').value = cur;
+  loadStaffList();
 }
-function loginErr(t){ $('#lg_err').textContent = t; const b=$('#lg_btn'); b.disabled=false; b.textContent='เข้าสู่ระบบ'; }
+$('dsDep').onchange = loadStaffList;
+$('dsStaff').onchange = () => { $('dsErr').textContent=''; };
+$('dsPin').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+$('dsGo').onclick = () => doLogin();
 
-window.__login = async () => {
-  const code = $('#lg_code').value.trim().toUpperCase(), pin = $('#lg_pin').value.trim(), name = $('#lg_name').value.trim();
-  if (!code || !pin || !name) return loginErr('กรอกให้ครบทุกช่อง');
-  if (!/^\d{6}$/.test(pin)) return loginErr('PIN ต้องเป็นตัวเลข 6 หลัก');
-  const b=$('#lg_btn'); b.disabled=true; b.textContent='กำลังเข้าสู่ระบบ…';
-  try { PUB = (await fb.get('pub/depots')) || PUB; LS.set('upc_pub', PUB); } catch(e){}
-  const p = PUB[code];
-  if (!p) return loginErr('ไม่พบรหัสสาขา '+code);
-  try { await fb.signIn(depotEmail(code, p.ver||1), pin); }
-  catch(e){ return loginErr(e.code==='auth/network-request-failed' ? 'ไม่มีอินเทอร์เน็ต — ต่อเน็ตแล้วลองใหม่' : e.code==='auth/too-many-requests' ? 'ลองผิดหลายครั้ง — รอสักครู่แล้วลองใหม่' : 'PIN ไม่ถูกต้อง'); }
-  localStorage.setItem('upc_code', code); localStorage.setItem('upc_name', name);
-  const names = LS.get('upc_names', []).filter(n=>n!==name); names.unshift(name); LS.set('upc_names', names.slice(0,10));
-  start();
+async function loadStaffList(){
+  const dep = $('dsDep').value, sel = $('dsStaff'), err = $('dsErr');
+  if (!dep) return;
+  sel.innerHTML = '<option value="">— กำลังโหลด —</option>';
+  try {
+    const d = await fb.get('pubstaff/'+dep);
+    const names = (d && d.names) || [];
+    if (!names.length) { sel.innerHTML='<option value="">— ยังไม่มีรายชื่อ —</option>'; err.textContent='สาขานี้ยังไม่มีรายชื่อ — แจ้งผู้จัดการเพิ่มชื่อให้ก่อน'; return; }
+    err.textContent = '';
+    sel.innerHTML = '<option value="">— เลือกชื่อ —</option>'+names.map(n=>'<option>'+escapeHtml(n)+'</option>').join('');
+    const last = lsGet('dsStaff'); if (last && names.includes(last)) sel.value = last;
+  } catch(e){ sel.innerHTML='<option value="">— เลือกชื่อ —</option>'; }
+}
+
+async function doLogin(){
+  const dep = $('dsDep').value, pin = $('dsPin').value.trim(), staff = $('dsStaff').value, err = $('dsErr');
+  const fail = m => { err.textContent = m; $('dsLogin').classList.add('show'); return false; };
+  if (!dep) return fail('เลือกสาขาก่อน');
+  if (!/^\d{6}$/.test(pin)) return fail('PIN ต้องเป็นตัวเลข 6 หลัก');
+  if (!staff) return fail('เลือกชื่อผู้บันทึกก่อน');
+  err.textContent = 'กำลังตรวจสอบ...';
+  try { PUB = (await fb.get('pub/depots')) || PUB; } catch(e){}
+  const p = PUB[dep]; if (!p) return fail('สาขานี้ยังไม่ถูกตั้งค่า — แจ้งผู้จัดการ');
+  try { await fb.signIn(depotEmail(dep, p.ver||1), pin); }
+  catch(e){ $('dsPin').value=''; return fail(e.code==='auth/network-request-failed' ? 'เชื่อมต่อไม่ได้ — ตรวจสอบอินเทอร์เน็ต' : e.code==='auth/too-many-requests' ? 'ลองผิดหลายครั้ง — รอสักครู่แล้วลองใหม่' : 'PIN ไม่ถูกต้อง'); }
+  lsSet('dsDepot', dep); lsSet('dsStaff', staff);
+  $('dsLogin').classList.remove('show');
+  afterLogin();
+}
+
+window.dsLogout = async () => {
+  if (!confirm('ออกจากระบบ?\n\nข้อมูลที่บันทึกไว้ยังอยู่ครบบนคลาวด์\nครั้งหน้าต้องใส่ PIN และเลือกชื่อใหม่')) return;
+  stopAll(); try{ localStorage.removeItem('dsStaff'); }catch(e){}
+  await fb.signOut(); location.reload();
 };
+function kicked(msg){ stopAll(); fb.signOut(); $('dsErr').textContent = msg || 'PIN ของสาขาถูกเปลี่ยน — กรุณาเข้าสู่ระบบใหม่'; $('dsPin').value=''; $('dsLogin').classList.add('show'); }
+function stopAll(){ UNS.forEach(u=>u&&u()); UNS=[]; DAYUNS&&DAYUNS(); DAYUNS=null; READY=false; DEP=null; DAY={}; $('dsBadge').classList.remove('on'); }
 
-window.__logout = async () => {
-  if (!confirm('ออกจากระบบ?')) return;
-  stop(); localStorage.removeItem('upc_name'); await fb.signOut(); renderLogin();
-};
-
-function stop(){ UNSUB.forEach(u=>u&&u()); UNSUB=[]; DAYUNSUB&&DAYUNSUB(); DAYUNSUB=null; CODE=''; DEP=null; DAY=null; NAMED=false; }
-
-function kicked(msg){ stop(); fb.signOut(); renderLogin(msg || 'PIN ของสาขาถูกเปลี่ยน — กรุณาเข้าสู่ระบบใหม่'); }
-
-/* ---------------- หน้าหลัก ---------------- */
-function start(){
-  CODE = localStorage.getItem('upc_code'); ME = localStorage.getItem('upc_name');
-  TAB = 'list'; FILTER = 'all'; Q = '';
-  app.innerHTML = shell();
-  UNSUB.push(fb.listen('depots/'+CODE, (d, m) => {
-    if (m && m.error) return kicked(m.error.code==='permission-denied' ? 'บัญชีนี้ไม่มีสิทธิ์แล้ว (PIN อาจถูกรีเซ็ต) — เข้าสู่ระบบใหม่' : 'เชื่อมต่อไม่ได้: '+m.error.code);
+function afterLogin(){
+  CODE = lsGet('dsDepot'); STAFF = lsGet('dsStaff'); READY = true;
+  $('dsLogin').classList.remove('show');
+  $('hdDepCode').textContent = CODE;
+  $('hdDepot').textContent = (PUB[CODE] && PUB[CODE].name) || 'Courier Attendance';
+  badge();
+  UNS.push(fb.listen('depots/'+CODE, (d, m) => {
+    if (m && m.error) return kicked(m.error.code==='permission-denied' ? 'บัญชีนี้ไม่มีสิทธิ์แล้ว (PIN อาจถูกรีเซ็ต) — เข้าสู่ระบบใหม่' : 'เชื่อมต่อไม่ได้');
     if (!d) return;
     if (d.authUid && fb.uid() && d.authUid !== fb.uid()) return kicked();
-    DEP = d; ensureName(); render();
+    DEP = d; $('hdDepot').textContent = d.name || CODE; renderAll();
   }));
-  UNSUB.push(fb.listen('config/app', d => { CFG = d || {}; checkVer(); }));
+  UNS.push(fb.listen('pubstaff/'+CODE, d => { STAFFNAMES = (d && d.names) || []; renderStaffNames(); }));
+  UNS.push(fb.listen('config/app', d => { CFG = d || {}; checkVer(); }));
   listenDay();
-  setTimeout(purge, 4000);
+  setTimeout(purge, 5000);
 }
+let STAFFNAMES = [];
 function listenDay(){
-  DAYKEY = todayKey(); DAYUNSUB && DAYUNSUB(); DAY = {};
-  DAYUNSUB = fb.listen(`depots/${CODE}/days/${DAYKEY}`, (d, m) => { DAY = d || {}; SYNCPEND = !!(m && m.pending); netBar(); render(); });
+  DAYKEY = todayKey(); DAYUNS && DAYUNS(); DAY = {};
+  DAYUNS = fb.listen(`depots/${CODE}/days/${DAYKEY}`, d => { DAY = d || {}; renderCheckin(); });
 }
-function ensureName(){
-  if (NAMED || !DEP) return; NAMED = true;
-  const list = DEP.staffNames || [];
-  if (!list.includes(ME)) track(fb.set('depots/'+CODE, { staffNames: [...list, ME].slice(-30), updatedAt: NOW }));
+function badge(){
+  const b = $('dsBadge'); if (!READY) { b.classList.remove('on'); return; }
+  b.classList.add('on');
+  const off = !navigator.onLine;
+  b.classList.toggle('off', off);
+  b.textContent = off ? '📴 ออฟไลน์ · จะส่งเมื่อมีเน็ต' : (PENDING ? '⏳ กำลังส่ง · ' : '☁ ') + CODE + ' · ' + STAFF;
+  b.onclick = () => window.dsLogout();
+  const w = $('dsWho'); if (w) w.innerHTML = 'เข้าใช้งานอยู่: <b>'+escapeHtml(STAFF)+'</b> • สาขา <b>'+escapeHtml(CODE)+'</b> • ☁ ซิงค์อัตโนมัติ';
 }
+addEventListener('online', badge); addEventListener('offline', badge);
 
-function shell(){
-  return `${DEMO?'<div class="demoRib">🧪 โหมดทดลอง — ข้อมูลไม่ใช่ของจริง</div>':''}
-  <div id="upd"></div>
-  <header><div class="hrow">
-    <div class="hdep"><b id="h_dep">${esc(CODE)}</b><small id="h_me">👤 ${esc(ME)} · ${thDate(new Date())}</small></div>
-    <div class="clock"><span id="clk">--:--</span><small>เข้างาน 07:00</small></div>
-    <button class="icon" onclick="__logout()" title="ออกจากระบบ">⎋</button></div></header>
-  <div class="net ok" id="net"></div>
-  <div id="body"></div>
-  <nav><button id="nv_list" onclick="__tab('list')"><i>🕖</i>ลงเวลา</button><button id="nv_roster" onclick="__tab('roster')"><i>👥</i>รายชื่อพนักงาน</button></nav>`;
-}
-window.__tab = t => { TAB = t; Q=''; render(true); window.scrollTo(0,0); };
-
-function netBar(){
-  const e = $('#net'); if (!e) return;
-  const off = !navigator.onLine, pend = PENDING>0 || SYNCPEND;
-  e.className = 'net ' + (off ? 'off' : pend ? 'pend' : 'ok');
-  e.innerHTML = off ? '🟠 ออฟไลน์ — ลงเวลาได้ตามปกติ ระบบจะส่งข้อมูลเองเมื่อมีเน็ต' : pend ? '⏳ กำลังส่งข้อมูลขึ้นระบบ…' : '';
-}
-addEventListener('online', netBar); addEventListener('offline', netBar);
-
+/* ================= CLOCK ================= */
 setInterval(() => {
-  const c = $('#clk'); if (c) c.textContent = hms(Date.now());
-  if (CODE && todayKey() !== DAYKEY) { listenDay(); const m=$('#h_me'); if(m) m.textContent='👤 '+ME+' · '+thDate(new Date()); }
+  const now = Date.now(), s = new Date(); const sec = s.getHours()*3600+s.getMinutes()*60+s.getSeconds();
+  $('hdClock').textContent = fmtSec(now); $('bigTime').textContent = fmtSec(now);
+  const cc = $('clockCard');
+  cc.className = 'card ' + (sec > CUT ? 'c-late' : sec >= CUT - 600 ? 'c-warn' : 'c-ok');
+  $('bigMsg').textContent = sec > CUT ? 'เลยเวลาเข้างาน 07:00 น.' : sec >= CUT - 600 ? 'ใกล้เวลาเข้างาน 07:00 น.' : 'เวลาเข้างาน 07:00 น.';
+  const t = $('dsSumT'); if (t) t.textContent = fmtTime(now);
+  if (READY && todayKey() !== DAYKEY) listenDay();
 }, 1000);
 
-const rosterAll = () => (DEP && DEP.roster) || [];
-const rosterOn  = () => rosterAll().filter(c => c.active !== false);
-function stat(c){
-  const id = String(c.id);
-  const ck = DAY && DAY.checkins && DAY.checkins[id]; if (ck && ck.ts) return { k:'in', ck, late: secOf(ck.ts) > CUT };
-  const ab = DAY && DAY.absent && DAY.absent[id]; if (ab) return { k:'ab', ab };
-  return { k:'no' };
-}
-const ini = n => String(n||'?').replace(/^(นาย|นางสาว|นาง|น\.ส\.)\s*/,'').trim().slice(0,2);
-
-function render(full){
-  if (!DEP) { $('#body') && ($('#body').innerHTML = '<div class="empty">กำลังโหลดข้อมูลสาขา…</div>'); return; }
-  $('#h_dep').textContent = CODE + ' · ' + (DEP.name||'');
-  ['list','roster'].forEach(t => $('#nv_'+t).classList.toggle('on', TAB===t));
-  if (TAB === 'list') renderList(full); else renderRoster(full);
-}
-
-function renderList(full){
-  const R = rosterOn(), S = R.map(c => ({ c, s: stat(c) }));
-  const n = { all:R.length, in:S.filter(x=>x.s.k==='in').length, ab:S.filter(x=>x.s.k==='ab').length };
-  n.no = n.all - n.in - n.ab;
-  const body = $('#body');
-  if (full || !$('#q')) {
-    body.innerHTML = `<div class="chips" id="chips"></div>
-      <div class="srch"><input id="q" type="search" placeholder="🔍 ค้นหา รหัส / ชื่อ" value="${esc(Q)}"></div><main id="list"></main>`;
-    $('#q').addEventListener('input', e => { Q = e.target.value.trim().toLowerCase(); renderList(); });
-  }
-  const chip = (k, label, cls) => `<div class="chip ${cls} ${FILTER===k?'on':''}" onclick="__filt('${k}')"><b>${n[k]}</b><small>${label}</small></div>`;
-  $('#chips').innerHTML = chip('all','ทั้งหมด','') + chip('in','มาแล้ว','c-in') + chip('ab','ขาด/ลา','c-ab') + chip('no','ยังไม่ลง','c-no');
-  let L = S.filter(x => FILTER==='all' || x.s.k===FILTER);
-  if (Q) L = L.filter(x => (x.c.code+' '+x.c.name+' '+(x.c.vendor||'')).toLowerCase().includes(Q));
-  const ord = { no:0, in:1, ab:2 };
-  L.sort((a,b) => ord[a.s.k]-ord[b.s.k] || (a.s.k==='in' ? a.s.ck.ts-b.s.ck.ts : String(a.c.code).localeCompare(String(b.c.code))));
-  if (!R.length) { $('#list').innerHTML = '<div class="empty">ยังไม่มีรายชื่อพนักงาน<br><br><button class="btn-y" style="max-width:260px" onclick="__tab(\'roster\')">+ เพิ่มรายชื่อพนักงาน</button></div>'; return; }
-  $('#list').innerHTML = L.length ? L.map(({c,s}) => {
-    const av = s.k==='in' ? (s.late?'late':'in') : s.k==='ab' ? 'ab' : '';
-    const pill = s.k==='in' ? `<span class="pill ${s.late?'late':'ok'}">${hm(s.ck.ts)}</span>`
-               : s.k==='ab' ? `<span class="pill ab">${esc(s.ab.note||'ขาด')}</span>` : '<span class="pill go">ลงเวลา</span>';
-    return `<div class="row" onclick="__tap(${c.id})"><div class="av ${av}">${esc(ini(c.name))}</div>
-      <div class="nm"><b>${esc(c.name)}</b><small>${esc(c.code)} · ${esc(c.vendor||'-')} · ${esc(c.type||'2W')}</small></div>${pill}</div>`;
-  }).join('') : '<div class="empty">ไม่พบรายการ</div>';
-}
-window.__filt = k => { FILTER = FILTER===k && k!=='all' ? 'all' : k; renderList(); };
-
-/* ---------------- Sheet ---------------- */
-function openSheet(h){ $('#sheet').innerHTML = '<div class="grab"></div>'+h; $('#bd').style.display='block'; requestAnimationFrame(()=>$('#sheet').classList.add('on')); }
-window.__close = () => { $('#sheet').classList.remove('on'); $('#bd').style.display='none'; };
-const byId = id => rosterAll().find(c => String(c.id) === String(id));
-
-window.__tap = id => {
-  const c = byId(id); if (!c) return; const s = stat(c);
-  const head = `<h3>${esc(c.name)}</h3><div class="sub">${esc(c.code)} · ${esc(c.vendor||'-')} · ${esc(c.type||'2W')}</div>`;
-  if (s.k === 'no') {
-    openSheet(head + `<div class="stack">
-      <button class="btn-y" style="font-size:17px;padding:16px" onclick="__cam(${c.id})">📷 ถ่ายรูปลงเวลาเข้างาน</button>
-      <div style="color:var(--mut);font-size:13px;margin:6px 0 0">หรือบันทึกว่าไม่มาทำงาน</div>
-      <div class="reasons">${['ลาป่วย','ลากิจ','ขาดงาน','วันหยุด'].map(r=>`<button onclick="__absent(${c.id},'${r}')">${r}</button>`).join('')}</div>
-      <button class="btn-g" onclick="__close()">ปิด</button></div>`);
-  } else if (s.k === 'in') {
-    const ck = s.ck;
-    openSheet(head + `<div class="phbox" id="ph_box">กำลังโหลดรูป…</div>
-      <div class="kv"><span>เวลาเข้างาน</span><b style="color:${s.late?'var(--r)':'var(--ok)'}">${hms(ck.ts)} ${s.late?'(สาย)':''}</b>
-      <span>บันทึกโดย</span><div>${esc(ck.by||'-')}</div>${ck.re?`<span>ถ่ายใหม่</span><div>${ck.re} ครั้ง</div>`:''}</div>
-      <div class="stack"><button class="btn-g" onclick="__cam(${c.id},1)">📷 ถ่ายรูปใหม่ (บันทึกเวลาใหม่)</button>
-      <button class="btn-r" onclick="__undo(${c.id})">↩️ ยกเลิกการลงเวลา</button>
-      <button class="btn-g" onclick="__close()">ปิด</button></div>`);
-    fb.get(`depots/${CODE}/photos/${c.id}_${DAYKEY}`).then(p => {
-      const b = $('#ph_box'); if (!b) return;
-      b.innerHTML = p && p.d ? `<img src="${p.d}" alt="">` : (navigator.onLine ? '⚠️ ไม่พบรูป' : '🟠 ออฟไลน์ — รูปจะแสดงเมื่อมีเน็ต');
-    }).catch(() => { const b=$('#ph_box'); if (b) b.textContent='โหลดรูปไม่ได้'; });
-  } else {
-    openSheet(head + `<div class="kv"><span>สถานะ</span><b>${esc(s.ab.note||'ขาด')}</b><span>บันทึกโดย</span><div>${esc(s.ab.by||'-')}</div></div>
-      <div class="stack"><button class="btn-y" onclick="__cam(${c.id})">📷 มาทำงานแล้ว — ถ่ายรูปลงเวลา</button>
-      <button class="btn-g" onclick="__clearAb(${c.id})">↩️ ยกเลิกสถานะ ${esc(s.ab.note||'')}</button>
-      <button class="btn-g" onclick="__close()">ปิด</button></div>`);
-  }
+/* ================= NAV ================= */
+window.nav = v => {
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  $('view-'+v).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  if (v==='checkin') renderCheckin();
+  if (v==='hist') renderHist();
+  if (v==='manage') renderManage();
+  window.scrollTo(0,0);
 };
+function renderAll(){ renderCheckin(); if ($('view-manage').classList.contains('active')) renderManage(); }
+
+/* ================= CHECK-IN VIEW ================= */
+const couriers = () => (DEP && DEP.roster) || [];
+const byId = id => couriers().find(c => String(c.id) === String(id));
+$('ciSearch').addEventListener('input', () => renderCheckin());
+$('modeCam').onclick = () => flash('📷 แตะ "เช็คอิน" ที่ชื่อพนักงานเพื่อถ่ายภาพ');
+
+window.dsTogglePhoto = () => { document.body.classList.toggle('dsNoPh'); const on = !document.body.classList.contains('dsNoPh'); $('dsPhoto').classList.toggle('on', on); $('dsPhoto').textContent = on ? '📷 ซ่อนรูป' : '📷 แสดงรูป'; lsSet('dsNoPh', on?'0':'1'); };
+if (lsGet('dsNoPh')==='1') { document.body.classList.add('dsNoPh'); $('dsPhoto').textContent='📷 แสดงรูป'; } else $('dsPhoto').classList.add('on');
+window.dsToggleDone = () => { SHOWDONE = !SHOWDONE; lsSet('dsShowDone', SHOWDONE?'1':'0'); renderCheckin(); };
+
+function renderCheckin(){
+  $('ciDate').textContent = thDate(todayKey());
+  if (!DEP) return;
+  const ck = DAY.checkins || {}, ab = DAY.absent || {};
+  const act = couriers().filter(c => c.active !== false);
+  const done = act.filter(c => ck[c.id] && ck[c.id].ts), abs = act.filter(c => !ck[c.id] && ab[c.id]);
+  const todo = act.filter(c => !(ck[c.id] && ck[c.id].ts) && !ab[c.id]);
+  const late = done.filter(c => ck[c.id].status === 'late').length;
+  const denom = act.length - abs.length;
+  $('ciProg').style.width = denom ? (done.length/denom*100)+'%' : '0%';
+  $('ciProgTxt').textContent = 'เช็คอินแล้ว '+done.length+'/'+denom+' คน' + (abs.length ? ' • ขาด/ลา '+abs.length+' คน' : '');
+  const pct = denom ? Math.round(done.length/denom*100) : 0, all = denom && done.length >= denom;
+  const sum = $('dsSum'); sum.className = all ? 'ok' : 'go';
+  sum.innerHTML = '<div><div class="pv">'+pct+'%</div><div class="ps">เช็คอินแล้ว '+done.length+'/'+denom+' คน'+(late?' <span class="lt">· สาย '+late+'</span>':'')+'</div></div>'
+    + '<div><div class="tl">เวลา</div><div class="tv" id="dsSumT">'+fmtTime(Date.now())+'</div></div>';
+
+  const list = $('ciList');
+  if (!act.length) { list.innerHTML = '<div class="hint">ยังไม่มีรายชื่อพนักงาน — ไปที่แท็บ <b>จัดการ</b> เพื่อเพิ่มรายชื่อสาขาของคุณก่อน</div>'; return; }
+  const q = ($('ciSearch').value||'').toLowerCase();
+  const f = c => !q || (c.name+c.code+(c.vendor||'')).toLowerCase().includes(q);
+  const info = c => '<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor||'-')+'</div></div>';
+  let h = '';
+  const T = todo.filter(f).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+  if (!todo.length) h += '<div id="dsAllDone">✅ เช็คอินครบทุกคนแล้ว '+done.length+' คน</div>';
+  else {
+    h += '<div class="dsHdr todo"><span>⏳ ยังไม่เช็คอิน '+todo.length+' คน</span><span class="c">แตะ 📷 เพื่อถ่ายภาพ</span></div>';
+    h += T.map(c => '<div class="row-c">'+info(c)
+      +'<button class="dsAbsBtnC" onclick="openAbsent('+c.id+')">ขาด</button>'
+      +'<button class="btn btn-y" style="min-height:44px;flex-shrink:0;" onclick="openCamera('+c.id+')">📷 เช็คอิน</button></div>').join('');
+  }
+  if (abs.length) {
+    h += '<div class="dsHdr abs"><span>🚫 ขาด / ลา '+abs.length+' คน</span></div>';
+    h += abs.filter(f).map(c => { const a = ab[c.id];
+      return '<div class="row-c dsAbsRow"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor||'-')+'</div>'
+        +'<span class="dsAbsTag">'+escapeHtml(a.note||'ขาด')+' · โดย '+escapeHtml(a.by||'-')+'</span></div>'
+        +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="clearAbsent('+c.id+')">↺ ยกเลิก</button></div>'; }).join('');
+  }
+  if (done.length) {
+    h += '<div class="dsHdr done'+(SHOWDONE?' open':'')+'" id="dsDoneHdr" onclick="dsToggleDone()"><span>✓ เช็คอินแล้ว '+done.length+' คน'+(late?' · สาย '+late:'')+'</span><span class="cv">⌄</span></div>';
+    if (SHOWDONE) {
+      h += '<div id="dsDone">' + done.filter(f).sort((a,b)=>ck[b.id].ts-ck[a.id].ts).map(c => {
+        const r = ck[c.id], ok = r.status !== 'late';
+        const chip = ok ? '<span class="chip ontime">✔ '+fmtTime(r.ts)+'</span>' : '<span class="chip late">✖ '+fmtTime(r.ts)+' Late</span>';
+        const stIc = ok ? '<span class="st-ic ok">✓</span>' : '<span class="st-ic no">!</span>';
+        const k = 'ci_'+c.id+'_'+DAYKEY;
+        const ph = PH[k] ? '<img class="photo-thumb" src="'+PH[k]+'" onclick="viewPhoto('+c.id+')">'
+                 : '<span class="photo-thumb" id="ph_'+c.id+'" style="display:inline-grid;place-items:center;font-size:11px;color:#aaa;">⏳</span>';
+        return '<div class="row-c st-'+(ok?'ontime':'late')+'" style="flex-direction:column;align-items:stretch;gap:8px;">'
+          +'<div style="display:flex;align-items:center;gap:8px;">'+stIc+info(c)+'<div style="flex-shrink:0;">'+chip+'</div></div>'
+          +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'+ph
+          +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="redo('+c.id+')">↺ ใหม่</button>'
+          +'<span class="small">โดย '+escapeHtml(r.staff||'-')+'</span></div></div>';
+      }).join('') + '</div>';
+    }
+  }
+  list.innerHTML = h;
+  if (SHOWDONE && !document.body.classList.contains('dsNoPh')) loadThumbs(done.map(c=>c.id));
+}
+async function loadThumbs(ids){
+  for (const id of ids) {
+    const k = 'ci_'+id+'_'+DAYKEY; if (k in PH) continue;
+    PH[k] = null;
+    try { const p = await fb.get(`depots/${CODE}/photos/${k}`); PH[k] = p && p.d || null; } catch(e){ PH[k] = null; delete PH[k]; continue; }
+    const el = $('ph_'+id);
+    if (el) el.outerHTML = PH[k] ? '<img class="photo-thumb" src="'+PH[k]+'" onclick="viewPhoto('+id+')">' : '<span class="photo-thumb" style="display:inline-grid;place-items:center;font-size:10px;color:#D40511;">รูปหาย</span>';
+  }
+}
+window.viewPhoto = id => {
+  const c = byId(id), r = (DAY.checkins||{})[id], src = PH['ci_'+id+'_'+DAYKEY];
+  sheet('<h2>'+escapeHtml(c?c.name:'#'+id)+'</h2><div class="small" style="margin-bottom:10px;">'+escapeHtml(c?c.code:'')+' • '+(r?fmtSec(r.ts):'')+' • โดย '+escapeHtml(r&&r.staff||'-')+'</div>'
+    + (src ? '<img src="'+src+'" style="width:100%;border-radius:14px;">' : '<div class="hint">ไม่พบรูป</div>')
+    + '<div style="height:10px"></div><button class="btn btn-o btn-block" onclick="closeSheet()">ปิด</button>');
+};
+function sheet(h){ $('sheetBody').innerHTML = h; $('sheetModal').classList.add('show'); }
+window.closeSheet = () => $('sheetModal').classList.remove('show');
 
 const dayPath = () => `depots/${CODE}/days/${DAYKEY}`;
-const phPath = id => `depots/${CODE}/photos/${id}_${DAYKEY}`;
-
-window.__absent = (id, note) => {
+const phPath = id => `depots/${CODE}/photos/ci_${id}_${DAYKEY}`;
+window.redo = id => {
   const c = byId(id);
-  track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, absent: { [id]: { note, by: ME, at: NOW } }, checkins: { [id]: DEL } }));
-  track(fb.del(phPath(id)));
-  __close(); toast('บันทึก '+c.code+' : '+note);
-};
-window.__clearAb = id => { track(fb.set(dayPath(), { absent: { [id]: DEL } })); __close(); toast('ยกเลิกสถานะแล้ว'); };
-window.__undo = id => {
-  const c = byId(id);
-  if (!confirm('ยกเลิกการลงเวลาของ '+c.name+' ?\nรูปถ่ายจะถูกลบด้วย')) return;
-  track(fb.set(dayPath(), { checkins: { [id]: DEL } }));
-  track(fb.del(phPath(id)));
-  __close(); toast('↩️ ยกเลิกการลงเวลาแล้ว');
+  if (!confirm('ลบการเช็คอินของ '+c.name+' เพื่อบันทึกใหม่?\nรูปถ่ายจะถูกลบด้วย')) return;
+  track(fb.set(dayPath(), { checkins: { [id]: DEL } })); track(fb.del(phPath(id)));
+  delete PH['ci_'+id+'_'+DAYKEY]; flash('↺ ลบแล้ว — เช็คอินใหม่ได้เลย');
 };
 
-/* ---------------- กล้อง (บังคับถ่ายรูปทุกครั้ง) ---------------- */
-let STREAM = null, FACING = LS.get('upc_facing','environment'), CAMC = null, SHOT = null, RETAKE = 0;
-window.__cam = async (id, re) => {
-  __close(); CAMC = byId(id); RETAKE = re ? 1 : 0; SHOT = null;
-  const m = $('#cam'); m.hidden = false;
-  camLive();
+/* ---- ขาดงาน ---- */
+let ABS_ID = null;
+window.openAbsent = id => { const c = byId(id); ABS_ID = id; $('dsAbsWho').textContent = c.code+' · '+c.name; $('dsAbsNote').value=''; $('dsAbsWrap').classList.add('show'); };
+document.querySelectorAll('#dsAbsQuick button').forEach(b => b.onclick = () => { $('dsAbsNote').value = b.textContent; });
+$('dsAbsCancel').onclick = () => $('dsAbsWrap').classList.remove('show');
+$('dsAbsOk').onclick = () => {
+  const note = $('dsAbsNote').value.trim() || 'ขาดงาน', id = ABS_ID;
+  track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, absent: { [id]: { note, by: STAFF, at: NOW } }, checkins: { [id]: DEL } }));
+  track(fb.del(phPath(id)));
+  $('dsAbsWrap').classList.remove('show'); flash('บันทึก '+byId(id).code+' : '+note);
 };
-async function camLive(){
-  const c = CAMC, m = $('#cam');
-  m.innerHTML = `<div class="camtop"><b>📷 ${esc(c.code)} · ${esc(c.name)}</b><button onclick="__camClose()">✕</button></div>
-    <video id="cv" playsinline autoplay muted></video>
-    <div class="camhint">ถ่ายให้เห็นหน้าพนักงานชัดเจน · เวลาเข้างานบันทึกตอนกดถ่าย</div>
-    <div class="cambar"><button class="cb2" onclick="__flip()" title="สลับกล้อง">🔄</button>
-    <button class="shut" onclick="__snap()" aria-label="ถ่าย"></button>
-    <label class="cb2" title="ใช้กล้องของเครื่อง">📱<input type="file" accept="image/*" capture="${FACING}" hidden onchange="__file(this)"></label></div>`;
-  stopStream();
-  try {
-    STREAM = await navigator.mediaDevices.getUserMedia({ video: { facingMode: FACING, width: { ideal: 960 }, height: { ideal: 1280 } }, audio: false });
-    const v = $('#cv'); if (v) v.srcObject = STREAM;
-  } catch(e) { toast('เปิดกล้องในแอปไม่ได้ — กดปุ่ม 📱 เพื่อถ่ายด้วยกล้องของเครื่อง', 5000); }
-}
-function stopStream(){ if (STREAM) { STREAM.getTracks().forEach(t=>t.stop()); STREAM = null; } }
-window.__camClose = () => { stopStream(); $('#cam').hidden = true; $('#cam').innerHTML=''; CAMC = null; SHOT = null; };
-window.__flip = () => { FACING = FACING==='environment' ? 'user' : 'environment'; LS.set('upc_facing', FACING); camLive(); };
-window.__snap = () => {
-  const v = $('#cv'); if (!v || !v.videoWidth) return toast('กล้องยังไม่พร้อม — รอสักครู่ หรือกด 📱');
-  const ts = Date.now();
-  preview(stamp(v, v.videoWidth, v.videoHeight, ts), ts);
+window.clearAbsent = id => { track(fb.set(dayPath(), { absent: { [id]: DEL } })); flash('ยกเลิกสถานะแล้ว'); };
+
+/* ================= CAMERA (แบบเดียวกับต้นฉบับ: กดชัตเตอร์ = บันทึกทันที) ================= */
+let camStream = null, camFacing = lsGet('dsFacing') || 'environment', camCourier = null;
+function camErrorMsg(e){ return (e && e.name==='NotAllowedError') ? 'กรุณาอนุญาตให้แอปใช้กล้อง (ตั้งค่าเบราว์เซอร์ → กล้อง → อนุญาต)\nหรือกดปุ่ม 📱 เพื่อถ่ายด้วยกล้องของเครื่อง' : 'เปิดกล้องไม่ได้ — กดปุ่ม 📱 เพื่อถ่ายด้วยกล้องของเครื่อง'; }
+window.openCamera = async id => {
+  camCourier = byId(id);
+  $('camName').textContent = camCourier.name;
+  $('camSub').textContent = camCourier.code+' • '+(camCourier.vendor||'');
+  $('camFb').style.display = 'none';
+  $('camOverlay').classList.add('show');
+  try { camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing }, audio: false }); $('camVideo').srcObject = camStream; }
+  catch(e){
+    try { camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); $('camVideo').srcObject = camStream; }
+    catch(e2){ $('camFb').style.display = 'flex'; flash(camErrorMsg(e2).split('\n')[0]); }
+  }
 };
-window.__file = inp => {
-  const f = inp.files && inp.files[0]; if (!f) return;
-  if (f.lastModified && Date.now() - f.lastModified > 10*60*1000) return toast('❌ ต้องเป็นรูปที่ถ่ายใหม่ตอนนี้เท่านั้น', 4500);
-  const ts = Date.now(), img = new Image(), url = URL.createObjectURL(f);
-  img.onload = () => { preview(stamp(img, img.naturalWidth, img.naturalHeight, ts), ts); URL.revokeObjectURL(url); };
-  img.onerror = () => toast('อ่านรูปไม่ได้');
-  img.src = url;
+window.closeCamera = () => { if (camStream) { camStream.getTracks().forEach(t=>t.stop()); camStream = null; } $('camOverlay').classList.remove('show'); };
+window.flipCamera = async () => {
+  camFacing = camFacing==='environment' ? 'user' : 'environment'; lsSet('dsFacing', camFacing);
+  if (camStream) camStream.getTracks().forEach(t=>t.stop());
+  try { camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing }, audio: false }); $('camVideo').srcObject = camStream; }
+  catch(e){ try { camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); $('camVideo').srcObject = camStream; } catch(e2){ $('camFb').style.display='flex'; } }
 };
-function stamp(src, sw, sh, ts){
-  const W = 480, H = Math.round(sh * W / sw), cv = document.createElement('canvas');
-  cv.width = W; cv.height = H; const x = cv.getContext('2d');
-  x.drawImage(src, 0, 0, W, H);
-  x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(0, H-50, W, 50);
-  x.fillStyle = '#FFCC00'; x.font = 'bold 16px Prompt, sans-serif';
-  x.fillText((CODE+' · '+CAMC.code+' '+CAMC.name).slice(0,46), 10, H-29);
-  x.fillStyle = '#fff'; x.font = '14px Sarabun, sans-serif';
-  const d = new Date(ts); x.fillText(d.getDate()+'/'+(d.getMonth()+1)+'/'+(d.getFullYear()+543)+'  '+hms(ts)+'  · '+ME, 10, H-10);
-  let q = .5, out = cv.toDataURL('image/jpeg', q);
-  while (out.length > 170000 && q > .2) { q -= .1; out = cv.toDataURL('image/jpeg', q); }
+function toJpeg(src, w, h){
+  const max = 480, sc = Math.min(1, max/Math.max(w,h)), cv = document.createElement('canvas');
+  cv.width = Math.round(w*sc); cv.height = Math.round(h*sc);
+  cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+  let q = .6, out = cv.toDataURL('image/jpeg', q);
+  while (out.length > 170000 && q > .25) { q -= .1; out = cv.toDataURL('image/jpeg', q); }
   return out;
 }
-function preview(dataUrl, ts){
-  stopStream(); SHOT = { d: dataUrl, ts };
-  const late = secOf(ts) > CUT;
-  $('#cam').innerHTML = `<div class="camtop"><b>ตรวจรูป · ${esc(CAMC.code)}</b><button onclick="__camClose()">✕</button></div>
-    <img id="cimg" src="${dataUrl}" alt="">
-    <div class="camhint">เวลาเข้างาน <b style="font-size:18px;color:${late?'#ff6b6b':'#7dffa8'}">${hm(ts)}</b></div>
-    <div class="cambar"><button class="btn-g" onclick="__again()">ถ่ายใหม่</button><button class="btn-y" onclick="__save()">✅ ใช้รูปนี้ ลงเวลา</button></div>`;
+window.capture = () => {
+  const v = $('camVideo'); if (!camStream || !camCourier || !v.videoWidth) return;
+  save(Date.now(), toJpeg(v, v.videoWidth, v.videoHeight));
+};
+window.captureFile = inp => {
+  const f = inp.files && inp.files[0]; inp.value = ''; if (!f) return;
+  if (f.lastModified && Date.now() - f.lastModified > 10*60*1000) { flash('❌ ต้องเป็นรูปที่ถ่ายใหม่ตอนนี้เท่านั้น'); return; }
+  const ts = Date.now(), img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => { save(ts, toJpeg(img, img.naturalWidth, img.naturalHeight)); URL.revokeObjectURL(url); };
+  img.src = url;
+};
+function save(ts, photo){
+  const c = camCourier, id = String(c.id), st = calcStatus(ts);
+  if (DAY.checkins && DAY.checkins[id] && DAY.checkins[id].ts) { closeCamera(); flash('คนนี้เช็คอินแล้ววันนี้'); return; }
+  PH['ci_'+id+'_'+DAYKEY] = photo;
+  track(fb.set(phPath(id), { d: photo, kind: 'ci', cid: id, date: DAYKEY, at: NOW, by: STAFF, expireAt: new Date(Date.now()+(KEEP_DAYS+1)*864e5) }, false));
+  track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, checkins: { [id]: { ts, srv: NOW, status: st.status, buffer: st.buffer, staff: STAFF, hasPhoto: true, off: !navigator.onLine } }, absent: { [id]: DEL } }));
+  closeCamera();
+  flash(c.name+' — '+fmtTime(ts)+' '+(st.status==='ontime'?'✔ Ontime':'✖ Late'));
 }
-window.__again = () => camLive();
-window.__save = () => {
-  if (!SHOT || !CAMC) return;
-  const id = String(CAMC.id), prev = DAY && DAY.checkins && DAY.checkins[id];
-  const re = RETAKE ? ((prev && prev.re) || 0) + 1 : 0;
-  const ck = { ts: SHOT.ts, srv: NOW, by: ME, hasPhoto: true, off: !navigator.onLine };
-  if (re) ck.re = re;
-  track(fb.set(phPath(id), { d: SHOT.d, date: DAYKEY, cid: id, at: NOW, by: ME, expireAt: new Date(Date.now() + (KEEP_DAYS+1)*864e5) }, false));
-  track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, checkins: { [id]: ck }, absent: { [id]: DEL } }));
-  const msg = '✅ ลงเวลา '+CAMC.code+' '+hm(SHOT.ts) + (navigator.onLine ? '' : ' (จะส่งเมื่อมีเน็ต)');
-  __camClose(); toast(msg);
+
+/* ================= HISTORY ================= */
+async function renderHist(){
+  const el = $('histList'); el.innerHTML = '<div class="small" style="text-align:center;padding:20px;">กำลังโหลด…</div>';
+  const d = new Date(); d.setDate(d.getDate() - (KEEP_DAYS-1));
+  let L = [];
+  try { L = (await fb.list(`depots/${CODE}/days`, 'date', '>=', ymd(d))).map(x=>x.data).filter(x=>x.date).sort((a,b)=>b.date.localeCompare(a.date)); } catch(e){}
+  if (!L.length) { el.innerHTML = '<div class="hint">ยังไม่มีประวัติ</div>'; return; }
+  HIST = {}; L.forEach(x => HIST[x.date] = x);
+  el.innerHTML = L.map(x => {
+    const ck = Object.values(x.checkins||{}).filter(r=>r&&r.ts), late = ck.filter(r=>r.status==='late').length, ab = Object.keys(x.absent||{}).length;
+    const sun = new Date(x.date+'T00:00:00').getDay()===0;
+    return '<div class="row-c hrow" onclick="openDay(\''+x.date+'\')"><div class="info"><div class="nm">'+thDate(x.date)+(sun?' <span class="small">(อาทิตย์)</span>':'')+'</div><div class="sub">เช็คอิน '+ck.length+' คน'+(ab?' • ขาด/ลา '+ab:'')+'</div></div>'
+      +(late ? '<span class="chip late">สาย '+late+'</span>' : '<span class="chip ontime">ทันทุกคน</span>')+'</div>';
+  }).join('');
+}
+let HIST = {};
+window.openDay = k => {
+  const x = HIST[k]; if (!x) return;
+  const rows = Object.keys(x.checkins||{}).filter(id=>x.checkins[id]&&x.checkins[id].ts).sort((a,b)=>x.checkins[a].ts-x.checkins[b].ts).map(id => {
+    const c = byId(id) || { code:'#'+id, name:'(ไม่อยู่ในรายชื่อ)' }, r = x.checkins[id], ok = r.status!=='late';
+    return '<div class="row-c"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • โดย '+escapeHtml(r.staff||'-')+'</div></div>'
+      +(ok ? '<span class="chip ontime">✔ '+fmtTime(r.ts)+'</span>' : '<span class="chip late">✖ '+fmtTime(r.ts)+' Late</span>')+'</div>';
+  }).join('');
+  const abs = Object.keys(x.absent||{}).map(id => { const c = byId(id)||{code:'#'+id,name:''};
+    return '<div class="row-c dsAbsRow"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+'</div><span class="dsAbsTag">'+escapeHtml(x.absent[id].note||'ขาด')+'</span></div></div>'; }).join('');
+  sheet('<h2>'+thDate(k)+'</h2>'+(rows||'<div class="hint">ไม่มีการเช็คอิน</div>')+(abs?'<div class="dsHdr abs"><span>🚫 ขาด / ลา</span></div>'+abs:'')
+    +'<div style="height:10px"></div><button class="btn btn-o btn-block" onclick="closeSheet()">ปิด</button>');
 };
 
-/* ---------------- รายชื่อพนักงาน ---------------- */
-function renderRoster(){
-  const R = rosterAll().slice().sort((a,b)=> (a.active===false)-(b.active===false) || String(a.code).localeCompare(String(b.code)));
-  const on = R.filter(c=>c.active!==false).length;
-  $('#body').innerHTML = `<main style="padding-top:10px">
-    <div style="font-size:13px;color:var(--mut)">ใช้งาน ${on} คน${R.length>on?' · ปิดใช้งาน '+(R.length-on)+' คน':''}</div>
-    <div class="rtools"><button onclick="__rEdit()">➕ เพิ่มคน</button><button onclick="__rImport()">📥 นำเข้า Excel</button><button onclick="__rExport()">📤 ส่งออก</button></div>
-    ${R.map(c=>`<div class="row ${c.active===false?'off':''}" onclick="__rEdit(${c.id})"><div class="av">${esc(ini(c.name))}</div>
-      <div class="nm"><b>${esc(c.name)}</b><small>${esc(c.code)} · ${esc(c.vendor||'-')} · ${esc(c.type||'2W')}${c.active===false?' · ปิดใช้งาน':''}</small></div><span style="color:#bbb">✎</span></div>`).join('')
-      || '<div class="empty">ยังไม่มีรายชื่อ — กด ➕ เพิ่มคน หรือ 📥 นำเข้าจาก Excel</div>'}</main>`;
+/* ================= MANAGE ================= */
+function saveRoster(R, msg){ track(fb.set('depots/'+CODE, { roster: R, updatedAt: NOW })); if (msg) flash(msg); }
+function renderManage(){
+  const R = couriers();
+  $('mCount').textContent = R.filter(c=>c.active!==false).length;
+  $('dlVendor').innerHTML = [...new Set(R.map(c=>c.vendor).filter(Boolean))].map(v=>'<option value="'+escapeHtml(v)+'">').join('');
+  $('mList').innerHTML = R.length ? R.slice().sort((a,b)=>(a.active===false)-(b.active===false)||String(a.code).localeCompare(String(b.code))).map(c =>
+    '<div class="row-c" style="box-shadow:none;border:1px solid #eee;opacity:'+(c.active!==false?1:.45)+'">'
+    +'<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor||'-')+'</div></div>'
+    +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="editCourier('+c.id+')">✏️ แก้ไข</button>'
+    +'<button class="btn '+(c.active!==false?'btn-o':'btn-y')+'" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="toggleActive('+c.id+')">'+(c.active!==false?'พัก':'ใช้งาน')+'</button></div>'
+  ).join('') : '<div class="small">ยังไม่มีรายชื่อ</div>';
+  renderStaffNames(); badge();
 }
-const vendors = () => [...new Set(rosterAll().map(c=>c.vendor).filter(Boolean))];
-window.__rEdit = id => {
-  const c = id ? byId(id) : { code:'', name:'', vendor:'', type:'2W', active:true };
-  openSheet(`<h3>${id?'แก้ไขพนักงาน':'เพิ่มพนักงาน'}</h3><div class="frm">
-    <label>รหัสพนักงาน</label><input id="f_code" value="${esc(c.code)}" autocapitalize="characters">
-    <label>ชื่อ - นามสกุล</label><input id="f_name" value="${esc(c.name)}">
-    <div class="two"><div><label>Vendor</label><input id="f_ven" list="dl_ven" value="${esc(c.vendor||'')}"><datalist id="dl_ven">${vendors().map(v=>`<option value="${esc(v)}">`).join('')}</datalist></div>
-    <div><label>ประเภทรถ</label><select id="f_type"><option ${c.type!=='4W'?'selected':''}>2W</option><option ${c.type==='4W'?'selected':''}>4W</option></select></div></div>
-    ${id?`<label style="display:flex;gap:8px;align-items:center;margin-top:14px;color:var(--ink)"><input type="checkbox" id="f_act" style="width:auto" ${c.active!==false?'checked':''}> ยังทำงานอยู่ (เอาออก = ปิดใช้งาน ประวัติยังอยู่)</label>`:''}
-    <div class="err" id="f_err"></div>
-    <div class="stack"><button class="btn-y" onclick="__rSave(${id||0})">บันทึก</button><button class="btn-g" onclick="__close()">ยกเลิก</button></div></div>`);
+window.addCourier = () => {
+  const code = $('fCode').value.trim().toUpperCase(), name = $('fName').value.trim(), vendor = $('fVendor').value.trim(), type = $('fType').value;
+  if (!code || !name) { flash('กรอกรหัสและชื่อก่อน'); return; }
+  const R = couriers().map(c=>({...c}));
+  if (R.some(c=>c.code===code)) { flash('รหัส '+code+' มีอยู่แล้ว'); return; }
+  R.push({ id: R.reduce((m,c)=>Math.max(m,+c.id||0),0)+1, code, name, vendor, type, active: true });
+  saveRoster(R, '+ เพิ่ม '+name+' แล้ว');
+  ['fCode','fName','fVendor'].forEach(i=>$(i).value='');
 };
-window.__rSave = id => {
-  const code = $('#f_code').value.trim().toUpperCase(), name = $('#f_name').value.trim();
-  if (!code || !name) return $('#f_err').textContent = 'กรอกรหัสและชื่อ';
-  const R = rosterAll().map(c=>({...c}));
-  if (R.some(c => c.code === code && c.id !== id)) return $('#f_err').textContent = 'รหัส '+code+' มีอยู่แล้ว';
-  const rec = { code, name, vendor: $('#f_ven').value.trim(), type: $('#f_type').value, active: id ? $('#f_act').checked : true };
-  if (id) Object.assign(R.find(c=>c.id===id), rec);
-  else R.push({ id: R.reduce((m,c)=>Math.max(m,c.id||0),0)+1, ...rec });
-  track(fb.set('depots/'+CODE, { roster: R, updatedAt: NOW }));
-  __close(); toast('บันทึกรายชื่อแล้ว');
+let EDIT_ID = null;
+window.editCourier = id => { const c = byId(id); EDIT_ID = id; $('eCode').value=c.code; $('eName').value=c.name; $('eVendor').value=c.vendor||''; $('eType').value=c.type||'2W'; $('editModal').classList.add('show'); };
+window.saveEdit = () => {
+  const R = couriers().map(c=>({...c})), c = R.find(x=>String(x.id)===String(EDIT_ID));
+  const code = $('eCode').value.trim().toUpperCase();
+  if (!code || !$('eName').value.trim()) { flash('กรอกรหัสและชื่อ'); return; }
+  if (R.some(x=>x.code===code && x!==c)) { flash('รหัส '+code+' มีอยู่แล้ว'); return; }
+  Object.assign(c, { code, name: $('eName').value.trim(), vendor: $('eVendor').value.trim(), type: $('eType').value });
+  saveRoster(R, '💾 บันทึกแล้ว'); $('editModal').classList.remove('show');
 };
+window.toggleActive = id => { const R = couriers().map(c=>({...c})), c = R.find(x=>String(x.id)===String(id)); c.active = c.active===false; saveRoster(R, c.active?'เปิดใช้งานแล้ว':'พักแล้ว'); };
 
 let IMP = null;
-window.__rImport = () => {
-  IMP = null;
-  openSheet(`<h3>📥 นำเข้ารายชื่อจาก Excel</h3>
-    <div class="sub">คอลัมน์: <b>รหัส · ชื่อ-สกุล · Vendor · ประเภท (2W/4W)</b><br>เลือกไฟล์ .xlsx / .csv หรือคัดลอกจาก Excel มาวางในช่องด้านล่าง</div>
-    <div class="stack"><label class="btn-g" style="text-align:center">📂 เลือกไฟล์ Excel / CSV<input type="file" accept=".xlsx,.xls,.csv,.txt" hidden onchange="__impFile(this)"></label>
-    <textarea id="imp_t" rows="6" placeholder="วางข้อมูลจาก Excel ที่นี่" oninput="__impParse(this.value)"></textarea>
-    <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="imp_off" style="width:auto"> ปิดใช้งานคนที่ไม่มีในไฟล์</label>
-    <div id="imp_p" class="sub"></div>
-    <button class="btn-y" id="imp_go" disabled onclick="__impSave()">นำเข้า</button><button class="btn-g" onclick="__close()">ยกเลิก</button></div>`);
-};
-window.__impFile = async inp => {
-  const f = inp.files[0]; if (!f) return;
+window.impFile = async inp => {
+  const f = inp.files[0]; inp.value=''; if (!f) return;
   if (/\.xlsx?$/i.test(f.name)) {
     try {
       if (!window.XLSX) await new Promise((ok,no)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=ok; s.onerror=no; document.head.appendChild(s); });
       const wb = XLSX.read(await f.arrayBuffer(), { type:'array' });
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:false });
-      impRows(rows);
-    } catch(e){ toast('อ่านไฟล์ Excel ไม่ได้ (ต้องมีอินเทอร์เน็ต)'); }
-  } else { const t = await f.text(); $('#imp_t').value = t; __impParse(t); }
+      impRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:false }));
+    } catch(e){ flash('อ่านไฟล์ Excel ไม่ได้ (ต้องมีอินเทอร์เน็ต)'); }
+  } else { const t = await f.text(); $('impText').value = t; impParse(t); }
 };
-window.__impParse = t => impRows(String(t).split(/\r?\n/).map(l => l.split(l.includes('\t') ? '\t' : ',').map(x=>x.replace(/^"|"$/g,''))));
+window.impParse = t => impRows(String(t).split(/\r?\n/).map(l => l.split(l.includes('\t') ? '\t' : ',').map(x=>x.replace(/^"|"$/g,''))));
 function impRows(rows){
   const out = [];
-  rows.forEach((r,i) => {
-    const [code, name, vendor, type] = (r||[]).map(x => String(x??'').trim());
-    if (!code || !name) return;
-    if (i===0 && /รหัส|code|id/i.test(code)) return;
-    out.push({ code: code.toUpperCase(), name, vendor: vendor||'', type: /4/.test(type||'') ? '4W' : '2W' });
-  });
-  const cur = rosterAll(), codes = new Set(cur.map(c=>c.code));
-  const add = out.filter(o=>!codes.has(o.code)).length;
+  rows.forEach((r,i) => { const [code,name,vendor,type] = (r||[]).map(x=>String(x??'').trim());
+    if (!code || !name) return; if (i===0 && /รหัส|code|id/i.test(code)) return;
+    out.push({ code: code.toUpperCase(), name, vendor: vendor||'', type: /4/.test(type||'') ? '4W' : '2W' }); });
+  const codes = new Set(couriers().map(c=>c.code)), add = out.filter(o=>!codes.has(o.code)).length;
   IMP = out;
-  $('#imp_p').innerHTML = out.length ? `พบ <b>${out.length}</b> คน · เพิ่มใหม่ <b>${add}</b> · อัปเดต <b>${out.length-add}</b>` : 'ยังไม่พบข้อมูลที่อ่านได้';
-  $('#imp_go').disabled = !out.length;
+  $('impPrev').innerHTML = out.length ? 'พบ <b>'+out.length+'</b> คน · เพิ่มใหม่ <b>'+add+'</b> · อัปเดต <b>'+(out.length-add)+'</b>' : 'ยังไม่พบข้อมูลที่อ่านได้';
+  $('impGo').disabled = !out.length;
 }
-window.__impSave = () => {
+window.impSave = () => {
   if (!IMP || !IMP.length) return;
-  const R = rosterAll().map(c=>({...c})); let mx = R.reduce((m,c)=>Math.max(m,c.id||0),0);
+  const R = couriers().map(c=>({...c})); let mx = R.reduce((m,c)=>Math.max(m,+c.id||0),0);
   const inFile = new Set(IMP.map(o=>o.code));
   IMP.forEach(o => { const e = R.find(c=>c.code===o.code); if (e) Object.assign(e, o, { active:true }); else R.push({ id: ++mx, ...o, active:true }); });
-  if ($('#imp_off').checked) R.forEach(c => { if (!inFile.has(c.code)) c.active = false; });
-  track(fb.set('depots/'+CODE, { roster: R, updatedAt: NOW }));
-  __close(); toast('นำเข้า '+IMP.length+' คนแล้ว');
+  if ($('impOff').checked) R.forEach(c => { if (!inFile.has(c.code)) c.active = false; });
+  saveRoster(R, '📥 นำเข้า '+IMP.length+' คนแล้ว');
+  IMP = null; $('impText').value=''; $('impPrev').textContent=''; $('impGo').disabled = true;
 };
-window.__rExport = () => {
-  const rows = [['รหัส','ชื่อ-สกุล','Vendor','ประเภท','สถานะ'], ...rosterAll().map(c=>[c.code,c.name,c.vendor||'',c.type||'2W',c.active===false?'ปิดใช้งาน':'ใช้งาน'])];
-  const csv = '﻿' + rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download = 'roster_'+CODE+'.csv'; a.click();
+window.exportCsv = () => {
+  const rows = [['รหัส','ชื่อ-นามสกุล','Vendor','ประเภท','สถานะ'], ...couriers().map(c=>[c.code,c.name,c.vendor||'',c.type||'2W',c.active===false?'พัก':'ใช้งาน'])];
+  const csv = '﻿'+rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download = CODE+'_couriers.csv'; a.click();
 };
+function renderStaffNames(){
+  const el = $('stList'); if (!el) return;
+  el.innerHTML = STAFFNAMES.map((n,i) => '<div class="row-c" style="box-shadow:none;border:1px solid #eee;"><div class="info"><div class="nm">'+escapeHtml(n)+(n===STAFF?' <span class="small">(คุณ)</span>':'')+'</div></div>'
+    +(n===STAFF?'':'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="delStaffName('+i+')">✕ ลบ</button>')+'</div>').join('') || '<div class="small">ยังไม่มีรายชื่อ</div>';
+}
+window.addStaffName = () => { const n = $('stNew').value.trim(); if (!n) return; if (STAFFNAMES.includes(n)) { flash('มีชื่อนี้แล้ว'); return; }
+  track(fb.set('pubstaff/'+CODE, { names: [...STAFFNAMES, n] })); $('stNew').value=''; flash('+ เพิ่ม '+n); };
+window.delStaffName = i => { const n = STAFFNAMES[i]; if (!confirm('ลบชื่อ '+n+' ?')) return; track(fb.set('pubstaff/'+CODE, { names: STAFFNAMES.filter((_,j)=>j!==i) })); };
 
-/* ---------------- บังคับอัปเดต + ล้างรูปเก่า ---------------- */
+/* ================= บังคับอัปเดต + ล้างรูปเก่า ================= */
 function checkVer(){
-  const want = CFG.staffVer;
-  const box = $('#upd'); if (box) box.innerHTML = '';
+  const want = CFG.staffVer, bar = $('updBar'); bar.style.display = 'none';
   if (!want || want === APP_VER) return;
   const k = 'upcReload_'+want;
-  if (!sessionStorage.getItem(k) && $('#cam').hidden) {
-    sessionStorage.setItem(k, '1');
-    const u = new URL(location.href); u.searchParams.set('r', Date.now()); location.replace(u.toString());
-  } else if (box) box.innerHTML = '<div class="updbar">มีเวอร์ชันใหม่ ('+esc(want)+') — ปิดแอปแล้วเปิดใหม่อีกครั้ง</div>';
+  if (!sessionStorage.getItem(k) && !$('camOverlay').classList.contains('show')) {
+    sessionStorage.setItem(k, '1'); const u = new URL(location.href); u.searchParams.set('r', Date.now()); location.replace(u.toString());
+  } else { bar.textContent = 'มีเวอร์ชันใหม่ ('+want+') — ปิดแอปแล้วเปิดใหม่อีกครั้ง'; bar.style.display = 'block'; }
 }
 async function purge(){
   if (!CODE || !navigator.onLine) return;
-  const k = 'upcPurge_'+CODE; if (localStorage.getItem(k) === todayKey()) return;
+  const k = 'upcPurge_'+CODE; if (lsGet(k) === todayKey()) return;
   const d = new Date(); d.setDate(d.getDate() - KEEP_DAYS);
-  try {
-    const old = await fb.list(`depots/${CODE}/photos`, 'date', '<', ymd(d));
-    for (const o of old.slice(0, 300)) await fb.del(`depots/${CODE}/photos/${o.id}`);
-    localStorage.setItem(k, todayKey());
-  } catch(e){}
+  try { const old = await fb.list(`depots/${CODE}/photos`, 'date', '<', ymd(d)); for (const o of old.slice(0,300)) await fb.del(`depots/${CODE}/photos/${o.id}`); lsSet(k, todayKey()); } catch(e){}
 }
 </script>
 </body>

@@ -1,643 +1,494 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#FFCC00">
-<title>DHL UPC · Manager</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<title>DHL Manager Live</title>
+<!-- ธีมเดียวกับ DHL_Manager_Live.html ต้นฉบับ -->
+<link rel="stylesheet" href="theme-mgr.css?v=1">
 <style>
-:root{--y:#FFCC00;--r:#D40511;--ink:#171717;--mut:#6b6b6b;--bg:#f3f3f1;--line:#e4e4e0;--ok:#0a8a3a;--warn:#b86e00}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Sarabun,system-ui,sans-serif;font-size:14.5px}
-b,h1,h2,h3,th,.pf{font-family:Prompt,Sarabun,sans-serif}
-button{font:inherit;cursor:pointer;border:0}
-input,select,textarea{font:inherit;padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--y);box-shadow:0 0 0 3px #ffcc0040}
-.btn-y{background:var(--y) !important;color:#171717 !important;font-family:Prompt;font-weight:700;padding:10px 16px;border-radius:10px;box-shadow:0 2px 0 #e0b400 !important}
-.btn-y:disabled{opacity:.5}
-.btn-g{background:#fff;border:1.5px solid var(--line);font-family:Prompt;font-weight:600;padding:9px 14px;border-radius:10px}
-.btn-r{background:var(--r);color:#fff;font-family:Prompt;font-weight:600;padding:9px 14px;border-radius:10px}
-.sm{padding:6px 10px !important;font-size:13px}
-.dhl{font-family:Prompt;font-weight:700;font-style:italic;color:var(--r);font-size:26px;letter-spacing:-1px}
-.login{max-width:400px;margin:40px auto;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px #0001}
-.login .brand{background:var(--y);padding:22px;display:flex;gap:12px;align-items:center}
-.login .brand small{display:block;color:#5a4a00}
-.login .in{padding:18px 22px 22px}.login label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
-.login input{width:100%}.login .btn-y{width:100%;margin-top:6px;padding:12px}
-.err{color:var(--r);min-height:20px;margin:8px 0;font-weight:600}
-.foot{text-align:center;color:#a0a09a;font-size:12px;margin:18px 0}
-.demo{background:#fff4c2;border:1px dashed #d9ad00;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.6}
-.demo code{background:#fff;padding:1px 5px;border-radius:5px}
-header{position:sticky;top:0;z-index:5;background:var(--y);box-shadow:0 2px 0 #e0b400}
-.hrow{display:flex;align-items:center;gap:14px;padding:9px 16px;max-width:1200px;margin:0 auto}
-.hrow .who{flex:1;min-width:0}.hrow .who b{display:block;font-size:15px}.hrow .who small{color:#5a4a00}
-.tabs{display:flex;gap:4px;padding:0 12px;max-width:1200px;margin:0 auto;overflow-x:auto}
-.tabs button{background:none;padding:9px 14px;font-family:Prompt;font-weight:600;color:#5a4a00;border-radius:10px 10px 0 0;white-space:nowrap}
-.tabs button.on{background:var(--bg);color:var(--ink)}
-main{max-width:1200px;margin:0 auto;padding:14px 14px 60px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-bottom:12px}
-.kpi{background:#fff;border-radius:14px;padding:11px 12px;border:1px solid var(--line)}
-.kpi small{display:block;color:var(--mut);font-size:12px}.kpi b{font-size:22px}
-.kpi.g b{color:var(--ok)}.kpi.r b{color:var(--r)}.kpi.m b{color:#777}
-.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
-.bar .grow{flex:1;min-width:160px}
-.chipset{display:flex;gap:6px;flex-wrap:wrap}
-.chip{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:5px 12px;font-family:Prompt;font-size:13px}
-.chip.on{background:var(--ink);color:var(--y);border-color:var(--ink)}
-.card{background:#fff;border-radius:14px;border:1px solid var(--line);overflow:hidden;margin-bottom:12px}
-.card h3{margin:0;padding:11px 14px;font-size:15px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center}
-.card h3 .grow{flex:1}
-.tw{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-th{font-size:12px;color:var(--mut);font-weight:600;text-align:left;padding:8px 10px;background:#fafaf8;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0}
-td{padding:9px 10px;border-bottom:1px solid #f0f0ec;vertical-align:middle}
-tr.click{cursor:pointer}tr.click:hover td{background:#fffbe6}
-td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
-.pct{display:inline-block;min-width:54px;text-align:center;padding:3px 8px;border-radius:999px;font-family:Prompt;font-weight:600;font-size:13px}
-.p-g{background:#dff5e6;color:var(--ok)}.p-y{background:#fff1c2;color:#8a6200}.p-r{background:#fde2e4;color:var(--r)}.p-n{background:#eee;color:#888}
-.prog{height:7px;background:#eee;border-radius:9px;overflow:hidden;display:flex;min-width:90px}
-.prog i{display:block;height:100%}
-.late{color:var(--r);font-weight:700}.ok{color:var(--ok);font-weight:700}.mut{color:var(--mut)}
-.flag{display:inline-block;background:#fff1c2;color:#8a6200;border-radius:6px;padding:1px 6px;font-size:12px;margin-left:4px}
-.flag.r{background:#fde2e4;color:var(--r)}
-.empty{text-align:center;color:var(--mut);padding:36px 10px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}
-.pc{background:#fafaf8;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.pc .im{aspect-ratio:3/4;background:#eee;display:grid;place-items:center;color:#999;font-size:12px;text-align:center;cursor:zoom-in}
-.pc .im img{width:100%;height:100%;object-fit:cover;display:block}
-.pc .tx{padding:7px 9px;font-size:12.5px;line-height:1.35}
-.pc .tx b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pc.ab .im{background:#f1f1f1}.pc.no .im{background:#fff5f5}
-#ov{position:fixed;inset:0;background:#0008;z-index:30;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 10px}
-#ov .pnl{background:var(--bg);border-radius:16px;width:100%;max-width:980px;min-height:200px;box-shadow:0 20px 60px #0006}
-#ov .ph{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--y);border-radius:16px 16px 0 0;position:sticky;top:-24px;z-index:2}
-#ov .ph b{flex:1;font-size:16px}#ov .pb{padding:14px}
-#zoom{position:fixed;inset:0;background:#000d;z-index:50;display:none;align-items:center;justify-content:center;cursor:zoom-out}
-#zoom img{max-width:94vw;max-height:94vh;border-radius:8px}
-.frm{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
-.frm label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:3px}.frm input,.frm select,.frm textarea{width:100%}
-.note{background:#fff;border-left:4px solid var(--y);padding:10px 12px;border-radius:8px;font-size:13px;color:#444;margin-bottom:10px;line-height:1.6}
-.cred{background:#171717;color:#fff;border-radius:12px;padding:14px;font-size:14px;line-height:1.8;margin-top:10px}
-.cred b{color:var(--y)}
-#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#171717;color:#fff;padding:11px 16px;border-radius:12px;z-index:60;display:none;max-width:90vw}
-.lock{font-size:12px;color:#8a6200;background:#fff1c2;border-radius:8px;padding:2px 8px}
-.demoRib{background:#171717;color:var(--y);text-align:center;font-size:12px;padding:4px}
-.updbar{background:var(--r);color:#fff;text-align:center;padding:7px;font-size:13px}
-@media(max-width:640px){.hide-m{display:none}.hrow .dhl{font-size:21px}}
+/* เสริมเล็กน้อยสำหรับ UPC — ใช้คลาส/สีเดียวกับต้นฉบับ */
+#login input.txt{letter-spacing:0;font-size:15px;text-align:left;font-weight:600;}
+#login .demo{background:#fff8d9;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.6;color:#6b5a1a;margin:0 0 14px;}
+#login .demo b{color:#1a1a1a;} #login .demo a{color:#D40511;font-weight:800;}
+#login .ver{font-size:10.5px;color:#c4bca6;text-align:center;margin-top:12px;}
+#login.hide{display:none;}
+.demoRib{position:fixed;left:12px;bottom:14px;z-index:70;background:#FFCC00;color:#1a1a1a;font-size:11px;font-weight:800;padding:8px 12px;border-radius:99px;box-shadow:0 3px 12px rgba(0,0,0,.2);}
+#updBar{display:none;background:#D40511;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:700;}
+table.grid col.c-dep{width:24%;} table.grid col.c-task{width:19%;}
+td.cell.none{background:#f2ede2;color:#b0a892;}
+.flagc{display:inline-block;background:#fff3d6;color:#a06a00;border-radius:6px;padding:0 5px;font-size:9px;font-weight:800;margin-left:3px;}
+.sheet .grp{font-size:11px;font-weight:800;color:#8a8272;margin:12px 0 6px;letter-spacing:.3px;}
+.chip.gr{background:#f2ede2;color:#8a8272;}
+.chip.wt{background:#fff3d6;color:#a06a00;}
+.thumb{cursor:zoom-in;}
+.admbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.admbar .btn{padding:9px 13px;font-size:12.5px;}
+.cred{background:#1a1a1a;color:#fff;border-radius:16px;padding:14px 16px;font-size:14px;line-height:1.8;margin-top:12px;}
+.cred b{color:#FFCC00;}
+.frm2 label{display:block;font-size:11px;font-weight:800;color:#8a8272;margin:10px 0 4px;}
+.frm2 .err2{color:#D40511;font-size:12.5px;font-weight:700;min-height:18px;margin:8px 0;}
+.pick{display:flex;flex-wrap:wrap;gap:5px;}
+.pick label{display:inline-flex;align-items:center;gap:5px;margin:0;border:1px solid #efe9dc;border-radius:8px;padding:5px 9px;background:#fbf9f4;font-size:12px;font-weight:700;color:#5a5140;cursor:pointer;}
+.pick input{width:auto !important;min-height:0 !important;margin:0;}
+.lnk{font-size:12px;word-break:break-all;color:#5a5140;}
 </style>
 </head>
 <body>
-<div id="app"><div class="empty">กำลังโหลด…</div></div>
-<div id="ov" onclick="if(event.target===this)__ovClose()"><div class="pnl"><div class="ph"><b id="ov_t"></b><button class="btn-g sm" onclick="__ovClose()">✕ ปิด</button></div><div class="pb" id="ov_b"></div></div></div>
-<div id="zoom" onclick="this.style.display='none'"><img id="zoom_i" alt=""></div>
-<div id="toast"></div>
+
+<div id="login"><div class="box"><div class="yb"></div>
+  <div id="lgBody"></div>
+  <div class="ver" id="lgVer"></div>
+</div></div>
+
+<div id="updBar"></div>
+<div class="topbar"><div class="ybar"></div>
+  <div class="hd">
+    <div class="mlogo"><img class="dhlmark" src="logo.webp" alt="DHL eCommerce"><span class="liveTag">Live</span><small id="teamTag" style="display:block;font-size:10px;font-weight:700;color:#a09884;letter-spacing:.3px;"></small></div>
+    <div class="meta" style="display:flex;align-items:center;gap:10px;">
+      <div><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
+      <button class="btn btn-o" id="admBtn" style="min-height:38px;padding:8px 12px;font-size:15px;display:none;" onclick="window.__settings()" title="ผู้ดูแลระบบ">⚙️</button>
+      <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__logout()" title="ออกจากระบบ">🚪</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="mtabs">
+    <button class="mtab on" id="tb_live" onclick="window.__tab('live')">🔴 Live</button>
+    <button class="mtab" id="tb_ot" onclick="window.__tab('ot')">⏱ On-time</button>
+    <button class="mtab" id="tb_ph" onclick="window.__tab('ph')">📷 ย้อนหลัง</button>
+  </div>
+  <div id="viewLive">
+    <div id="healthBar"></div>
+    <div id="kpis"></div>
+    <div class="card">
+      <h2>🗓 <span id="dTitle"></span> <span class="small" id="dSub"></span></h2>
+      <div id="depBar"></div>
+      <div class="gridwrap"><table class="grid" id="grid"></table></div>
+      <div class="legend"><span><i style="background:#e6f5eb"></i>ครบ / ทัน</span><span><i style="background:#fff6d6"></i>รอ / ขาด-ลา</span><span><i style="background:#fdeaea"></i>สาย / ยังไม่ลง (เลยเวลา)</span><span>แตะช่องเพื่อดูรายชื่อ + รูป</span></div>
+    </div>
+  </div>
+  <div id="viewOt" style="display:none"></div>
+  <div id="viewPh" style="display:none"></div>
+</div>
+
+<div class="modal" id="mdl" onclick="if(event.target===this)window.__close()"><div class="sheet" id="mdlBody"></div></div>
+<div id="feed"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail } from './fb.js?v=2026.09.25-a';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE } from './fb.js?v=2026.09.25-b';
 
-const APP_VER = FB_VER;
-const CUT = 25200, GRACE = 25800;          // 07:00 กฎ / 07:10 เกณฑ์ผ่อนผัน (เห็นเฉพาะ Manager)
-const KEEP_DAYS = 30;
+const APP_VER = FB_VER, KEEP_DAYS = 30;
 const REGIONS = ['เหนือ','อีสาน','กลาง','ตะวันออก','ตะวันตก','ใต้'];
-const $ = s => document.querySelector(s);
-const app = $('#app');
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,'0');
 const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const todayKey = () => ymd(new Date());
-const kd = k => new Date(k+'T00:00:00');
-const isSun = k => kd(k).getDay() === 0;
-const hm = ms => { const d=new Date(ms); return pad(d.getHours())+':'+pad(d.getMinutes()); };
-const hms = ms => { const d=new Date(ms); return hm(ms)+':'+pad(d.getSeconds()); };
-const secOf = ms => { const d=new Date(ms); return d.getHours()*3600+d.getMinutes()*60+d.getSeconds(); };
-const TH_D = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสฯ','ศุกร์','เสาร์'];
-const TH_M = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-const thDate = k => { const d=kd(k); return TH_D[d.getDay()]+' '+d.getDate()+' '+TH_M[d.getMonth()]+' '+(d.getFullYear()+543); };
-const fmt1 = v => (Math.round(v*10)/10).toLocaleString('th-TH');
-const pctCls = p => p==null ? 'p-n' : p>=95 ? 'p-g' : p>=80 ? 'p-y' : 'p-r';
-const pctTxt = p => p==null ? '–' : fmt1(p)+'%';
+const hm = ts => { const d=new Date(ts); return pad(d.getHours())+':'+pad(d.getMinutes()); };
+const hms = ts => { const d=new Date(ts); return hm(ts)+':'+pad(d.getSeconds()); };
+const secOf = ts => { const d=new Date(ts); return d.getHours()*3600+d.getMinutes()*60+d.getSeconds(); };
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function thDate(k){ const d=new Date(k+'T00:00:00'); const M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; return d.getDate()+' '+M[d.getMonth()]+' '+(d.getFullYear()+543); }
+const isLate = r => r && (r.status==='late' || secOf(r.ts) > GRACE);
+const genPin = () => String(Math.floor(100000 + Math.random()*900000));
 
-let fb, PUB = {}, PMG = {}, CFG = {}, ME = null, SCOPE = [], DEPS = {}, TODAY = {}, TKEY = '';
-let TAB = 'live', REG = '', QQ = '', SORT = 'no', UNS = [], TUNS = [], RT = null;
-const PH = {};   // cache รูป
+let fb, PUB = {}, CFG = {}, ME = null, SCOPE = [], DEPS = {}, TODAY = {}, TKEY = todayKey(), TAB = 'live', REG = '';
+let UNS = [], TUNS = [], RT = null, OPENDEP = null;
+const PH = {};
 
-function toast(t, ms=2800){ const e=$('#toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>e.style.display='none', ms); }
-window.__ovClose = () => { $('#ov').style.display='none'; OVDEP=null; };
-function ov(title, html){ $('#ov_t').textContent = title; $('#ov_b').innerHTML = html; $('#ov').style.display='flex'; $('#ov').scrollTop=0; }
-window.__zoom = src => { $('#zoom_i').src = src; $('#zoom').style.display='flex'; };
+function feed(t, cls){ const f=$('feed'), d=document.createElement('div'); d.className='fitem '+(cls||''); d.innerHTML='<span class="ic">ℹ️</span><div class="tx">'+t+'</div>'; f.appendChild(d); setTimeout(()=>d.remove(), 3200); }
+window.__close = () => { $('mdl').classList.remove('show'); OPENDEP = null; };
+function modal(h){ $('mdlBody').innerHTML = h; $('mdl').classList.add('show'); $('mdlBody').scrollTop = 0; }
+const zoomSrc = {};
+window.__zoomImg = k => { if (window.__phZoom) return window.__phZoom(zoomSrc[k], k); const w = window.open(); if (w) w.document.write('<img src="'+zoomSrc[k]+'" style="max-width:100%">'); };
 
-/* ---------------- เริ่มต้น / ล็อกอิน ---------------- */
+/* ================= LOGIN (PIN อย่างเดียว เหมือนต้นฉบับ) ================= */
 (async function boot(){
+  $('lgVer').textContent = 'v'+APP_VER+' · Design By Winnie';
   try { fb = await initFB(); }
-  catch(e){ app.innerHTML = '<div class="login"><div class="brand"><span class="dhl">DHL</span><b>UPC Manager</b></div><div class="in"><div class="err">'+esc(e.message)+'</div></div></div>'; return; }
+  catch(e){ $('lgBody').innerHTML = '<h3>DHL Manager</h3><div class="err">'+esc(e.message)+'</div>'; return; }
+  if (DEMO) document.body.insertAdjacentHTML('beforeend','<div class="demoRib">🧪 โหมดทดลอง</div>');
   await loadPub();
   fb.onAuth(async uid => {
-    if (!uid) { stopAll(); ME=null; return renderLogin(); }
+    if (!uid) { stopAll(); ME = null; return renderLogin(); }
     if (ME) return;
     try {
       const m = await fb.get('managers/'+uid);
-      if (!m) { await fb.signOut(); return renderLogin('บัญชีนี้ยังไม่ได้รับสิทธิ์ หรือรหัสผ่านถูกรีเซ็ตแล้ว'); }
-      ME = { ...m, uid }; startMgr();
+      if (!m) { await fb.signOut(); return renderLogin('PIN นี้ยังไม่ได้รับสิทธิ์ หรือถูกเปลี่ยนแล้ว'); }
+      ME = { ...m, uid }; start();
     } catch(e){ renderLogin('เชื่อมต่อไม่ได้: '+(e.code||e.message)); }
   });
 })();
-async function loadPub(){
-  try { PUB = (await fb.get('pub/depots')) || {}; } catch(e){ PUB = {}; }
-  try { PMG = (await fb.get('pub/mgrs')) || {}; } catch(e){ PMG = {}; }
-}
-
-async function renderLogin(msg){
-  let firstRun = false;
-  try { firstRun = !(await fb.get('config/adminLock')); } catch(e){}
-  app.innerHTML = `<div class="login"><div class="brand"><span class="dhl">DHL</span><div><b>UPC Manager</b><small>ติดตามการลงเวลาเข้างาน</small></div></div><div class="in">
-    ${DEMO?'<div class="demo">🧪 <b>โหมดทดลอง</b><br>Admin: <code>admin</code> / <code>admin123</code><br>UPC: <code>upc.north</code> / <code>north123</code><br><a href="#" onclick="__resetDemo();return false">↺ ล้างข้อมูลทดลอง</a></div>':''}
-    ${firstRun ? `<div class="note" style="margin-top:12px">🔑 <b>ตั้งค่าครั้งแรก</b> — ยังไม่มีผู้ดูแลระบบ สร้างบัญชี Admin ของคุณก่อน (ทำได้ครั้งเดียว)</div>
-      <label>ชื่อผู้ใช้ (ภาษาอังกฤษ)</label><input id="su_u" autocapitalize="off" placeholder="เช่น winnie">
-      <label>ชื่อที่แสดง</label><input id="su_n" placeholder="เช่น วินนี่">
-      <label>รหัสผ่าน (อย่างน้อย 8 ตัว)</label><input id="su_p" type="password">
-      <div class="err" id="lg_err">${esc(msg||'')}</div><button class="btn-y" id="lg_btn" onclick="__setup()">สร้างบัญชีผู้ดูแลระบบ</button>`
-    : `<label>ชื่อผู้ใช้</label><input id="lg_u" autocapitalize="off" value="${esc(localStorage.getItem('upcm_user')||'')}">
-      <label>รหัสผ่าน</label><input id="lg_p" type="password">
-      <div class="err" id="lg_err">${esc(msg||'')}</div><button class="btn-y" id="lg_btn" onclick="__login()">เข้าสู่ระบบ</button>`}
-    </div></div><div class="foot">v${APP_VER} · Design By Winnie</div>`;
-  const p = $('#lg_p'); p && p.addEventListener('keydown', e => { if (e.key==='Enter') __login(); });
-}
-function lgErr(t, label){ $('#lg_err').textContent = t; const b=$('#lg_btn'); b.disabled=false; b.textContent=label||'เข้าสู่ระบบ'; }
+async function loadPub(){ try { PUB = (await fb.get('pub/depots')) || {}; } catch(e){ PUB = {}; } }
 window.__resetDemo = () => { if (confirm('ล้างข้อมูลทดลองทั้งหมด?')) { fb.resetDemo(); location.reload(); } };
 
+async function renderLogin(msg){
+  $('login').classList.remove('hide');
+  let first = false; try { first = !(await fb.get('config/adminLock')); } catch(e){}
+  const demo = DEMO ? '<div class="demo">🧪 <b>โหมดทดลอง</b><br>Admin PIN <b>999999</b> · UPC ภาคเหนือ <b>123456</b> · UPC อีสาน <b>654321</b><br><a href="#" onclick="window.__resetDemo();return false">↺ ล้างข้อมูลทดลอง</a></div>' : '';
+  $('lgBody').innerHTML = first
+    ? '<h3>ตั้งค่าครั้งแรก</h3><p>ยังไม่มีผู้ดูแลระบบ — ตั้ง PIN ผู้ดูแลของคุณ (ทำได้ครั้งเดียว)</p>'
+      + '<input id="suName" class="txt" placeholder="ชื่อของคุณ">'
+      + '<input id="mgPin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••••">'
+      + '<div class="err" id="mgErr">'+esc(msg||'')+'</div><button class="btn btn-y btn-block" id="mgGo" onclick="window.__setup()">สร้างผู้ดูแลระบบ</button>'
+    : '<h3>DHL Manager</h3><p>ใส่ PIN ผู้จัดการ — จะเห็นเฉพาะสาขาในความดูแลของ PIN นั้น</p>' + demo
+      + '<input id="mgPin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off">'
+      + '<div class="err" id="mgErr">'+esc(msg||'')+'</div><button class="btn btn-y btn-block" id="mgGo" onclick="window.__login()">เข้าใช้งาน</button>';
+  const p = $('mgPin'); p.focus(); p.addEventListener('keydown', e => { if (e.key==='Enter') $('mgGo').click(); });
+}
+function lgErr(t){ $('mgErr').textContent = t; $('mgGo').disabled = false; }
 window.__login = async () => {
-  const u = $('#lg_u').value.trim().toLowerCase(), p = $('#lg_p').value;
-  if (!u || !p) return lgErr('กรอกชื่อผู้ใช้และรหัสผ่าน');
-  const b=$('#lg_btn'); b.disabled=true; b.textContent='กำลังเข้าสู่ระบบ…';
-  await loadPub();
-  try { await fb.signIn(mgrEmail(u, PMG[u]||1), p); localStorage.setItem('upcm_user', u); }
-  catch(e){ lgErr(e.code==='auth/network-request-failed' ? 'ไม่มีอินเทอร์เน็ต' : e.code==='auth/too-many-requests' ? 'ลองผิดหลายครั้ง — รอสักครู่' : 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); }
+  const pin = $('mgPin').value.trim();
+  if (!/^\d{6}$/.test(pin)) return lgErr('PIN ต้องเป็นตัวเลข 6 หลัก');
+  $('mgGo').disabled = true; $('mgErr').textContent = 'กำลังตรวจสอบ...';
+  try { await fb.signIn(mgrEmail(pin), mgrPw(pin)); }
+  catch(e){ $('mgPin').value=''; lgErr(e.code==='auth/network-request-failed' ? 'เชื่อมต่อไม่ได้' : e.code==='auth/too-many-requests' ? 'ลองผิดหลายครั้ง — รอสักครู่แล้วลองใหม่' : 'PIN ไม่ถูกต้อง'); }
 };
 window.__setup = async () => {
-  const u = $('#su_u').value.trim().toLowerCase(), n = $('#su_n').value.trim(), p = $('#su_p').value;
-  if (!/^[a-z0-9._-]{3,30}$/.test(u)) return lgErr('ชื่อผู้ใช้: a-z 0-9 . _ - อย่างน้อย 3 ตัว', 'สร้างบัญชีผู้ดูแลระบบ');
-  if (!n || p.length < 8) return lgErr('กรอกชื่อ และรหัสผ่านอย่างน้อย 8 ตัว', 'สร้างบัญชีผู้ดูแลระบบ');
-  const b=$('#lg_btn'); b.disabled=true; b.textContent='กำลังสร้าง…';
+  const name = $('suName').value.trim(), pin = $('mgPin').value.trim();
+  if (!name) return lgErr('ใส่ชื่อของคุณ');
+  if (!/^\d{6}$/.test(pin)) return lgErr('PIN ต้องเป็นตัวเลข 6 หลัก');
+  $('mgGo').disabled = true; $('mgErr').textContent = 'กำลังสร้าง...';
   try {
-    ME = { name:n, role:'admin', depots:[], user:u };
-    const uid = await fb.createSelf(mgrEmail(u,1), p);
+    ME = { name, role:'admin', depots:[] };
+    const uid = await fb.createSelf(mgrEmail(pin), mgrPw(pin));
     await fb.set('config/adminLock', { uid, at: NOW });
-    await fb.set('managers/'+uid, { name:n, role:'admin', depots:[], user:u, createdAt: NOW });
-    await fb.set('pub/mgrs', { [u]: 1 });
+    await fb.set('managers/'+uid, { name, role:'admin', depots:[], createdAt: NOW });
     await fb.set('pub/depots', {});
     await fb.set('config/app', { staffVer: APP_VER, managerVer: APP_VER, keepDays: KEEP_DAYS });
-    localStorage.setItem('upcm_user', u);
-    ME.uid = uid; await loadPub(); startMgr(); TAB='admin'; render();
-  } catch(e){ ME=null; lgErr('สร้างไม่สำเร็จ: '+(e.code||e.message), 'สร้างบัญชีผู้ดูแลระบบ'); }
+    ME.uid = uid; await loadPub(); start(); window.__settings();
+  } catch(e){ ME = null; lgErr('สร้างไม่สำเร็จ: '+(e.code||e.message)); }
 };
-window.__logout = async () => { if (!confirm('ออกจากระบบ?')) return; stopAll(); ME=null; await fb.signOut(); };
-
+window.__logout = async () => { if (!confirm('ออกจากระบบ?')) return; stopAll(); ME = null; await fb.signOut(); };
 function stopAll(){ UNS.forEach(u=>u&&u()); UNS=[]; TUNS.forEach(u=>u&&u()); TUNS=[]; DEPS={}; TODAY={}; }
 
-function startMgr(){
-  stopAll(); TAB = 'live'; REG = ''; QQ = ''; OT = null; HD = null; HDEP = null;
+/* ================= START ================= */
+function start(){
+  stopAll(); TAB = 'live'; REG = '';
+  $('login').classList.add('hide');
   SCOPE = (ME.role==='admin' ? Object.keys(PUB) : (ME.depots||[])).slice().sort();
-  app.innerHTML = `${DEMO?'<div class="demoRib">🧪 โหมดทดลอง — ข้อมูลไม่ใช่ของจริง</div>':''}<div id="upd"></div>
-  <header><div class="hrow"><span class="dhl">DHL</span><div class="who"><b>UPC Manager</b><small>👤 ${esc(ME.name)}${ME.role==='admin'?' · ผู้ดูแลระบบ':''} · ${SCOPE.length} สาขา</small></div>
-    <span class="hide-m mut" id="clk" style="font-family:Prompt;font-weight:700;color:#171717"></span><button class="btn-g sm" onclick="__logout()">ออกจากระบบ</button></div>
-  <div class="tabs" id="tabs"></div></header><main id="main"></main>`;
-  SCOPE.forEach(dep => UNS.push(fb.listen('depots/'+dep, (d, m) => { if (d) DEPS[dep] = d; sched(); })));
+  $('teamTag').textContent = 'UPC · '+ME.name+' · '+SCOPE.length+' สาขา';
+  $('admBtn').style.display = ME.role==='admin' ? '' : 'none';
+  SCOPE.forEach(watchDep);
   UNS.push(fb.listen('config/app', d => { CFG = d || {}; checkVer(); }));
-  if (ME.role !== 'admin') UNS.push(fb.listen('managers/'+ME.uid, d => { if (!d) { toast('สิทธิ์ของบัญชีนี้ถูกยกเลิก'); fb.signOut(); } }));
-  listenToday();
-  render();
+  if (ME.role !== 'admin') UNS.push(fb.listen('managers/'+ME.uid, d => { if (!d) { alert('สิทธิ์ของ PIN นี้ถูกยกเลิก'); fb.signOut(); } }));
+  listenToday(); initModules(); window.__tab('live');
 }
+function watchDep(dep){ UNS.push(fb.listen('depots/'+dep, d => { if (d) DEPS[dep] = d; sched(); })); }
 function listenToday(){
   TUNS.forEach(u=>u&&u()); TUNS=[]; TODAY={}; TKEY = todayKey();
   SCOPE.forEach(dep => TUNS.push(fb.listen(`depots/${dep}/days/${TKEY}`, d => { TODAY[dep] = d || {}; sched(); })));
 }
-function sched(){ clearTimeout(RT); RT = setTimeout(() => { if (TAB==='live') render(); if (OVDEP && OVDEP.live) openDep(OVDEP.dep, TKEY, true); }, 200); }
-setInterval(() => { const c=$('#clk'); if (c) c.textContent = hms(Date.now()); if (ME && todayKey()!==TKEY) listenToday(); }, 1000);
+function sched(){ clearTimeout(RT); RT = setTimeout(() => { if (TAB==='live') renderLive(); if (OPENDEP) openDep(OPENDEP, true); }, 200); }
+setInterval(() => { $('clk').textContent = hms(Date.now()); if (ME && todayKey()!==TKEY) listenToday(); }, 1000);
 
 function checkVer(){
-  const want = CFG.managerVer, box = $('#upd'); if (box) box.innerHTML='';
+  const want = CFG.managerVer, bar = $('updBar'); bar.style.display='none';
   if (!want || want === APP_VER) return;
   const k = 'upcmReload_'+want;
   if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k,'1'); const u=new URL(location.href); u.searchParams.set('r',Date.now()); location.replace(u.toString()); }
-  else if (box) box.innerHTML = '<div class="updbar">มีเวอร์ชันใหม่ ('+esc(want)+') — กด Ctrl+F5 / ปิดแล้วเปิดใหม่</div>';
+  else { bar.textContent = 'มีเวอร์ชันใหม่ ('+want+') — กด Ctrl+F5 หรือปิดแล้วเปิดใหม่'; bar.style.display='block'; }
 }
 
-const TABS = [['live','🟢 วันนี้'],['hist','📷 ย้อนหลัง'],['ot','⏱ On-time'],['admin','⚙️ แอดมิน']];
-window.__tab = t => { TAB = t; render(); scrollTo(0,0); };
-function render(){
-  if (TAB==='admin' && ME.role!=='admin') TAB = 'live';
-  $('#tabs').innerHTML = TABS.filter(t => t[0]!=='admin' || ME.role==='admin').map(t=>`<button class="${TAB===t[0]?'on':''}" onclick="__tab('${t[0]}')">${t[1]}</button>`).join('');
-  if (TAB==='live') renderLive(); else if (TAB==='hist') renderHist(); else if (TAB==='ot') renderOt(); else renderAdmin();
+/* ================= โมดูล On-time / ย้อนหลัง (ตัวเดียวกับต้นฉบับ) ================= */
+const depsInView = () => SCOPE.filter(d => !REG || ((DEPS[d]&&DEPS[d].region)===REG));
+function ctx(){
+  return {
+    db: null,
+    doc: (db, ...p) => p.join('/'),
+    getDoc: async p => { const d = await fb.get(p); return { exists: () => !!d, data: () => d }; },
+    esc, secOf,
+    get: () => {
+      const META = {}, DATA = {};
+      SCOPE.forEach(d => { META[d] = { couriers: (DEPS[d] && DEPS[d].roster) || [] }; DATA[d] = TODAY[d] || {}; });
+      return { DEPOTS: depsInView(), DATA, META, DATE: TKEY, MTAB: TAB };
+    }
+  };
 }
+let MODS = false;
+function initModules(){
+  if (MODS) return; MODS = true;
+  import('./upc-ontime.js?v=1').then(m => m.initOntime(ctx())).catch(e => console.warn('ontime', e));
+  import('../dhl-photos.js?v=4').then(m => m.initPhotos(ctx())).catch(e => console.warn('photos', e));
+}
+window.__tab = t => {
+  TAB = t;
+  ['live','ot','ph'].forEach(x => { $('tb_'+x).classList.toggle('on', x===t); });
+  $('viewLive').style.display = t==='live' ? '' : 'none';
+  $('viewOt').style.display = t==='ot' ? '' : 'none';
+  $('viewPh').style.display = t==='ph' ? '' : 'none';
+  if (t==='live') renderLive();
+  if (t==='ot' && window.__otRender) { window.__otRender(); window.__otEnsure(); }
+  if (t==='ph' && window.__phRender) { window.__phRender(); window.__phEnsure(); }
+};
 
-/* ---------------- ข้อมูลกลาง ---------------- */
-const depName = dep => (DEPS[dep] && DEPS[dep].name) || (PUB[dep] && PUB[dep].name) || dep;
-const regions = () => [...new Set(SCOPE.map(d => (DEPS[d]&&DEPS[d].region)||'').filter(Boolean))];
-const inReg = dep => !REG || ((DEPS[dep]&&DEPS[dep].region)===REG);
-function clockOff(x){                       // นาทีที่เวลาเครื่องต่างจากเวลาเซิร์ฟเวอร์ (0 = ปกติ)
-  const s = toMs(x.srv); if (!s || !x.ts) return 0;
-  const d = (s - x.ts) / 60000;
-  if (x.off) return d < -2 ? Math.round(d) : 0;          // ออฟไลน์: ส่งช้าได้ แต่ห้ามเวลาเครื่องล้ำอนาคต
-  return Math.abs(d) > 5 ? Math.round(d) : 0;
-}
+/* ================= LIVE ================= */
 function people(dep, day){
-  const R = ((DEPS[dep]&&DEPS[dep].roster)||[]);
-  const ck = (day&&day.checkins)||{}, ab = (day&&day.absent)||{};
+  const R = (DEPS[dep] && DEPS[dep].roster) || [], ck = (day&&day.checkins)||{}, ab = (day&&day.absent)||{};
   const out = [], seen = new Set();
-  R.forEach(c => { const id=String(c.id); if (c.active===false && !ck[id] && !ab[id]) return; seen.add(id); out.push({ c, id, ck: ck[id]&&ck[id].ts?ck[id]:null, ab: !ck[id] ? ab[id] : null }); });
-  Object.keys(ck).forEach(id => { if (!seen.has(id) && ck[id] && ck[id].ts) out.push({ c:{ id, code:'#'+id, name:'(ไม่อยู่ในรายชื่อ)' }, id, ck: ck[id], ab:null }); });
+  R.forEach(c => { const id = String(c.id); if (c.active===false && !ck[id] && !ab[id]) return; seen.add(id);
+    out.push({ c, id, ck: ck[id]&&ck[id].ts ? ck[id] : null, ab: !(ck[id]&&ck[id].ts) ? ab[id] : null }); });
+  Object.keys(ck).forEach(id => { if (!seen.has(id) && ck[id] && ck[id].ts) out.push({ c:{ id, code:'#'+id, name:'(ไม่อยู่ในรายชื่อ)' }, id, ck: ck[id], ab: null }); });
   return out;
 }
-function depStat(dep, day, cut=CUT){
-  const P = people(dep, day);
-  const s = { dep, n:P.length, inn:0, late:0, ab:0, no:0, flag:0, first:0, last:0 };
-  P.forEach(p => {
-    if (p.ck) { s.inn++; if (secOf(p.ck.ts) > cut) s.late++; if (clockOff(p.ck)) s.flag++;
-      s.first = s.first ? Math.min(s.first, p.ck.ts) : p.ck.ts; s.last = Math.max(s.last, p.ck.ts); }
-    else if (p.ab) s.ab++; else s.no++;
-  });
-  s.pct = s.inn ? (s.inn - s.late) / s.inn * 100 : null;
+function clockOff(x){ const s = toMs(x.srv); if (!s || !x.ts) return 0; const d = (s - x.ts)/60000; if (x.off) return d < -2 ? Math.round(d) : 0; return Math.abs(d) > 5 ? Math.round(d) : 0; }
+function stat(dep, day){
+  const P = people(dep, day), s = { dep, n:P.length, inn:0, late:0, ab:0, no:0, flag:0, last:0 };
+  P.forEach(p => { if (p.ck) { s.inn++; if (isLate(p.ck)) s.late++; if (clockOff(p.ck)) s.flag++; s.last = Math.max(s.last, p.ck.ts); } else if (p.ab) s.ab++; else s.no++; });
   return s;
 }
-
-/* ---------------- แท็บ: วันนี้ ---------------- */
-function regionChips(){
-  const R = regions(); if (R.length < 2) return '';
-  return '<div class="chipset">' + ['',...R].map(r=>`<button class="chip ${REG===r?'on':''}" onclick="__reg('${esc(r)}')">${r||'ทุกภาค'}</button>`).join('') + '</div>';
-}
-window.__reg = r => { REG = r; render(); };
+window.__reg = r => { REG = REG===r ? '' : r; renderLive(); };
 function renderLive(){
-  const deps = SCOPE.filter(inReg).filter(d => !QQ || (d+' '+depName(d)+' '+((DEPS[d]&&DEPS[d].province)||'')).toLowerCase().includes(QQ));
-  const S = deps.map(d => depStat(d, TODAY[d]));
+  if (!ME) return;
+  $('dTitle').textContent = 'วันนี้ '+thDate(TKEY);
+  const deps = depsInView(), S = deps.map(d => stat(d, TODAY[d]));
   const T = S.reduce((a,s)=>{ ['n','inn','late','ab','no','flag'].forEach(k=>a[k]+=s[k]); return a; }, {n:0,inn:0,late:0,ab:0,no:0,flag:0});
-  const now = secOf(Date.now()), silent = S.filter(s => s.n && !s.inn && now > 7.5*3600);
-  const sorters = { no:(a,b)=>b.no-a.no||b.late-a.late, late:(a,b)=>b.late-a.late, pct:(a,b)=>(a.pct??101)-(b.pct??101), code:(a,b)=>a.dep.localeCompare(b.dep) };
-  S.sort(sorters[SORT]);
-  const main = $('#main');
-  const keepQ = document.activeElement && document.activeElement.id==='lv_q';
-  main.innerHTML = `
-  <div class="bar"><b style="font-size:17px">${thDate(TKEY)}</b>${isSun(TKEY)?'<span class="lock">วันอาทิตย์ — ไม่นับในรายงาน On-time</span>':''}<span class="grow"></span><span class="mut">เข้างาน 07:00</span></div>
-  <div class="kpis">
-    <div class="kpi"><small>พนักงานทั้งหมด</small><b>${T.n}</b></div>
-    <div class="kpi g"><small>มาแล้ว</small><b>${T.inn}</b></div>
-    <div class="kpi r"><small>สาย (หลัง 07:00)</small><b>${T.late}</b></div>
-    <div class="kpi m"><small>ขาด / ลา</small><b>${T.ab}</b></div>
-    <div class="kpi r"><small>ยังไม่ลงเวลา</small><b>${T.no}</b></div>
-    <div class="kpi"><small>On-time วันนี้</small><b>${pctTxt(T.inn?(T.inn-T.late)/T.inn*100:null)}</b></div>
-  </div>
-  ${silent.length?`<div class="note" style="border-color:var(--r)">🔴 <b>${silent.length} สาขา</b> ยังไม่มีการลงเวลาเลย (เลย 07:30 แล้ว): ${silent.map(s=>esc(s.dep)).join(', ')}</div>`:''}
-  ${T.flag?`<div class="note">⏱ มี <b>${T.flag}</b> รายการที่เวลาเครื่องไม่ตรงกับเวลาเซิร์ฟเวอร์ — เปิดดูในสาขาที่มีธง ⏱</div>`:''}
-  <div class="bar">${regionChips()}<input class="grow" id="lv_q" placeholder="🔍 ค้นหาสาขา / จังหวัด" value="${esc(QQ)}">
-    <select id="lv_s"><option value="no">เรียง: ยังไม่ลงมากสุด</option><option value="late">สายมากสุด</option><option value="pct">On-time ต่ำสุด</option><option value="code">รหัสสาขา</option></select></div>
-  <div class="card"><div class="tw"><table><thead><tr><th>สาขา</th><th class="hide-m">จังหวัด</th><th class="n">มา/ทั้งหมด</th><th></th><th class="n">สาย</th><th class="n">ขาด/ลา</th><th class="n">ยังไม่ลง</th><th class="n">On-time</th><th class="n hide-m">ล่าสุด</th></tr></thead><tbody>
-  ${S.map(s=>{ const w=v=>s.n?(v/s.n*100):0;
-    return `<tr class="click" onclick="__dep('${esc(s.dep)}')"><td><b>${esc(s.dep)}</b> <span class="mut">${esc(depName(s.dep))}</span>${s.flag?`<span class="flag">⏱${s.flag}</span>`:''}</td>
-    <td class="hide-m mut">${esc((DEPS[s.dep]&&DEPS[s.dep].province)||'')}</td><td class="n"><b>${s.inn}</b>/${s.n}</td>
-    <td><div class="prog"><i style="width:${w(s.inn-s.late)}%;background:var(--ok)"></i><i style="width:${w(s.late)}%;background:var(--r)"></i><i style="width:${w(s.ab)}%;background:#bbb"></i></div></td>
-    <td class="n ${s.late?'late':''}">${s.late}</td><td class="n">${s.ab}</td><td class="n ${s.no?'late':''}">${s.no}</td>
-    <td class="n"><span class="pct ${pctCls(s.pct)}">${pctTxt(s.pct)}</span></td><td class="n hide-m mut">${s.last?hm(s.last):'–'}</td></tr>`; }).join('')
-    || '<tr><td colspan="9" class="empty">ไม่มีสาขาในความรับผิดชอบ</td></tr>'}
-  </tbody></table></div></div>`;
-  $('#lv_s').value = SORT;
-  $('#lv_s').onchange = e => { SORT = e.target.value; renderLive(); };
-  const q = $('#lv_q'); q.oninput = e => { QQ = e.target.value.trim().toLowerCase(); renderLive(); };
-  if (keepQ) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  const withData = S.filter(s => s.inn || s.ab).length;
+  $('dSub').textContent = '• มีข้อมูล '+withData+'/'+deps.length+' สาขา' + (new Date().getDay()===0 ? ' • วันอาทิตย์ (ไม่นับใน On-time)' : '');
+  const now = secOf(Date.now()), past = now > GRACE;
+  const silent = S.filter(s => s.n && !s.inn && !s.ab && now > 7.5*3600);
+  $('healthBar').innerHTML = silent.length ? '<div class="hbar" onclick="window.__dep(\''+silent[0].dep+'\')"><b>⚠️ '+silent.length+' สาขายังไม่มีการเช็คอินเลย</b><span>'+silent.slice(0,6).map(s=>s.dep).join(' • ')+(silent.length>6?' • และอีก '+(silent.length-6):'')+' — แตะดูรายละเอียด</span></div>' : '';
+  const ot = T.inn ? Math.round((T.inn-T.late)/T.inn*1000)/10 : null;
+  $('kpis').innerHTML = '<div class="kpis">'
+    + '<div class="kpi '+(ot==null?'':ot>=95?'green':'red')+'"><div class="v">'+(ot==null?'—':ot+'%')+'</div><div class="l">Ontime รวม</div></div>'
+    + '<div class="kpi '+(T.late?'red':'green')+'"><div class="v">'+T.late+'</div><div class="l">สายวันนี้</div></div>'
+    + '<div class="kpi '+(T.no&&past?'red':T.no?'am':'green')+'"><div class="v">'+T.inn+'/'+(T.n-T.ab)+'</div><div class="l">เช็คอินแล้ว</div></div>'
+    + '<div class="kpi am"><div class="v">'+T.ab+'</div><div class="l">ขาด / ลา</div></div>'
+    + '<div class="kpi"><div class="v">'+withData+'/'+deps.length+'</div><div class="l">สาขาเริ่มลงเวลา'+(T.flag?' • ⏱'+T.flag:'')+'</div></div>'
+    + '</div>';
+  const regs = [...new Set(SCOPE.map(d => (DEPS[d]&&DEPS[d].region)||'').filter(Boolean))];
+  $('depBar').innerHTML = regs.length > 1 ? '<div class="depbar" style="margin:0 0 9px;padding-top:0;border-top:0;">'
+    + '<button class="dbtn all'+(REG?'':' on')+'" onclick="window.__reg(\'\')"><i style="background:#1a1a1a"></i>ทุกภาค</button>'
+    + regs.map(r => '<button class="dbtn'+(REG===r?' on':'')+'" onclick="window.__reg(\''+esc(r)+'\')"><i style="background:#FFCC00"></i>'+esc(r)+'</button>').join('') + '</div>' : '';
+  const cell = (dep, cls, b, sp) => '<td class="cell '+cls+'" onclick="window.__dep(\''+dep+'\')"><b>'+b+'</b><span>'+sp+'</span></td>';
+  let h = '<colgroup><col class="c-dep"><col class="c-task"><col class="c-task"><col class="c-task"><col class="c-task"></colgroup><tbody>'
+    + '<tr><th></th><th>Check-in<span class="tg">07:00</span></th><th>สาย</th><th>ขาด / ลา</th><th>ยังไม่ลง</th></tr>';
+  S.forEach(s => {
+    const D = DEPS[s.dep] || {}, need = s.n - s.ab;
+    h += '<tr><td class="dep">'+esc(s.dep)+(s.flag?'<span class="flagc">⏱'+s.flag+'</span>':'')+'<small>'+esc(D.name||(PUB[s.dep]&&PUB[s.dep].name)||'')+(D.province?' · '+esc(D.province):'')+'</small></td>'
+      + (s.n ? cell(s.dep, s.no===0?'ok':past?'bad':'wait', s.inn+'/'+need, s.last?'ล่าสุด '+hm(s.last):'ยังไม่เริ่ม')
+             : cell(s.dep, 'none', '—', 'ไม่มีรายชื่อ'))
+      + cell(s.dep, !s.inn?'none':s.late?'bad':'ok', s.late, s.inn? Math.round(s.late/s.inn*100)+'%' : '—')
+      + cell(s.dep, s.ab?'wait':'none', s.ab, 'คน')
+      + cell(s.dep, !s.n?'none':s.no===0?'ok':past?'bad':'wait', s.no, 'คน')
+      + '</tr>';
+  });
+  if (!S.length) h += '<tr><td colspan="5" class="empty">'+(ME.role==='admin'?'ยังไม่มีสาขา — กด ⚙️ เพื่อเพิ่มสาขา':'ยังไม่มีสาขาในความดูแล — แจ้งผู้ดูแลระบบ')+'</td></tr>';
+  $('grid').innerHTML = h + '</tbody>';
 }
 
-/* ---------------- รายละเอียดสาขา (ใช้ทั้งวันนี้และย้อนหลัง) ---------------- */
-let OVDEP = null;
-window.__dep = dep => openDep(dep, TKEY);
-async function openDep(dep, dk, refresh){
-  const live = dk === TKEY;
-  OVDEP = { dep, dk, live };
-  let day = live ? TODAY[dep] : null;
-  if (!live) { if (!refresh) ov(dep+' · '+depName(dep), '<div class="empty">กำลังโหลด…</div>'); try { day = await fb.get(`depots/${dep}/days/${dk}`); } catch(e){ day = null; } }
-  const html = depDetail(dep, dk, day || {});
-  if (refresh && $('#ov').style.display==='flex') { $('#ov_b').innerHTML = html; } else ov(dep+' · '+depName(dep)+' — '+thDate(dk), html);
-  loadPhotos(dep, dk, day || {});
+/* ---- รายละเอียดสาขา (แผ่นเลื่อนขึ้น แบบต้นฉบับ) ---- */
+window.__dep = dep => openDep(dep);
+function openDep(dep, refresh){
+  if (refresh && !$('mdl').classList.contains('show')) return;
+  OPENDEP = dep;
+  const D = DEPS[dep] || {}, day = TODAY[dep] || {}, P = people(dep, day), s = stat(dep, day);
+  const ins = P.filter(p=>p.ck).sort((a,b)=>a.ck.ts-b.ck.ts), abs = P.filter(p=>p.ab), no = P.filter(p=>!p.ck&&!p.ab);
+  const row = p => {
+    const k = dep+'|'+p.id, off = p.ck ? clockOff(p.ck) : 0;
+    const img = p.ck ? (PH[k] ? '<img class="thumb" src="'+PH[k]+'" onclick="window.__zoomImg(\''+k+'\')">' : '<div class="thumb" id="th_'+esc(dep)+'_'+esc(p.id)+'" style="display:grid;place-items:center;font-size:10px;color:#b0a892;">⏳</div>') : '';
+    const chip = p.ck ? (isLate(p.ck) ? '<span class="chip no">✖ '+hm(p.ck.ts)+'</span>' : '<span class="chip ok">✔ '+hm(p.ck.ts)+'</span>')
+               : p.ab ? '<span class="chip gr">'+esc(p.ab.note||'ขาด')+'</span>' : '<span class="chip '+(secOf(Date.now())>GRACE?'no':'wt')+'">ยังไม่ลง</span>';
+    return '<div class="row-c">'+img+'<div class="info"><div class="nm">'+esc(p.c.name)+'</div><div class="sub2">'+esc(p.c.code)+' • '+esc(p.c.vendor||'-')
+      + (p.ck ? ' • โดย '+esc(p.ck.staff||'-') : p.ab ? ' • โดย '+esc(p.ab.by||'-') : '')
+      + (off ? ' • <b style="color:#b3121d">⏱ เวลาเครื่องต่าง '+Math.abs(off)+' นาที</b>' : '')
+      + (p.ck && p.ck.off ? ' • 📴 ลงตอนออฟไลน์' : '') + '</div></div>'+chip+'</div>';
+  };
+  modal('<h3>'+esc(dep)+' · '+esc(D.name||'')+'</h3><div class="sub">'+thDate(TKEY)+' • เช็คอิน '+s.inn+'/'+(s.n-s.ab)+' • สาย '+s.late+' • ขาด/ลา '+s.ab+' • ยังไม่ลง '+s.no+'</div>'
+    + (no.length ? '<div class="grp">⏳ ยังไม่ลงเวลา '+no.length+' คน</div>'+no.map(row).join('') : '')
+    + (ins.length ? '<div class="grp">✓ เช็คอินแล้ว '+ins.length+' คน</div>'+ins.map(row).join('') : '')
+    + (abs.length ? '<div class="grp">🚫 ขาด / ลา '+abs.length+' คน</div>'+abs.map(row).join('') : '')
+    + (!P.length ? '<div class="empty">ยังไม่มีรายชื่อพนักงานในสาขานี้</div>' : '')
+    + '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>');
+  loadThumbs(dep, ins.map(p=>p.id));
 }
-function depDetail(dep, dk, day){
-  const s = depStat(dep, day), P = people(dep, day);
-  const ord = p => p.ck ? 0 : p.ab ? 2 : 1;
-  P.sort((a,b)=> ord(a)-ord(b) || (a.ck&&b.ck ? a.ck.ts-b.ck.ts : String(a.c.code).localeCompare(String(b.c.code))));
-  return `<div class="kpis"><div class="kpi"><small>ทั้งหมด</small><b>${s.n}</b></div><div class="kpi g"><small>มา</small><b>${s.inn}</b></div>
-    <div class="kpi r"><small>สาย</small><b>${s.late}</b></div><div class="kpi m"><small>ขาด/ลา</small><b>${s.ab}</b></div><div class="kpi r"><small>ยังไม่ลง</small><b>${s.no}</b></div>
-    <div class="kpi"><small>On-time</small><b>${pctTxt(s.pct)}</b></div></div>
-    <div class="card"><div class="grid">${P.map(p=>{
-      if (p.ck) { const late = secOf(p.ck.ts) > CUT, off = clockOff(p.ck);
-        return `<div class="pc"><div class="im" id="im_${esc(p.id)}">กำลังโหลดรูป…</div><div class="tx"><b>${esc(p.c.name)}</b>${esc(p.c.code)} · ${esc(p.c.vendor||'-')}<br>
-          <span class="${late?'late':'ok'}">🕖 ${hms(p.ck.ts)}${late?' สาย':''}</span>${p.ck.re?`<span class="flag">ถ่ายใหม่ ${p.ck.re}</span>`:''}
-          ${off?`<br><span class="flag r" title="เวลาเซิร์ฟเวอร์ ${hms(toMs(p.ck.srv))}">⏱ เวลาเครื่องต่าง ${Math.abs(off)} นาที</span>`:''}${p.ck.off?'<br><span class="mut">📴 ลงตอนออฟไลน์</span>':''}
-          <br><span class="mut">โดย ${esc(p.ck.by||'-')}</span></div></div>`; }
-      if (p.ab) return `<div class="pc ab"><div class="im">🚫<br>${esc(p.ab.note||'ขาด')}</div><div class="tx"><b>${esc(p.c.name)}</b>${esc(p.c.code)} · ${esc(p.c.vendor||'-')}<br><span class="mut">${esc(p.ab.note||'')} · โดย ${esc(p.ab.by||'-')}</span></div></div>`;
-      return `<div class="pc no"><div class="im">⏳<br>ยังไม่ลงเวลา</div><div class="tx"><b>${esc(p.c.name)}</b>${esc(p.c.code)} · ${esc(p.c.vendor||'-')}</div></div>`;
-    }).join('') || '<div class="empty">ไม่มีข้อมูล</div>'}</div></div>`;
-}
-async function loadPhotos(dep, dk, day){
-  const ids = Object.keys((day&&day.checkins)||{}).filter(id => day.checkins[id] && day.checkins[id].ts);
-  const put = (id, src) => { const e = document.getElementById('im_'+id); if (!e) return;
-    e.innerHTML = src ? `<img src="${src}" alt="" onclick="__zoom(this.src)">` : (day.checkins[id].hasPhoto ? '⚠️ รูปหาย<br><small>อัปโหลดไม่สำเร็จ</small>' : '🚫 ไม่มีรูป'); };
+async function loadThumbs(dep, ids){
   for (let i = 0; i < ids.length; i += 6) {
     await Promise.all(ids.slice(i, i+6).map(async id => {
-      const k = `depots/${dep}/photos/${id}_${dk}`;
-      if (!(k in PH) || (PH[k] === null && dk === TKEY)) { try { const p = await fb.get(k); PH[k] = p && p.d || null; } catch(e){ PH[k] = null; } }
-      put(id, PH[k]);
+      const k = dep+'|'+id; if (PH[k]) return;
+      try { const p = await fb.get(`depots/${dep}/photos/ci_${id}_${TKEY}`); if (p && p.d) PH[k] = p.d; } catch(e){}
+      const el = document.getElementById('th_'+dep+'_'+id);
+      if (el) el.outerHTML = PH[k] ? '<img class="thumb" src="'+PH[k]+'" onclick="window.__zoomImg(\''+k+'\')">' : '<div class="thumb" style="display:grid;place-items:center;font-size:9.5px;color:#b3121d;font-weight:800;text-align:center;">รูปหาย</div>';
+      if (PH[k]) zoomSrc[k] = PH[k];
     }));
   }
 }
 
-/* ---------------- แท็บ: ย้อนหลัง ---------------- */
-let HD = null, HDEP = null;
-function renderHist(){
-  const min = new Date(); min.setDate(min.getDate() - (KEEP_DAYS-1));
-  HD = HD || todayKey(); HDEP = HDEP && SCOPE.includes(HDEP) ? HDEP : SCOPE[0];
-  $('#main').innerHTML = `<div class="note">📷 ดูรูปเข้างานย้อนหลังได้ ${KEEP_DAYS} วัน (รูปเก่ากว่านั้นระบบลบอัตโนมัติ)</div>
-  <div class="bar"><input type="date" id="h_d" min="${ymd(min)}" max="${todayKey()}" value="${HD}">
-  <select id="h_dep" class="grow">${SCOPE.map(d=>`<option value="${esc(d)}" ${d===HDEP?'selected':''}>${esc(d)} · ${esc(depName(d))}</option>`).join('')}</select>
-  <button class="btn-y" onclick="__hGo()">ดูข้อมูล</button></div><div id="h_out"><div class="empty">เลือกวันที่และสาขา แล้วกด “ดูข้อมูล”</div></div>`;
-}
-window.__hGo = async () => {
-  HD = $('#h_d').value; HDEP = $('#h_dep').value; if (!HD || !HDEP) return;
-  $('#h_out').innerHTML = '<div class="empty">กำลังโหลด…</div>';
-  let day = null; try { day = HD===TKEY ? TODAY[HDEP] : await fb.get(`depots/${HDEP}/days/${HD}`); } catch(e){}
-  $('#h_out').innerHTML = `<h3 style="margin:4px 0 10px">${esc(HDEP)} · ${esc(depName(HDEP))} — ${thDate(HD)}</h3>` + depDetail(HDEP, HD, day||{});
-  loadPhotos(HDEP, HD, day||{});
-};
-
-/* ---------------- แท็บ: On-time ---------------- */
-let OT = null, OTMODE = 'cut', FILT = { tier:'', dep:'', vendor:'' };
-function renderOt(){
-  const t = todayKey(), f = t.slice(0,8)+'01';
-  $('#main').innerHTML = `<div class="bar"><span>ช่วงวันที่</span><input type="date" id="o_f" value="${OT?OT.from:f}" max="${t}"><span>ถึง</span><input type="date" id="o_t" value="${OT?OT.to:t}" max="${t}">
-    <button class="btn-y" onclick="__oLoad()">คำนวณ</button><span class="grow"></span>
-    <div class="chipset"><button class="chip ${OTMODE==='cut'?'on':''}" onclick="__oMode('cut')">เกณฑ์ 07:00</button><button class="chip ${OTMODE==='grace'?'on':''}" onclick="__oMode('grace')">🔒 07:10</button></div></div>
-    ${regionChips()}<div id="o_out" style="margin-top:10px">${OT?'':'<div class="empty">เลือกช่วงวันที่แล้วกด “คำนวณ” · ไม่นับวันอาทิตย์</div>'}</div>`;
-  if (OT) otPaint();
-}
-window.__oMode = m => { OTMODE = m; renderOt(); };
-window.__oLoad = async () => {
-  const from = $('#o_f').value, to = $('#o_t').value;
-  if (!from || !to || from > to) return toast('ช่วงวันที่ไม่ถูกต้อง');
-  const deps = SCOPE.slice(), out = $('#o_out'), days = {};
-  let done = 0;
-  for (let i = 0; i < deps.length; i += 8) {
-    await Promise.all(deps.slice(i, i+8).map(async dep => {
-      try { const L = await fb.list(`depots/${dep}/days`, 'date', '>=', from); days[dep] = L.map(x=>x.data).filter(d => d.date && d.date <= to && !isSun(d.date)); }
-      catch(e){ days[dep] = []; }
-      done++; out.innerHTML = `<div class="empty">กำลังโหลด ${done}/${deps.length} สาขา…</div>`;
-    }));
-  }
-  OT = { from, to, days }; FILT = { tier:'', dep:'', vendor:'' }; otPaint();
-};
-const tierOf = p => p >= 100 ? '100' : p >= 90 ? '90' : p >= 80 ? '80' : 'lt80';
-const TIERS = [['100','100%'],['90','90–99%'],['80','80–89%'],['lt80','ต่ำกว่า 80%']];
-function otCalc(){
-  const cut = OTMODE==='grace' ? GRACE : CUT, P = {}, D = {}, V = {};
-  const deps = SCOPE.filter(inReg);
-  deps.forEach(dep => {
-    const R = {}; ((DEPS[dep]&&DEPS[dep].roster)||[]).forEach(c => R[String(c.id)] = c);
-    const dd = D[dep] = { dep, days:0, ck:0, on:0, late:0, lm:0, ab:0 };
-    (OT.days[dep]||[]).forEach(day => {
-      const ck = day.checkins||{}, ab = day.absent||{}; let any = 0;
-      Object.keys(ck).forEach(id => { const x = ck[id]; if (!x || !x.ts) return; any = 1;
-        const c = R[id] || { code:'#'+id, name:'(ไม่อยู่ในรายชื่อ)', vendor:'' };
-        const k = dep+'|'+id, p = P[k] = P[k] || { dep, id, code:c.code, name:c.name, vendor:c.vendor||'-', type:c.type||'2W', ck:0, on:0, late:0, lm:0, ab:0 };
-        const s = secOf(x.ts), isLate = s > cut;
-        p.ck++; dd.ck++;
-        if (isLate) { p.late++; dd.late++; const m = (s - CUT)/60; p.lm += m; dd.lm += m; } else { p.on++; dd.on++; }
-      });
-      Object.keys(ab).forEach(id => { if (ck[id]) return; const c = R[id]; if (!c) return;
-        const k = dep+'|'+id, p = P[k] = P[k] || { dep, id, code:c.code, name:c.name, vendor:c.vendor||'-', type:c.type||'2W', ck:0, on:0, late:0, lm:0, ab:0 };
-        p.ab++; dd.ab++; });
-      if (any) dd.days++;
-    });
-  });
-  const people = Object.values(P).map(p => ({ ...p, pct: p.ck ? p.on/p.ck*100 : null }));
-  people.forEach(p => { const v = V[p.vendor] = V[p.vendor] || { vendor:p.vendor, ppl:0, ck:0, on:0, late:0, lm:0, bad:0 };
-    v.ppl++; v.ck += p.ck; v.on += p.on; v.late += p.late; v.lm += p.lm; if (p.pct!=null && p.pct < 80) v.bad++; });
-  return { people, deps: Object.values(D), vendors: Object.values(V), cut };
-}
-function otPaint(){
-  const C = otCalc(), all = C.people.filter(p => p.ck);
-  const T = C.deps.reduce((a,d)=>({ ck:a.ck+d.ck, on:a.on+d.on, late:a.late+d.late, lm:a.lm+d.lm }), { ck:0, on:0, late:0, lm:0 });
-  const cnt = {}; TIERS.forEach(t => cnt[t[0]] = all.filter(p => tierOf(p.pct)===t[0]).length);
-  let L = C.people.filter(p => (!FILT.tier || (p.ck && tierOf(p.pct)===FILT.tier)) && (!FILT.dep || p.dep===FILT.dep) && (!FILT.vendor || p.vendor===FILT.vendor));
-  L.sort((a,b) => (a.pct??101)-(b.pct??101) || b.late-a.late);
-  const nDays = (() => { let n=0; for (let d=kd(OT.from); d<=kd(OT.to); d.setDate(d.getDate()+1)) if (d.getDay()) n++; return n; })();
-  const fl = [FILT.tier && ('ระดับ '+TIERS.find(t=>t[0]===FILT.tier)[1]), FILT.dep && ('สาขา '+FILT.dep), FILT.vendor && ('Vendor '+FILT.vendor)].filter(Boolean);
-  $('#o_out').innerHTML = `
-  <div class="note">ช่วง ${thDate(OT.from)} – ${thDate(OT.to)} · ${nDays} วันทำงาน (ไม่นับอาทิตย์) · เกณฑ์ ${OTMODE==='grace'?'<span class="lock">🔒 07:10 — เห็นเฉพาะ Manager</span>':'07:00'} · นาทีสายนับจาก 07:00</div>
-  <div class="kpis"><div class="kpi"><small>ครั้งที่ลงเวลา</small><b>${T.ck.toLocaleString()}</b></div><div class="kpi g"><small>ตรงเวลา</small><b>${T.on.toLocaleString()}</b></div>
-    <div class="kpi r"><small>สาย</small><b>${T.late.toLocaleString()}</b></div><div class="kpi"><small>On-time รวม</small><b>${pctTxt(T.ck?T.on/T.ck*100:null)}</b></div>
-    <div class="kpi r"><small>สายเฉลี่ย / ครั้ง</small><b>${T.late?fmt1(T.lm/T.late):0} น.</b></div></div>
-  <div class="bar">${TIERS.map(t=>`<button class="chip ${FILT.tier===t[0]?'on':''}" onclick="__of('tier','${t[0]}')">${t[1]} · <b>${cnt[t[0]]}</b> คน</button>`).join('')}</div>
-  <div class="card"><h3><span class="grow">🏢 รายสาขา</span></h3><div class="tw"><table><thead><tr><th>สาขา</th><th class="n">วันมีข้อมูล</th><th class="n">ลงเวลา</th><th class="n">ตรงเวลา</th><th class="n">สาย</th><th class="n">สายเฉลี่ย (น.)</th><th class="n">ขาด/ลา</th><th class="n">On-time</th></tr></thead><tbody>
-  ${C.deps.sort((a,b)=>(a.ck?a.on/a.ck:2)-(b.ck?b.on/b.ck:2)).map(d=>{ const p = d.ck ? d.on/d.ck*100 : null;
-    return `<tr class="click ${FILT.dep===d.dep?'on':''}" onclick="__of('dep','${esc(d.dep)}')"><td><b>${esc(d.dep)}</b> <span class="mut">${esc(depName(d.dep))}</span>${FILT.dep===d.dep?' ✔':''}</td><td class="n">${d.days}/${nDays}</td><td class="n">${d.ck}</td><td class="n">${d.on}</td><td class="n ${d.late?'late':''}">${d.late}</td><td class="n">${d.late?fmt1(d.lm/d.late):'–'}</td><td class="n">${d.ab}</td><td class="n"><span class="pct ${pctCls(p)}">${pctTxt(p)}</span></td></tr>`; }).join('')}
-  </tbody></table></div></div>
-  <div class="card"><h3><span class="grow">🚚 ราย Vendor</span></h3><div class="tw"><table><thead><tr><th>Vendor</th><th class="n">คน</th><th class="n">ลงเวลา</th><th class="n">สาย</th><th class="n">% สาย</th><th class="n">คนต่ำกว่า 80%</th><th class="n">On-time</th></tr></thead><tbody>
-  ${C.vendors.sort((a,b)=>(b.ck?b.late/b.ck:0)-(a.ck?a.late/a.ck:0)).map(v=>{ const p = v.ck ? v.on/v.ck*100 : null;
-    return `<tr class="click" onclick="__of('vendor','${esc(v.vendor)}')"><td><b>${esc(v.vendor)}</b>${FILT.vendor===v.vendor?' ✔':''}</td><td class="n">${v.ppl}</td><td class="n">${v.ck}</td><td class="n ${v.late?'late':''}">${v.late}</td><td class="n">${v.ck?fmt1(v.late/v.ck*100)+'%':'–'}</td><td class="n ${v.bad?'late':''}">${v.bad}</td><td class="n"><span class="pct ${pctCls(p)}">${pctTxt(p)}</span></td></tr>`; }).join('')}
-  </tbody></table></div></div>
-  <div class="card"><h3><span class="grow">👤 รายบุคคล ${fl.length?'— '+fl.join(' · ')+' <button class="btn-g sm" onclick="__of(\'clear\')">✕ ล้างตัวกรอง</button>':''} <span class="mut">(${L.length} คน)</span></span><button class="btn-g sm" onclick="__oCsv()">📤 CSV</button></h3>
-  <div class="tw" style="max-height:560px"><table><thead><tr><th>สาขา</th><th>รหัส</th><th>ชื่อ</th><th>Vendor</th><th class="n">ลงเวลา</th><th class="n">ตรงเวลา</th><th class="n">สาย</th><th class="n">สายเฉลี่ย (น.)</th><th class="n">ขาด/ลา</th><th class="n">On-time</th></tr></thead><tbody>
-  ${L.map(p=>`<tr><td>${esc(p.dep)}</td><td>${esc(p.code)}</td><td>${esc(p.name)}</td><td>${esc(p.vendor)}</td><td class="n">${p.ck}</td><td class="n">${p.on}</td><td class="n ${p.late?'late':''}">${p.late}</td><td class="n">${p.late?fmt1(p.lm/p.late):'–'}</td><td class="n">${p.ab}</td><td class="n"><span class="pct ${pctCls(p.pct)}">${pctTxt(p.pct)}</span></td></tr>`).join('') || '<tr><td colspan="10" class="empty">ไม่มีข้อมูล</td></tr>'}
-  </tbody></table></div></div>`;
-  OT.last = L;
-}
-window.__of = (k, v) => { if (k==='clear') FILT = { tier:'', dep:'', vendor:'' }; else FILT[k] = FILT[k]===v ? '' : v; otPaint(); };
-window.__oCsv = () => {
-  const rows = [['สาขา','รหัส','ชื่อ','Vendor','ประเภท','ลงเวลา','ตรงเวลา','สาย','สายเฉลี่ย(นาที)','ขาด/ลา','On-time %'],
-    ...(OT.last||[]).map(p=>[p.dep,p.code,p.name,p.vendor,p.type,p.ck,p.on,p.late,p.late?(Math.round(p.lm/p.late*10)/10):0,p.ab,p.pct==null?'':Math.round(p.pct*10)/10])];
-  const csv = '﻿' + rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download = `ontime_${OT.from}_${OT.to}${OTMODE==='grace'?'_g':''}.csv`; a.click();
-};
-
-/* ---------------- แท็บ: แอดมิน ---------------- */
-let MGRS = [];
-const staffUrl = () => { const u = new URL('staff.html', location.href); if (DEMO) u.search='?demo'; else u.search=''; return u.toString(); };
+/* ================= ⚙️ ผู้ดูแลระบบ (Admin) ================= */
+let ADM = 'dep', MGRS = [], STAFFN = {};
+const staffUrl = () => { const u = new URL('staff.html', location.href); u.search = DEMO ? '?demo' : ''; return u.toString(); };
 const mgrUrl = () => { const u = new URL('manager.html', location.href); u.search = DEMO ? '?demo' : ''; return u.toString(); };
-const genPin = () => String(Math.floor(100000 + Math.random()*900000));
-window.__copy = t => { navigator.clipboard && navigator.clipboard.writeText(t).then(()=>toast('คัดลอกแล้ว'), ()=>toast('คัดลอกไม่ได้')); };
-
-async function renderAdmin(){
-  if (ME.role !== 'admin') return;
+window.__copy = t => { navigator.clipboard && navigator.clipboard.writeText(t).then(()=>feed('<b>คัดลอกแล้ว</b>','ok'), ()=>feed('คัดลอกไม่ได้','bad')); };
+function credBox(title, lines){ const txt = lines.join('\n');
+  return '<div class="cred">📋 <b>'+title+'</b><br>'+lines.map(esc).join('<br>')+'<br><button class="btn btn-y" style="margin-top:8px;padding:9px 14px;" onclick=\'window.__copy('+JSON.stringify(txt).replace(/'/g,'&#39;')+')\'>คัดลอกทั้งหมด</button></div>'; }
+window.__settings = async sec => {
+  if (!ME || ME.role !== 'admin') return;
+  if (sec) ADM = sec;
   try { MGRS = (await fb.list('managers')).map(x => ({ uid:x.id, ...x.data })); } catch(e){ MGRS = []; }
-  const all = Object.keys(PUB).sort();
-  $('#main').innerHTML = `
-  <div class="card"><h3><span class="grow">🏢 สาขา (${all.length})</span><button class="btn-g sm" onclick="__aBulk()">📥 เพิ่มหลายสาขา</button><button class="btn-y sm" onclick="__aDep()">➕ เพิ่มสาขา</button></h3>
-  <div class="tw" style="max-height:480px"><table><thead><tr><th>รหัส</th><th>ชื่อสาขา</th><th>ภาค / จังหวัด</th><th class="n">พนักงาน</th><th>ผู้ดูแล (UPC)</th><th></th></tr></thead><tbody>
-  ${all.map(d => { const D = DEPS[d]||{}, owners = MGRS.filter(m=>m.role!=='admin' && (m.depots||[]).includes(d)).map(m=>m.name);
-    return `<tr><td><b>${esc(d)}</b></td><td>${esc(D.name||PUB[d].name||'')}</td><td class="mut">${esc(D.region||'')} ${esc(D.province||'')}</td><td class="n">${(D.roster||[]).filter(c=>c.active!==false).length}</td>
-    <td class="${owners.length?'':'late'}">${owners.length?esc(owners.join(', ')):'ยังไม่มี'}</td>
-    <td style="white-space:nowrap"><button class="btn-g sm" onclick="__aDep('${esc(d)}')">แก้ไข</button> <button class="btn-g sm" onclick="__aPin('${esc(d)}')">🔑 รีเซ็ต PIN</button></td></tr>`; }).join('') || '<tr><td colspan="6" class="empty">ยังไม่มีสาขา — กด ➕ เพิ่มสาขา</td></tr>'}
-  </tbody></table></div></div>
-  <div class="card"><h3><span class="grow">👥 ผู้ใช้งานฝั่ง Manager (${MGRS.length})</span><button class="btn-y sm" onclick="__aMgr()">➕ เพิ่ม Manager</button></h3>
-  <div class="tw"><table><thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อ</th><th>สิทธิ์</th><th>สาขาที่ดูแล</th><th></th></tr></thead><tbody>
-  ${MGRS.sort((a,b)=>(a.role==='admin'?0:1)-(b.role==='admin'?0:1)||String(a.name).localeCompare(String(b.name))).map(m=>`<tr><td><b>${esc(m.user||'-')}</b></td><td>${esc(m.name)}</td><td>${m.role==='admin'?'<span class="lock">Admin</span>':'UPC'}</td>
-    <td>${m.role==='admin'?'<span class="mut">ทุกสาขา</span>':esc((m.depots||[]).join(', '))||'<span class="late">ยังไม่กำหนด</span>'}</td>
-    <td style="white-space:nowrap">${m.uid===ME.uid?'<span class="mut">(คุณ)</span>':`<button class="btn-g sm" onclick="__aMgr('${esc(m.uid)}')">แก้ไข</button> <button class="btn-g sm" onclick="__aMpw('${esc(m.uid)}')">🔑 รหัสผ่านใหม่</button> <button class="btn-g sm" onclick="__aMdel('${esc(m.uid)}')">ลบ</button>`}</td></tr>`).join('')}
-  </tbody></table></div></div>
-  <div class="card"><h3>🔧 ระบบ</h3><div style="padding:12px 14px;line-height:1.9">
-    เวอร์ชันแอปนี้: <b>${APP_VER}</b> · บังคับใช้ Staff: <b>${esc(CFG.staffVer||'-')}</b> · Manager: <b>${esc(CFG.managerVer||'-')}</b><br>
-    <button class="btn-y sm" onclick="__aVer()">🔄 บังคับทุกเครื่องใช้เวอร์ชัน ${APP_VER}</button>
-    <div style="margin-top:10px">ลิงก์แอปสาขา: <code>${esc(staffUrl())}</code> <button class="btn-g sm" onclick="__copy('${esc(staffUrl())}')">คัดลอก</button><br>
-    ลิงก์ Manager: <code>${esc(mgrUrl())}</code> <button class="btn-g sm" onclick="__copy('${esc(mgrUrl())}')">คัดลอก</button></div></div></div>`;
-}
-window.__aVer = async () => {
-  if (!confirm('บังคับให้ทุกเครื่องอัปเดตเป็น '+APP_VER+' ?')) return;
-  await fb.set('config/app', { staffVer: APP_VER, managerVer: APP_VER, updatedAt: NOW }); toast('ตั้งค่าแล้ว — ทุกเครื่องจะรีโหลดเอง'); renderAdmin();
+  const segs = [['dep','🏢 สาขา'],['mgr','👥 ผู้จัดการ (UPC)'],['sys','🔧 ระบบ']];
+  let h = '<h3>⚙️ ผู้ดูแลระบบ</h3><div class="sub">เพิ่มสาขา / ผู้จัดการ / ตั้งค่าระบบ</div>'
+    + '<div class="segbar">'+segs.map(s=>'<button class="seg'+(ADM===s[0]?' on':'')+'" onclick="window.__settings(\''+s[0]+'\')">'+s[1]+'</button>').join('')+'</div>';
+  if (ADM === 'dep') {
+    const all = Object.keys(PUB).sort();
+    h += '<div class="admbar"><button class="btn btn-y" onclick="window.__aDep()">➕ เพิ่มสาขา</button><button class="btn btn-o" onclick="window.__aBulk()">📥 เพิ่มหลายสาขา (Excel)</button></div>'
+      + '<div class="dwrap"><table class="dtbl"><thead><tr><th class="l">สาขา</th><th class="l">ภาค / จังหวัด</th><th>พนักงาน</th><th class="l">UPC</th><th></th></tr></thead><tbody>'
+      + (all.map(d => { const D = DEPS[d]||{}, own = MGRS.filter(m=>m.role!=='admin'&&(m.depots||[]).includes(d)).map(m=>m.name);
+          return '<tr><td class="l"><div class="nm">'+esc(d)+'</div><div class="s2">'+esc(D.name||PUB[d].name||'')+'</div></td><td class="l"><span class="s2">'+esc(D.region||'')+' '+esc(D.province||'')+'</span></td>'
+            + '<td>'+((D.roster||[]).filter(c=>c.active!==false).length)+'</td><td class="l '+(own.length?'':'b')+'"><span class="s2">'+(own.length?esc(own.join(', ')):'ยังไม่มี')+'</span></td>'
+            + '<td><button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aDep(\''+d+'\')">แก้ไข</button> <button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aPin(\''+d+'\')">🔑 PIN</button></td></tr>'; }).join('')
+        || '<tr><td colspan="5" class="n">ยังไม่มีสาขา — กด ➕ เพิ่มสาขา</td></tr>')
+      + '</tbody></table></div>';
+  } else if (ADM === 'mgr') {
+    h += '<div class="admbar"><button class="btn btn-y" onclick="window.__aMgr()">➕ เพิ่มผู้จัดการ</button></div>'
+      + MGRS.sort((a,b)=>(a.role==='admin'?0:1)-(b.role==='admin'?0:1)||String(a.name).localeCompare(String(b.name))).map(m =>
+        '<div class="row-c"><div class="info"><div class="nm">'+esc(m.name)+' '+(m.role==='admin'?'<span class="chip wt">Admin</span>':'')+'</div><div class="sub2">'
+        + (m.role==='admin' ? 'ทุกสาขา' : ((m.depots||[]).join(', ') || '<b style="color:#b3121d">ยังไม่กำหนดสาขา</b>')) + '</div></div>'
+        + (m.uid===ME.uid ? '<span class="chip gr">คุณ</span>' : '<button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aMgr(\''+m.uid+'\')">แก้ไข</button><button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aMpin(\''+m.uid+'\')">🔑 PIN ใหม่</button><button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aMdel(\''+m.uid+'\')">ลบ</button>')
+        + '</div>').join('');
+  } else {
+    h += '<div class="card" style="margin-top:4px">เวอร์ชันแอปนี้: <b>'+APP_VER+'</b><br><span class="small">บังคับใช้ Staff: '+esc(CFG.staffVer||'-')+' · Manager: '+esc(CFG.managerVer||'-')+'</span>'
+      + '<button class="btn btn-y btn-block" style="margin-top:10px" onclick="window.__aVer()">🔄 บังคับทุกเครื่องใช้เวอร์ชันล่าสุด</button></div>'
+      + '<div class="card"><b>ลิงก์แอปสาขา (Staff)</b><div class="lnk">'+esc(staffUrl())+'</div><button class="btn btn-o" style="margin-top:6px;padding:8px 12px;" onclick="window.__copy(\''+esc(staffUrl())+'\')">คัดลอก</button>'
+      + '<div style="height:10px"></div><b>ลิงก์ Manager</b><div class="lnk">'+esc(mgrUrl())+'</div><button class="btn btn-o" style="margin-top:6px;padding:8px 12px;" onclick="window.__copy(\''+esc(mgrUrl())+'\')">คัดลอก</button></div>';
+  }
+  h += '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>';
+  modal(h);
 };
-function credBox(title, lines){ return `<div class="cred">📋 <b>${title}</b><br>${lines.join('<br>')}<br><button class="btn-y sm" style="margin-top:8px" onclick="__copy(this.parentNode.innerText.replace('คัดลอกทั้งหมด','').trim())">คัดลอกทั้งหมด</button></div>`; }
+window.__aVer = async () => { if (!confirm('บังคับทุกเครื่องให้ใช้เวอร์ชัน '+APP_VER+' ?')) return; await fb.set('config/app', { staffVer: APP_VER, managerVer: APP_VER, updatedAt: NOW }); feed('<b>ตั้งค่าแล้ว</b> — ทุกเครื่องจะรีโหลดเอง','ok'); window.__settings('sys'); };
+const back = s => '<button class="btn btn-o" style="padding:7px 12px;margin-bottom:10px;" onclick="window.__settings(\''+s+'\')">‹ กลับ</button>';
 
 window.__aDep = code => {
   const D = code ? (DEPS[code]||{}) : {};
-  ov(code ? 'แก้ไขสาขา '+code : 'เพิ่มสาขาใหม่', `<div class="card" style="padding:14px"><div class="frm">
-    <div><label>รหัสสาขา</label><input id="d_code" value="${esc(code||'')}" ${code?'disabled':''} placeholder="เช่น CNX1" style="text-transform:uppercase"></div>
-    <div><label>ชื่อสาขา</label><input id="d_name" value="${esc(D.name||(code&&PUB[code].name)||'')}"></div>
-    <div><label>ภาค</label><select id="d_reg">${REGIONS.map(r=>`<option ${D.region===r?'selected':''}>${r}</option>`).join('')}</select></div>
-    <div><label>จังหวัด</label><input id="d_prov" value="${esc(D.province||'')}"></div>
-    ${code?'':`<div><label>PIN สาขา (6 หลัก)</label><input id="d_pin" value="${genPin()}" inputmode="numeric" maxlength="6"></div>`}
-    </div><div class="err" id="d_err"></div><button class="btn-y" id="d_btn" onclick="__aDepSave('${esc(code||'')}')">${code?'บันทึก':'สร้างสาขา'}</button><div id="d_out"></div></div>`);
+  modal(back('dep')+'<h3>'+(code?'แก้ไขสาขา '+esc(code):'เพิ่มสาขาใหม่')+'</h3><div class="frm2" id="mdlForm">'
+    + '<label>รหัสสาขา</label><input id="dCode" value="'+esc(code||'')+'" '+(code?'disabled':'')+' placeholder="เช่น CNX1">'
+    + '<label>ชื่อสาขา</label><input id="dName" value="'+esc(D.name||(code&&PUB[code].name)||'')+'">'
+    + '<label>ภาค</label><select id="dReg">'+REGIONS.map(r=>'<option'+(D.region===r?' selected':'')+'>'+r+'</option>').join('')+'</select>'
+    + '<label>จังหวัด</label><input id="dProv" value="'+esc(D.province||'')+'">'
+    + (code ? '' : '<label>PIN สาขา (6 หลัก)</label><input id="dPin" value="'+genPin()+'" inputmode="numeric" maxlength="6">'
+               + '<label>ชื่อผู้บันทึก (Staff) — คั่นด้วย ,</label><input id="dStaff" placeholder="เช่น สมชาย, สมหญิง">')
+    + '<div class="err2" id="dErr"></div><button class="btn btn-y btn-block" id="dGo" onclick="window.__aDepSave(\''+esc(code||'')+'\')">'+(code?'บันทึก':'สร้างสาขา')+'</button><div id="dOut"></div></div>');
 };
-async function createDepot(code, name, region, province, pin){
+async function createDepot(code, name, region, province, pin, staff){
   const uid = await fb.createUser(depotEmail(code, 1), pin);
-  await fb.set('depots/'+code, { code, name, region, province, authUid: uid, authVer: 1, roster: [], staffNames: [], createdAt: NOW });
+  await fb.set('depots/'+code, { code, name, region, province, authUid: uid, authVer: 1, roster: [], createdAt: NOW });
   await fb.set('pub/depots', { [code]: { ver: 1, name } });
+  if (staff && staff.length) await fb.set('pubstaff/'+code, { names: staff });
   PUB[code] = { ver: 1, name };
-  if (!SCOPE.includes(code)) { SCOPE.push(code); SCOPE.sort();
-    UNS.push(fb.listen('depots/'+code, d => { if (d) DEPS[code] = d; sched(); }));
-    TUNS.push(fb.listen(`depots/${code}/days/${TKEY}`, d => { TODAY[code] = d || {}; sched(); })); }
+  if (!SCOPE.includes(code)) { SCOPE.push(code); SCOPE.sort(); watchDep(code); TUNS.push(fb.listen(`depots/${code}/days/${TKEY}`, d => { TODAY[code] = d || {}; sched(); })); }
 }
 window.__aDepSave = async code => {
-  const err = t => { $('#d_err').textContent = t; $('#d_btn').disabled = false; };
-  const c = (code || $('#d_code').value).trim().toUpperCase(), name = $('#d_name').value.trim(), reg = $('#d_reg').value, prov = $('#d_prov').value.trim();
+  const err = t => { $('dErr').textContent = t; $('dGo').disabled = false; };
+  const c = (code || $('dCode').value).trim().toUpperCase(), name = $('dName').value.trim(), reg = $('dReg').value, prov = $('dProv').value.trim();
   if (!/^[A-Z0-9]{2,10}$/.test(c)) return err('รหัสสาขา: A-Z / 0-9 ยาว 2–10 ตัว');
   if (!name) return err('กรอกชื่อสาขา');
-  $('#d_btn').disabled = true;
+  $('dGo').disabled = true;
   try {
-    if (code) {
-      await fb.set('depots/'+c, { name, region: reg, province: prov, updatedAt: NOW });
-      await fb.set('pub/depots', { [c]: { ver: PUB[c].ver||1, name } }); PUB[c].name = name;
-      __ovClose(); toast('บันทึกแล้ว'); return renderAdmin();
-    }
-    const pin = $('#d_pin').value.trim();
-    if (!/^\d{6}$/.test(pin)) return err('PIN ต้องเป็นตัวเลข 6 หลัก');
+    if (code) { await fb.set('depots/'+c, { name, region: reg, province: prov, updatedAt: NOW }); await fb.set('pub/depots', { [c]: { ver: PUB[c].ver||1, name } }); PUB[c].name = name; feed('<b>บันทึกแล้ว</b>','ok'); return window.__settings('dep'); }
+    const pin = $('dPin').value.trim(); if (!/^\d{6}$/.test(pin)) return err('PIN ต้องเป็นตัวเลข 6 หลัก');
     if (PUB[c]) return err('มีรหัสสาขา '+c+' อยู่แล้ว');
-    await createDepot(c, name, reg, prov, pin);
-    $('#d_btn').style.display = 'none';
-    $('#d_out').innerHTML = credBox('ส่งให้หัวหน้าสาขา '+esc(c), ['ลิงก์: '+esc(staffUrl()), 'รหัสสาขา: '+esc(c), 'PIN: '+esc(pin)]);
-    renderAdmin();
+    const staff = $('dStaff').value.split(/[,\n]/).map(x=>x.trim()).filter(Boolean);
+    await createDepot(c, name, reg, prov, pin, staff);
+    $('dGo').style.display = 'none';
+    $('dOut').innerHTML = credBox('ส่งให้หัวหน้าสาขา '+esc(c), ['ลิงก์: '+staffUrl(), 'สาขา: '+c+' · '+name, 'PIN: '+pin]);
   } catch(e){ err('ไม่สำเร็จ: '+(e.code||e.message)); }
 };
 window.__aPin = code => {
-  ov('รีเซ็ต PIN สาขา '+code, `<div class="card" style="padding:14px"><div class="note">PIN เดิมจะใช้ไม่ได้ทันที · ทุกเครื่องของสาขานี้ต้องเข้าสู่ระบบใหม่ด้วย PIN ใหม่ · ข้อมูลเดิมไม่หาย</div>
-    <div class="frm"><div><label>PIN ใหม่ (6 หลัก)</label><input id="p_pin" value="${genPin()}" inputmode="numeric" maxlength="6"></div></div>
-    <div class="err" id="p_err"></div><button class="btn-r" id="p_btn" onclick="__aPinGo('${esc(code)}')">ยืนยันรีเซ็ต PIN</button><div id="p_out"></div></div>`);
+  modal(back('dep')+'<h3>รีเซ็ต PIN สาขา '+esc(code)+'</h3><div class="sub">PIN เดิมใช้ไม่ได้ทันที · ทุกเครื่องของสาขานี้ต้องเข้าสู่ระบบใหม่ · ข้อมูลไม่หาย</div>'
+    + '<div class="frm2"><label>PIN ใหม่ (6 หลัก)</label><input id="pPin" value="'+genPin()+'" inputmode="numeric" maxlength="6"><div class="err2" id="pErr"></div>'
+    + '<button class="btn btn-r btn-block" id="pGo" onclick="window.__aPinGo(\''+esc(code)+'\')">ยืนยันรีเซ็ต PIN</button><div id="pOut"></div></div>');
 };
 window.__aPinGo = async code => {
-  const pin = $('#p_pin').value.trim(); if (!/^\d{6}$/.test(pin)) return $('#p_err').textContent = 'PIN ต้องเป็นตัวเลข 6 หลัก';
-  $('#p_btn').disabled = true;
+  const pin = $('pPin').value.trim(); if (!/^\d{6}$/.test(pin)) { $('pErr').textContent = 'PIN ต้องเป็นตัวเลข 6 หลัก'; return; }
+  $('pGo').disabled = true;
   try {
-    const ver = (PUB[code].ver||1) + 1;
-    const uid = await fb.createUser(depotEmail(code, ver), pin);
+    const ver = (PUB[code].ver||1) + 1, uid = await fb.createUser(depotEmail(code, ver), pin);
     await fb.set('depots/'+code, { authUid: uid, authVer: ver, updatedAt: NOW });
     await fb.set('pub/depots', { [code]: { ver, name: PUB[code].name||'' } }); PUB[code].ver = ver;
-    $('#p_btn').style.display='none';
-    $('#p_out').innerHTML = credBox('PIN ใหม่ของสาขา '+esc(code), ['ลิงก์: '+esc(staffUrl()), 'รหัสสาขา: '+esc(code), 'PIN: '+esc(pin)]);
-  } catch(e){ $('#p_err').textContent = 'ไม่สำเร็จ: '+(e.code||e.message); $('#p_btn').disabled = false; }
+    $('pGo').style.display = 'none';
+    $('pOut').innerHTML = credBox('PIN ใหม่ของสาขา '+esc(code), ['ลิงก์: '+staffUrl(), 'สาขา: '+code, 'PIN: '+pin]);
+  } catch(e){ $('pErr').textContent = 'ไม่สำเร็จ: '+(e.code||e.message); $('pGo').disabled = false; }
 };
 window.__aBulk = () => {
-  ov('เพิ่มหลายสาขาพร้อมกัน', `<div class="card" style="padding:14px"><div class="note">วางจาก Excel 4 คอลัมน์: <b>รหัสสาขา · ชื่อสาขา · ภาค · จังหวัด</b> (ระบบสุ่ม PIN ให้อัตโนมัติ แล้วดาวน์โหลดไฟล์ PIN ได้)</div>
-    <textarea id="b_t" rows="8" style="width:100%" placeholder="CNX3\tเชียงใหม่ 3\tเหนือ\tเชียงใหม่"></textarea>
-    <div class="err" id="b_err"></div><button class="btn-y" id="b_btn" onclick="__aBulkGo()">สร้างสาขา</button><div id="b_out"></div></div>`);
+  modal(back('dep')+'<h3>📥 เพิ่มหลายสาขาพร้อมกัน</h3><div class="sub">วางจาก Excel 4 คอลัมน์: <b>รหัสสาขา · ชื่อสาขา · ภาค · จังหวัด</b> — ระบบสุ่ม PIN ให้ แล้วดาวน์โหลดไฟล์ PIN ได้</div>'
+    + '<div class="frm2"><textarea id="bText" rows="8" placeholder="CNX3	เชียงใหม่ 3	เหนือ	เชียงใหม่"></textarea><div class="err2" id="bErr"></div>'
+    + '<button class="btn btn-y btn-block" id="bGo" onclick="window.__aBulkGo()">สร้างสาขา</button><div id="bOut"></div></div>');
 };
 window.__aBulkGo = async () => {
-  const rows = $('#b_t').value.split(/\r?\n/).map(l=>l.split(l.includes('\t')?'\t':',').map(x=>x.trim())).filter(r=>r[0]&&r[1]&&!/รหัส|code/i.test(r[0]));
-  if (!rows.length) return $('#b_err').textContent = 'ไม่พบข้อมูล';
-  $('#b_btn').disabled = true; const res = [];
+  const rows = $('bText').value.split(/\r?\n/).map(l=>l.split(l.includes('\t')?'\t':',').map(x=>x.trim())).filter(r=>r[0]&&r[1]&&!/รหัส|code/i.test(r[0]));
+  if (!rows.length) { $('bErr').textContent = 'ไม่พบข้อมูล'; return; }
+  $('bGo').disabled = true; const res = [];
   for (const [i, r] of rows.entries()) {
     const c = r[0].toUpperCase(), reg = REGIONS.find(x => (r[2]||'').includes(x)) || (r[2]||'');
-    $('#b_out').innerHTML = `<div class="empty">กำลังสร้าง ${i+1}/${rows.length} · ${esc(c)}</div>`;
+    $('bOut').innerHTML = '<div class="empty">กำลังสร้าง '+(i+1)+'/'+rows.length+' · '+esc(c)+'</div>';
     if (!/^[A-Z0-9]{2,10}$/.test(c)) { res.push([c, r[1], '', '❌ รหัสไม่ถูกต้อง']); continue; }
     if (PUB[c]) { res.push([c, r[1], '', '⏭ มีอยู่แล้ว']); continue; }
     const pin = genPin();
-    try { await createDepot(c, r[1], reg, r[3]||'', pin); res.push([c, r[1], pin, '✅']); }
-    catch(e){ res.push([c, r[1], '', '❌ '+(e.code||e.message)]); }
+    try { await createDepot(c, r[1], reg, r[3]||'', pin, []); res.push([c, r[1], pin, '✅']); } catch(e){ res.push([c, r[1], '', '❌ '+(e.code||e.message)]); }
   }
-  const csv = '﻿'+[['รหัสสาขา','ชื่อสาขา','PIN','ผล','ลิงก์'],...res.map(r=>[...r, staffUrl()])].map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const csv = '﻿'+[['รหัสสาขา','ชื่อสาขา','PIN','ผล','ลิงก์'], ...res.map(r=>[...r, staffUrl()])].map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
   window.__bulkCsv = () => { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='depot_pins.csv'; a.click(); };
-  $('#b_out').innerHTML = `<div class="tw" style="margin-top:10px"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>PIN</th><th>ผล</th></tr></thead><tbody>${res.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td><b>${esc(r[2])}</b></td><td>${esc(r[3])}</td></tr>`).join('')}</tbody></table></div>
-    <button class="btn-y" style="margin-top:10px" onclick="__bulkCsv()">📥 ดาวน์โหลดไฟล์ PIN (เก็บเป็นความลับ)</button>`;
-  $('#b_btn').style.display='none'; renderAdmin();
+  $('bGo').style.display = 'none';
+  $('bOut').innerHTML = '<table class="dtbl" style="margin-top:8px"><thead><tr><th class="l">รหัส</th><th class="l">ชื่อ</th><th>PIN</th><th>ผล</th></tr></thead><tbody>'
+    + res.map(r=>'<tr><td class="l nm">'+esc(r[0])+'</td><td class="l">'+esc(r[1])+'</td><td><b>'+esc(r[2])+'</b></td><td>'+esc(r[3])+'</td></tr>').join('')+'</tbody></table>'
+    + '<button class="btn btn-y btn-block" style="margin-top:10px" onclick="window.__bulkCsv()">📥 ดาวน์โหลดไฟล์ PIN (เก็บเป็นความลับ)</button>';
 };
-
 function depPicker(sel){
   const all = Object.keys(PUB).sort(), byR = {};
   all.forEach(d => { const r = (DEPS[d]&&DEPS[d].region)||'อื่น ๆ'; (byR[r] = byR[r]||[]).push(d); });
-  return Object.keys(byR).map(r => `<div style="margin:8px 0 4px"><b>${esc(r)}</b> <button class="btn-g sm" type="button" onclick="document.querySelectorAll('[data-r=&quot;${esc(r)}&quot;]').forEach(x=>x.checked=true)">เลือกทั้งภาค</button></div>
-    <div class="chipset">${byR[r].map(d=>`<label class="chip"><input type="checkbox" class="m_dep" data-r="${esc(r)}" value="${esc(d)}" ${sel.includes(d)?'checked':''}> ${esc(d)} ${esc(depName(d))}</label>`).join('')}</div>`).join('') || '<div class="mut">ยังไม่มีสาขา — เพิ่มสาขาก่อน</div>';
+  return Object.keys(byR).map(r => '<label>'+esc(r)+' <a href="#" style="color:#D40511" onclick="document.querySelectorAll(\'[data-r=&quot;'+esc(r)+'&quot;]\').forEach(x=>x.checked=true);return false">เลือกทั้งภาค</a></label>'
+    + '<div class="pick">'+byR[r].map(d=>'<label><input type="checkbox" class="mDep" data-r="'+esc(r)+'" value="'+esc(d)+'"'+(sel.includes(d)?' checked':'')+'> '+esc(d)+' '+esc(PUB[d].name||'')+'</label>').join('')+'</div>').join('')
+    || '<div class="small">ยังไม่มีสาขา — เพิ่มสาขาก่อน</div>';
 }
 window.__aMgr = uid => {
-  const m = uid ? MGRS.find(x=>x.uid===uid) : { name:'', user:'', role:'upc', depots:[] };
-  ov(uid ? 'แก้ไข Manager' : 'เพิ่ม Manager ใหม่', `<div class="card" style="padding:14px"><div class="frm">
-    <div><label>ชื่อผู้ใช้ (ภาษาอังกฤษ)</label><input id="m_u" value="${esc(m.user||'')}" ${uid?'disabled':''} placeholder="เช่น upc.cnx" autocapitalize="off"></div>
-    <div><label>ชื่อที่แสดง</label><input id="m_n" value="${esc(m.name)}"></div>
-    <div><label>สิทธิ์</label><select id="m_r"><option value="upc" ${m.role!=='admin'?'selected':''}>UPC Manager (เห็นเฉพาะสาขาที่เลือก)</option><option value="admin" ${m.role==='admin'?'selected':''}>Admin (ทุกสาขา + จัดการระบบ)</option></select></div>
-    ${uid?'':`<div><label>รหัสผ่านเริ่มต้น</label><input id="m_p" value="${'Dhl'+genPin()}"></div>`}</div>
-    <div style="margin-top:12px"><label class="mut">สาขาที่ดูแล</label>${depPicker(m.depots||[])}</div>
-    <div class="err" id="m_err"></div><button class="btn-y" id="m_btn" onclick="__aMgrSave('${esc(uid||'')}')">${uid?'บันทึก':'สร้างบัญชี'}</button><div id="m_out"></div></div>`);
+  const m = uid ? MGRS.find(x=>x.uid===uid) : { name:'', role:'upc', depots:[] };
+  modal(back('mgr')+'<h3>'+(uid?'แก้ไขผู้จัดการ':'เพิ่มผู้จัดการ (UPC)')+'</h3><div class="frm2">'
+    + '<label>ชื่อ</label><input id="mName" value="'+esc(m.name)+'" placeholder="เช่น UPC เชียงใหม่ — คุณเอ">'
+    + '<label>สิทธิ์</label><select id="mRole"><option value="upc"'+(m.role!=='admin'?' selected':'')+'>UPC Manager (เห็นเฉพาะสาขาที่เลือก)</option><option value="admin"'+(m.role==='admin'?' selected':'')+'>Admin (ทุกสาขา + จัดการระบบ)</option></select>'
+    + (uid ? '' : '<label>PIN ผู้จัดการ (6 หลัก)</label><input id="mPin" value="'+genPin()+'" inputmode="numeric" maxlength="6">')
+    + '<label>สาขาที่ดูแล</label>'+depPicker(m.depots||[])
+    + '<div class="err2" id="mErr"></div><button class="btn btn-y btn-block" id="mGo" onclick="window.__aMgrSave(\''+esc(uid||'')+'\')">'+(uid?'บันทึก':'สร้าง PIN ผู้จัดการ')+'</button><div id="mOut"></div></div>');
 };
 window.__aMgrSave = async uid => {
-  const err = t => { $('#m_err').textContent = t; $('#m_btn').disabled = false; };
-  const u = (uid ? MGRS.find(x=>x.uid===uid).user : $('#m_u').value.trim().toLowerCase()), n = $('#m_n').value.trim(), role = $('#m_r').value;
-  const depots = [...document.querySelectorAll('.m_dep:checked')].map(x=>x.value);
-  if (!n) return err('กรอกชื่อที่แสดง');
-  if (role!=='admin' && !depots.length) return err('เลือกสาขาอย่างน้อย 1 สาขา');
-  $('#m_btn').disabled = true;
+  const err = t => { $('mErr').textContent = t; $('mGo').disabled = false; };
+  const name = $('mName').value.trim(), role = $('mRole').value, depots = [...document.querySelectorAll('.mDep:checked')].map(x=>x.value);
+  if (!name) return err('กรอกชื่อ');
+  if (role !== 'admin' && !depots.length) return err('เลือกสาขาอย่างน้อย 1 สาขา');
+  $('mGo').disabled = true;
   try {
-    if (uid) { await fb.set('managers/'+uid, { name:n, role, depots, updatedAt: NOW }); __ovClose(); toast('บันทึกแล้ว'); return renderAdmin(); }
-    if (!/^[a-z0-9._-]{3,30}$/.test(u)) return err('ชื่อผู้ใช้: a-z 0-9 . _ - อย่างน้อย 3 ตัว');
-    if (MGRS.some(x => x.user === u)) return err('ชื่อผู้ใช้นี้มีอยู่แล้ว');
-    const pw = $('#m_p').value; if (pw.length < 8) return err('รหัสผ่านอย่างน้อย 8 ตัว');
-    const ver = PMG[u] ? PMG[u] + 1 : 1;          // เคยถูกลบไปแล้ว → ใช้บัญชีรุ่นใหม่
-    const id = await fb.createUser(mgrEmail(u, ver), pw);
-    await fb.set('managers/'+id, { name:n, role, depots, user:u, createdAt: NOW });
-    await fb.set('pub/mgrs', { [u]: ver }); PMG[u] = ver;
-    $('#m_btn').style.display='none';
-    $('#m_out').innerHTML = credBox('ส่งให้ '+esc(n), ['ลิงก์: '+esc(mgrUrl()), 'ชื่อผู้ใช้: '+esc(u), 'รหัสผ่าน: '+esc(pw)]);
-    renderAdmin();
+    if (uid) { await fb.set('managers/'+uid, { name, role, depots, updatedAt: NOW }); feed('<b>บันทึกแล้ว</b>','ok'); return window.__settings('mgr'); }
+    const pin = $('mPin').value.trim(); if (!/^\d{6}$/.test(pin)) return err('PIN ต้องเป็นตัวเลข 6 หลัก');
+    let id; try { id = await fb.createUser(mgrEmail(pin), mgrPw(pin)); }
+    catch(e){ if (e.code==='auth/email-already-in-use') { $('mPin').value = genPin(); return err('PIN นี้ถูกใช้แล้ว — สุ่ม PIN ใหม่ให้แล้ว กดอีกครั้ง'); } throw e; }
+    await fb.set('managers/'+id, { name, role, depots, createdAt: NOW });
+    $('mGo').style.display = 'none';
+    $('mOut').innerHTML = credBox('ส่งให้ '+esc(name), ['ลิงก์: '+mgrUrl(), 'PIN ผู้จัดการ: '+pin, 'สาขา: '+(role==='admin'?'ทุกสาขา':depots.join(', '))]);
   } catch(e){ err('ไม่สำเร็จ: '+(e.code||e.message)); }
 };
-window.__aMpw = uid => {
+window.__aMpin = uid => {
   const m = MGRS.find(x=>x.uid===uid);
-  ov('ตั้งรหัสผ่านใหม่ · '+m.name, `<div class="card" style="padding:14px"><div class="note">รหัสผ่านเดิมจะใช้ไม่ได้ทันที · ชื่อผู้ใช้และสาขาที่ดูแลเหมือนเดิม</div>
-    <div class="frm"><div><label>รหัสผ่านใหม่</label><input id="w_p" value="${'Dhl'+genPin()}"></div></div>
-    <div class="err" id="w_err"></div><button class="btn-r" id="w_btn" onclick="__aMpwGo('${esc(uid)}')">ยืนยัน</button><div id="w_out"></div></div>`);
+  modal(back('mgr')+'<h3>PIN ใหม่ · '+esc(m.name)+'</h3><div class="sub">PIN เดิมใช้ไม่ได้ทันที · สาขาที่ดูแลเหมือนเดิม</div><div class="frm2">'
+    + '<label>PIN ใหม่ (6 หลัก)</label><input id="wPin" value="'+genPin()+'" inputmode="numeric" maxlength="6"><div class="err2" id="wErr"></div>'
+    + '<button class="btn btn-r btn-block" id="wGo" onclick="window.__aMpinGo(\''+esc(uid)+'\')">ยืนยัน</button><div id="wOut"></div></div>');
 };
-window.__aMpwGo = async uid => {
-  const m = MGRS.find(x=>x.uid===uid), pw = $('#w_p').value;
-  if (pw.length < 8) return $('#w_err').textContent = 'รหัสผ่านอย่างน้อย 8 ตัว';
-  $('#w_btn').disabled = true;
+window.__aMpinGo = async uid => {
+  const m = MGRS.find(x=>x.uid===uid), pin = $('wPin').value.trim();
+  if (!/^\d{6}$/.test(pin)) { $('wErr').textContent = 'PIN ต้องเป็นตัวเลข 6 หลัก'; return; }
+  $('wGo').disabled = true;
   try {
-    const ver = (PMG[m.user]||1) + 1;
-    const id = await fb.createUser(mgrEmail(m.user, ver), pw);
-    await fb.set('managers/'+id, { name:m.name, role:m.role, depots:m.depots||[], user:m.user, createdAt: NOW });
+    let id; try { id = await fb.createUser(mgrEmail(pin), mgrPw(pin)); }
+    catch(e){ if (e.code==='auth/email-already-in-use') { $('wPin').value = genPin(); $('wErr').textContent = 'PIN นี้ถูกใช้แล้ว — สุ่มใหม่ให้แล้ว กดอีกครั้ง'; $('wGo').disabled = false; return; } throw e; }
+    await fb.set('managers/'+id, { name: m.name, role: m.role, depots: m.depots||[], createdAt: NOW });
     await fb.del('managers/'+uid);
-    await fb.set('pub/mgrs', { [m.user]: ver }); PMG[m.user] = ver;
-    $('#w_btn').style.display='none';
-    $('#w_out').innerHTML = credBox('รหัสผ่านใหม่ของ '+esc(m.name), ['ลิงก์: '+esc(mgrUrl()), 'ชื่อผู้ใช้: '+esc(m.user), 'รหัสผ่าน: '+esc(pw)]);
-    renderAdmin();
-  } catch(e){ $('#w_err').textContent = 'ไม่สำเร็จ: '+(e.code||e.message); $('#w_btn').disabled = false; }
+    $('wGo').style.display = 'none';
+    $('wOut').innerHTML = credBox('PIN ใหม่ของ '+esc(m.name), ['ลิงก์: '+mgrUrl(), 'PIN ผู้จัดการ: '+pin]);
+  } catch(e){ $('wErr').textContent = 'ไม่สำเร็จ: '+(e.code||e.message); $('wGo').disabled = false; }
 };
 window.__aMdel = async uid => {
   const m = MGRS.find(x=>x.uid===uid);
-  if (!confirm('ลบสิทธิ์ของ '+m.name+' ?\nบัญชีนี้จะเข้าดูข้อมูลไม่ได้อีก')) return;
-  await fb.del('managers/'+uid);
-  toast('ลบสิทธิ์แล้ว'); renderAdmin();
+  if (!confirm('ลบสิทธิ์ของ '+m.name+' ?\nPIN นี้จะเข้าดูข้อมูลไม่ได้อีก')) return;
+  await fb.del('managers/'+uid); feed('<b>ลบสิทธิ์แล้ว</b>','ok'); window.__settings('mgr');
 };
 </script>
 </body>

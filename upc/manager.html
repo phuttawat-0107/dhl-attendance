@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#FFCC00">
+<script src="inapp.js?v=1"></script>
 <title>DHL Manager Live</title>
 <!-- ธีมเดียวกับ DHL_Manager_Live.html ต้นฉบับ -->
 <link rel="stylesheet" href="theme-mgr.css?v=1">
@@ -358,8 +359,8 @@ async function loadThumbs(dep, ids){
 
 /* ================= ⚙️ ผู้ดูแลระบบ (Admin) ================= */
 let ADM = 'dep', MGRS = [], STAFFN = {};
-const staffUrl = () => { const u = new URL('staff.html', location.href); u.search = DEMO ? '?demo' : ''; return u.toString(); };
-const mgrUrl = () => { const u = new URL('manager.html', location.href); u.search = DEMO ? '?demo' : ''; return u.toString(); };
+const staffUrl = () => { const u = new URL('staff.html', location.href); u.search = DEMO ? '?demo' : '?openExternalBrowser=1'; return u.toString(); };
+const mgrUrl = () => { const u = new URL('manager.html', location.href); u.search = DEMO ? '?demo' : '?openExternalBrowser=1'; return u.toString(); };
 window.__copy = t => { navigator.clipboard && navigator.clipboard.writeText(t).then(()=>feed('<b>คัดลอกแล้ว</b>','ok'), ()=>feed('คัดลอกไม่ได้','bad')); };
 function credBox(title, lines){ const txt = lines.join('\n');
   return '<div class="cred">📋 <b>'+title+'</b><br>'+lines.map(esc).join('<br>')+'<br><button class="btn btn-y" style="margin-top:8px;padding:9px 14px;" onclick=\'window.__copy('+JSON.stringify(txt).replace(/'/g,'&#39;')+')\'>คัดลอกทั้งหมด</button></div>'; }

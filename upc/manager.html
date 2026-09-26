@@ -102,7 +102,7 @@ function regOf(txt){
 const UPC_LIST = [
   ['K.Kobkiat Doungthong','Central'], ['K.Prasitchai Krobsuan','Central'],
   ['K.Phongthep Sendi','East'], ['K.Suttipong Kongchiyapoom','East'],
-  ['K.Khanaphot Chaiwong','North'], ['K.Piyaphan Chosinmingson','North'],
+  ['K.Piyaphan Chosinmingson','North'],
   ['K.Aummarin Auppakarat','North-East'], ['K.Sant Pimma','North-East'], ['K.Suphasil Nanthong','North-East'], ['K.Wanchai Prukrunggroj','North-East'],
   ['K.Kittisak Chanakul','South'], ['K.Srichon Chaiyasad','South']
 ];
@@ -244,7 +244,7 @@ function ctx(){
     modal, close: () => window.__close(),
     get: () => {
       const META = {}, DATA = {};
-      SCOPE.forEach(d => { META[d] = { couriers: (DEPS[d] && DEPS[d].roster) || [], cut: cutOf(DEPS[d]) }; DATA[d] = TODAY[d] || {}; });
+      SCOPE.forEach(d => { META[d] = { couriers: (DEPS[d] && DEPS[d].roster) || [], cut: cutOf(DEPS[d]), since: (DEPS[d] && toMs(DEPS[d].createdAt)) ? ymd(new Date(toMs(DEPS[d].createdAt))) : '' }; DATA[d] = TODAY[d] || {}; });
       return { DEPOTS: depsInView(), DATA, META, TODAY: DATA, DATE: TKEY, MTAB: TAB };
     }
   };
@@ -252,7 +252,7 @@ function ctx(){
 let MODS = false;
 function initModules(){
   if (MODS) return; MODS = true;
-  import('./upc-analytics.js?v=3').then(m => { m.initAnalytics(ctx()); if (['ins','ch','data'].includes(TAB)) window.__anRender(); }).catch(e => console.warn('analytics', e));
+  import('./upc-analytics.js?v=4').then(m => { m.initAnalytics(ctx()); if (['ins','ch','data'].includes(TAB)) window.__anRender(); }).catch(e => console.warn('analytics', e));
   import('./upc-photos.js?v=1').then(m => m.initPhotos(ctx())).catch(e => console.warn('photos', e));
 }
 const VIEWS = { live:'viewLive', ins:'viewIns', ch:'viewCh', data:'viewData', ph:'viewPh' };

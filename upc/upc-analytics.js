@@ -6,7 +6,7 @@
    • ไม่นับวันอาทิตย์ทุกส่วน • สาย = เกิน 07:10 (ตรงกับแท็บ Live / ย้อนหลัง)
    Design By Winnie
    =================================================================== */
-export const AN_VER = '2026.09.25-an3';
+export const AN_VER = '2026.09.26-an4';
 
 const CUT = 25200, GRACE = 25800;          // 07:00 / 07:10
 let C = null;
@@ -91,7 +91,8 @@ const TAB = () => S().MTAB;
 /* ================= คำนวณ ================= */
 function roster(dep){ return ((S().META[dep]||{}).couriers)||[]; }
 function clockOff(r){ const s=C.toMs(r.srv); if(!s||!r.ts) return 0; const d=(s-r.ts)/60000; if(r.off) return d<-2?1:0; return Math.abs(d)>5?1:0; }
-const cutD = dep => ((S().META[dep]||{}).cut) || CUT;          /* เวลาเข้างานของสาขา */
+const cutD = dep => ((S().META[dep]||{}).cut) || CUT;
+const sinceD = dep => ((S().META[dep]||{}).since) || '0000-00-00';   /* วันแรกที่สาขาเริ่มใช้ระบบ */          /* เวลาเข้างานของสาขา */
 const isLate = (r,cut) => r.status ? r.status==='late' : secOf(r.ts) > (r.cut||cut)+600;
 const relFmt = v => Math.round(v)===0 ? 'ตรงเวลา' : (v<0 ? 'ก่อน '+m1(-v)+' น.' : 'หลัง '+m1(v)+' น.');
 function dayStat(d,cut){
@@ -130,7 +131,8 @@ function aggDep(dep,dks){
     latePerDay: m.late/days,
     arr: av(m.arr), arrRel: av(m.rel), cut,
     abRate: (m.n+m.ab)? m.ab/(m.n+m.ab)*100 : null,
-    missing: dks.filter(dk=>!(dk===TODAY() && nowSec()<7.5*3600)).length - days };
+    /* นับวันที่ขาดข้อมูลเฉพาะตั้งแต่วันที่สาขาเริ่มใช้ระบบ — กันเตือนผิดช่วงเปิดสาขาใหม่ */
+    missing: Math.max(0, dks.filter(dk=> dk>=sinceD(dep) && !(dk===TODAY() && nowSec()<cutD(dep)+1800) && !dayStat(docOf(dep,dk),cut)).length) };
 }
 function aggPeople(deps,dks){
   const M={};

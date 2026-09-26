@@ -169,7 +169,7 @@
 <div class="flash" id="flash"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.25-d';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.26-e';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 const $ = id => document.getElementById(id);
@@ -194,7 +194,7 @@ function track(p){ PENDING++; badge(); return p.then(()=>{ PENDING--; badge(); }
 /* ================= LOGIN ================= */
 (async function boot(){
   $('dsVer').textContent = 'v'+APP_VER+' · Design By Winnie';
-  try { fb = await initFB(); }
+  try { fb = await initFB('upc-staff'); }
   catch(e){ $('dsErr').textContent = e.message; $('dsLogin').classList.add('show'); return; }
   if (DEMO) {
     document.body.insertAdjacentHTML('beforeend','<div class="demoRib">🧪 โหมดทดลอง</div>');

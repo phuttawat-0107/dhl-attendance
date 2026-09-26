@@ -5,7 +5,7 @@
                  ใช้ทดสอบระบบ และใช้ฝึก UPC Manager / Staff ก่อนใช้งานจริง
    Design By Winnie
    =================================================================== */
-export const FB_VER = '2026.09.25-d';
+export const FB_VER = '2026.09.26-e';
 export const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* ⚙️ ค่าเชื่อมต่อโปรเจกต์ Firebase ใหม่ของ UPC — วางค่าจาก Firebase Console ตรงนี้ */
@@ -39,20 +39,21 @@ export function calcStatus(ms, cut = CUT) {
 }
 
 let impl = null;
-export async function initFB() {
+/* appName แยก session ของแต่ละแอป (Staff / Manager) — เปิดทั้ง 2 แอปในเครื่องเดียวกันได้โดยไม่ชนกัน */
+export async function initFB(appName) {
   if (impl) return impl;
-  impl = DEMO ? makeDemo() : await makeReal();
+  impl = DEMO ? makeDemo(appName) : await makeReal(appName);
   return impl;
 }
 
 /* ============================ โหมดจริง ============================ */
-async function makeReal() {
+async function makeReal(appName) {
   if (FIREBASE_CONFIG.apiKey === 'REPLACE_ME') throw new Error('ยังไม่ได้ตั้งค่า Firebase — เปิดด้วย ?demo เพื่อทดลองก่อน');
   const V = '11.0.2', base = 'https://www.gstatic.com/firebasejs/' + V + '/';
   const [A, U, F] = await Promise.all([
     import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-firestore.js')
   ]);
-  const app = A.initializeApp(FIREBASE_CONFIG);
+  const app = appName ? A.initializeApp(FIREBASE_CONFIG, appName) : A.initializeApp(FIREBASE_CONFIG);
   const auth = U.getAuth(app);
   let db;
   try {
@@ -96,8 +97,8 @@ async function makeReal() {
 }
 
 /* ============================ โหมด Demo ============================ */
-function makeDemo() {
-  const KEY = 'upcDemoDB_v4', SES = 'upcDemoUid';
+function makeDemo(appName) {
+  const KEY = 'upcDemoDB_v4', SES = 'upcDemoUid_' + (appName || 'app');
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('upc-demo') : null;
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } };
   let DB = load();

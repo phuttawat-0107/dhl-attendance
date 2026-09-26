@@ -82,7 +82,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
 <div id="feed"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.25-d';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.26-e';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 /* ภาคตามโครงสร้าง UPC: Central / East / North / North-East / South */
@@ -145,7 +145,7 @@ window.__zoomImg = k => { if (window.__phZoom) return window.__phZoom(zoomSrc[k]
 /* ================= LOGIN (PIN อย่างเดียว เหมือนต้นฉบับ) ================= */
 (async function boot(){
   $('lgVer').textContent = 'v'+APP_VER+' · Design By Winnie';
-  try { fb = await initFB(); }
+  try { fb = await initFB('upc-mgr'); }
   catch(e){ $('lgBody').innerHTML = '<h3>DHL Manager</h3><div class="err">'+esc(e.message)+'</div>'; return; }
   if (DEMO) document.body.insertAdjacentHTML('beforeend','<div class="demoRib">🧪 โหมดทดลอง</div>');
   await loadPub();

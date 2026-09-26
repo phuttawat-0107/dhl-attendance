@@ -82,7 +82,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
 <div id="feed"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.26-f';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.26-g';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 /* ภาคตามโครงสร้าง UPC: Central / East / North / North-East / South */
@@ -227,7 +227,7 @@ setInterval(() => { $('clk').textContent = hms(Date.now()); if (ME && todayKey()
 
 function checkVer(){
   const want = CFG.managerVer, bar = $('updBar'); bar.style.display='none';
-  if (!want || want === APP_VER) return;
+  if (!want || want <= APP_VER) return;   /* เตือนเฉพาะเมื่อแอปนี้เก่ากว่าเวอร์ชันที่บังคับใช้ */
   const k = 'upcmReload_'+want;
   if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k,'1'); const u=new URL(location.href); u.searchParams.set('r',Date.now()); location.replace(u.toString()); }
   else { bar.textContent = 'มีเวอร์ชันใหม่ ('+want+') — กด Ctrl+F5 หรือปิดแล้วเปิดใหม่'; bar.style.display='block'; }

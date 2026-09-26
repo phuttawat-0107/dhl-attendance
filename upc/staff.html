@@ -169,7 +169,7 @@
 <div class="flash" id="flash"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.26-f';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.26-g';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 const $ = id => document.getElementById(id);
@@ -588,7 +588,7 @@ window.delStaffName = i => { const n = STAFFNAMES[i]; if (!confirm('ลบชื
 /* ================= บังคับอัปเดต + ล้างรูปเก่า ================= */
 function checkVer(){
   const want = CFG.staffVer, bar = $('updBar'); bar.style.display = 'none';
-  if (!want || want === APP_VER) return;
+  if (!want || want <= APP_VER) return;   /* เตือนเฉพาะเมื่อแอปนี้เก่ากว่าเวอร์ชันที่บังคับใช้ */
   const k = 'upcReload_'+want;
   if (!sessionStorage.getItem(k) && !$('camOverlay').classList.contains('show')) {
     sessionStorage.setItem(k, '1'); const u = new URL(location.href); u.searchParams.set('r', Date.now()); location.replace(u.toString());

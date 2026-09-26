@@ -5,7 +5,7 @@
                  ใช้ทดสอบระบบ และใช้ฝึก UPC Manager / Staff ก่อนใช้งานจริง
    Design By Winnie
    =================================================================== */
-export const FB_VER = '2026.09.26-f';
+export const FB_VER = '2026.09.26-g';
 export const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* ⚙️ ค่าเชื่อมต่อโปรเจกต์ Firebase ใหม่ของ UPC — วางค่าจาก Firebase Console ตรงนี้ */

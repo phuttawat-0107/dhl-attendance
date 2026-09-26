@@ -10,12 +10,12 @@ export const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* ⚙️ ค่าเชื่อมต่อโปรเจกต์ Firebase ใหม่ของ UPC — วางค่าจาก Firebase Console ตรงนี้ */
 export const FIREBASE_CONFIG = {
-  apiKey: 'REPLACE_ME',
-  authDomain: 'REPLACE_ME',
-  projectId: 'REPLACE_ME',
-  storageBucket: 'REPLACE_ME',
-  messagingSenderId: 'REPLACE_ME',
-  appId: 'REPLACE_ME'
+  apiKey: 'AIzaSyDUy5BlqFvGQnlUrwpH2VcdLHIDeNNi4TY',
+  authDomain: 'dhl-upc-attendance.firebaseapp.com',
+  projectId: 'dhl-upc-attendance',
+  storageBucket: 'dhl-upc-attendance.firebasestorage.app',
+  messagingSenderId: '340598497230',
+  appId: '1:340598497230:web:b2d52fd1c7ee6bd9bb959f'
 };
 
 export const DEL = { __del: true };   // ลบฟิลด์

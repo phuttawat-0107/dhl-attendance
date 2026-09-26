@@ -170,9 +170,9 @@
 <div class="flash" id="flash"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.26-g';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.26-h';
 
-const APP_VER = FB_VER, KEEP_DAYS = 30;
+const APP_VER = FB_VER; let KEEP_DAYS = 30;
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,'0');
 const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
@@ -274,7 +274,7 @@ function afterLogin(){
     DEP = d; $('hdDepot').textContent = d.name || CODE; renderAll();
   }));
   UNS.push(fb.listen('pubstaff/'+CODE, d => { STAFFNAMES = (d && d.names) || []; renderStaffNames(); }));
-  UNS.push(fb.listen('config/app', d => { CFG = d || {}; checkVer(); }));
+  UNS.push(fb.listen('config/app', d => { CFG = d || {}; KEEP_DAYS = Math.max(7, Math.min(30, +CFG.keepDays || 30)); checkVer(); }));
   listenDay();
   setTimeout(purge, 5000);
 }

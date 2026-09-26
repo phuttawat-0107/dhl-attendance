@@ -5,7 +5,7 @@
                  ใช้ทดสอบระบบ และใช้ฝึก UPC Manager / Staff ก่อนใช้งานจริง
    Design By Winnie
    =================================================================== */
-export const FB_VER = '2026.09.26-g';
+export const FB_VER = '2026.09.26-h';
 export const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* ⚙️ ค่าเชื่อมต่อโปรเจกต์ Firebase ใหม่ของ UPC — วางค่าจาก Firebase Console ตรงนี้ */
@@ -116,6 +116,17 @@ async function makeReal(appName) {
       const c = F.collection(db, ...col.split('/'));
       const q = field ? F.query(c, F.where(field, op, val)) : c;
       const s = await F.getDocs(q); return s.docs.map(d => ({ id: d.id, data: d.data() }));
+    },
+    /* นับจำนวนเอกสาร (คิดโควตา 1 read ต่อ 1,000 รายการ) */
+    count: async (col, field, op, val) => {
+      const c = F.collection(db, ...col.split('/'));
+      const q = field ? F.query(c, F.where(field, op, val)) : c;
+      return (await F.getCountFromServer(q)).data().count;
+    },
+    /* ดึงตัวอย่าง n รายการ (ใช้ประเมินขนาดรูปเฉลี่ย) */
+    sample: async (col, n) => {
+      const s = await F.getDocs(F.query(F.collection(db, ...col.split('/')), F.limit(n)));
+      return s.docs.map(d => ({ id: d.id, data: d.data() }));
     }
   };
 }
@@ -205,6 +216,8 @@ function makeDemo(appName) {
       });
       return out;
     },
+    count: async function (col, field, op, v) { return (await this.list(col, field, op, v)).length; },
+    sample: async function (col, n) { return (await this.list(col)).slice(0, n); },
     resetDemo: () => { localStorage.removeItem(KEY); sessionStorage.removeItem(SES); }
   };
 

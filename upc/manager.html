@@ -64,6 +64,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
     <button class="mtab" id="tb_ph" onclick="window.__tab('ph')">📷 ย้อนหลัง</button>
   </div>
   <div id="viewLive">
+    <div id="sysBar"></div>
     <div id="healthBar"></div>
     <div id="kpis"></div>
     <div class="card">
@@ -83,7 +84,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
 <div id="feed"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.26-g';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.26-h';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 /* ภาคตามโครงสร้าง UPC: Central / East / North / North-East / South */
@@ -214,6 +215,7 @@ function start(){
   UNS.push(fb.listen('config/app', d => { CFG = d || {}; checkVer(); }));
   if (ME.role !== 'admin') UNS.push(fb.listen('managers/'+ME.uid, d => { if (!d) { alert('สิทธิ์ของ PIN นี้ถูกยกเลิก'); fb.signOut(); } }));
   listenToday(); initModules(); window.__tab('live');
+  $('sysBar').innerHTML = ''; HEALTH = null; if (ME.role === 'admin') setTimeout(() => health(false), 2500);
 }
 function watchDep(dep){ UNS.push(fb.listen('depots/'+dep, d => { if (d) DEPS[dep] = d; sched(); })); }
 function listenToday(){
@@ -233,6 +235,105 @@ function checkVer(){
   if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k,'1'); const u=new URL(location.href); u.searchParams.set('r',Date.now()); location.replace(u.toString()); }
   else { bar.textContent = 'มีเวอร์ชันใหม่ ('+want+') — กด Ctrl+F5 หรือปิดแล้วเปิดใหม่'; bar.style.display='block'; }
 }
+
+/* ================= 🛡️ สุขภาพระบบ (เห็นเฉพาะผู้ดูแล) =================
+   ตรวจ: พื้นที่เก็บข้อมูล (แพ็กเกจฟรี 1 GB) · ประมาณการเมื่อครบรอบเก็บรูป · โควตาบันทึกรายวัน · รูปเก่าที่ยังไม่ถูกลบ
+   ตรวจอัตโนมัติทุก 6 ชม. เมื่อผู้ดูแลเปิดแอป (ใช้โควตาน้อยมาก ~2 reads/สาขา) */
+const HLIM = { mb: 1024, writes: 20000 }, HKEY = 'upcHealth_v1';
+let HEALTH = null, HBUSY = false;
+const hLoad = () => { try { return JSON.parse(localStorage.getItem(HKEY)); } catch(e){ return null; } };
+const hSave = h => { try { localStorage.setItem(HKEY, JSON.stringify(h)); } catch(e){} };
+const lvOf = (p, y, r) => p >= r ? 2 : p >= y ? 1 : 0;
+const keepDays = () => Math.max(7, Math.min(30, +CFG.keepDays || 30));
+async function health(force){
+  if (!ME || ME.role !== 'admin' || HBUSY) return;
+  HEALTH = hLoad();
+  if (!force && HEALTH && Date.now() - HEALTH.at < 6*3600e3) return hRender();
+  HBUSY = true; hRender();
+  try {
+    const K = keepDays(), cut = new Date(); cut.setDate(cut.getDate() - K); const cutKey = ymd(cut);
+    const deps = Object.keys(PUB).sort(), per = {};
+    for (let i = 0; i < deps.length; i += 8) {
+      await Promise.all(deps.slice(i, i+8).map(async d => {
+        try {
+          const col = 'depots/'+d+'/photos';
+          const n = await fb.count(col); const old = n ? await fb.count(col, 'date', '<', cutKey) : 0;
+          per[d] = { n, old };
+        } catch(e){ per[d] = { n: 0, old: 0, err: 1 }; }
+      }));
+    }
+    const total = Object.values(per).reduce((a,x)=>a+x.n,0);
+    let avg = 100000;
+    const big = deps.filter(d => per[d].n).sort((a,b)=>per[b].n-per[a].n)[0];
+    if (big) { try { const sm = await fb.sample('depots/'+big+'/photos', 5); const L = sm.map(x => String((x.data||{}).d||'').length).filter(Boolean); if (L.length) avg = L.reduce((a,b)=>a+b,0)/L.length; } catch(e){} }
+    const per1 = (avg + 800) * 1.15;                       /* ขนาดต่อรูป + ข้อมูลประกอบ + ดัชนี */
+    const mbNow = total * per1 / 1048576 + deps.length * 0.3;
+    const first = Math.min(...deps.map(d => toMs(DEPS[d] && DEPS[d].createdAt) || Date.now()));
+    const effDays = Math.max(1, Math.min(K, (Date.now() - first) / 864e5));
+    const mbFull = total ? (total / effDays) * K * per1 / 1048576 + deps.length * 0.3 : mbNow;
+    let ci = 0; Object.values(TODAY).forEach(t => { ci += Object.keys((t && t.checkins) || {}).length + Object.keys((t && t.absent) || {}).length; });
+    const writes = ci * 3;
+    const stale = deps.filter(d => per[d].old > 0).map(d => ({ d, old: per[d].old }));
+    HEALTH = { at: Date.now(), K, total, avg: Math.round(avg), mbNow, mbFull, writes, stale, deps: deps.length, errs: deps.filter(d=>per[d].err) };
+    hSave(HEALTH);
+  } catch(e){ console.warn('health', e); }
+  HBUSY = false; hRender();
+}
+function hLevel(h){
+  if (!h) return 0;
+  return Math.max(lvOf(h.mbNow/HLIM.mb, .5, .75), lvOf(h.mbFull/HLIM.mb, .6, .85), lvOf(h.writes/HLIM.writes, .4, .7), h.stale.length ? 1 : 0);
+}
+function hRender(){
+  const el = $('sysBar'); if (!el) return;
+  if (!ME || ME.role !== 'admin') { el.innerHTML = ''; return; }
+  const h = HEALTH, lv = hLevel(h);
+  const C = [['#e6f5eb','#1e7a3c','🛡️ ระบบปกติ'],['#fff3cd','#8a6100','⚠️ ระบบใกล้ถึงขีดจำกัด'],['#fdeaea','#b3121d','🚨 ต้องแก้ไขด่วน']][lv];
+  const sub = HBUSY ? 'กำลังตรวจ…' : !h ? 'ยังไม่ได้ตรวจ' :
+    'พื้นที่ '+Math.round(h.mbNow)+'/'+HLIM.mb+' MB ('+Math.round(h.mbNow/HLIM.mb*100)+'%) • ครบรอบ '+h.K+' วันคาดว่า '+Math.round(h.mbFull/HLIM.mb*100)+'%' + (h.stale.length ? ' • รูปค้าง '+h.stale.length+' สาขา' : '');
+  el.innerHTML = '<div onclick="window.__health()" style="cursor:pointer;background:'+C[0]+';color:'+C[1]+';border-radius:12px;padding:9px 13px;margin:0 0 10px;font-size:13px;display:flex;justify-content:space-between;gap:8px;align-items:center;">'
+    + '<span><b>'+C[2]+'</b> <span style="opacity:.85">— '+sub+'</span></span><span style="font-weight:700;white-space:nowrap">รายละเอียด ›</span></div>';
+  if (h && lv === 2 && !HBUSY) {                         /* แจ้งเตือนแบบเด้ง วันละครั้ง */
+    const k = 'upcHealthPop_'+todayKey();
+    if (!localStorage.getItem(k)) { localStorage.setItem(k, '1'); setTimeout(() => window.__health(), 600); }
+  }
+}
+const hBar = (v, max, y, r) => { const p = Math.min(100, v/max*100), c = ['#2e9e57','#e0a800','#d40511'][lvOf(v/max, y, r)];
+  return '<div style="height:8px;background:#eee;border-radius:5px;overflow:hidden;margin:4px 0 2px"><div style="height:100%;width:'+p+'%;background:'+c+'"></div></div>'; };
+window.__health = () => {
+  const h = HEALTH;
+  if (!h) { health(true); return; }
+  const tips = [];
+  if (h.mbFull/HLIM.mb >= .6) tips.push('<b>ลดวันเก็บรูป</b> (ปุ่มด้านล่าง) — ลดจาก 30 → 14 วัน ใช้พื้นที่ลดลงประมาณครึ่งหนึ่ง');
+  if (h.mbFull/HLIM.mb >= .75) tips.push('<b>อัปเกรด Firebase เป็น Blaze</b> (จ่ายตามใช้ ~6 บาท/GB/เดือน) — Console → ⚙️ Usage and billing → Modify plan');
+  if (h.writes/HLIM.writes >= .4) tips.push('การบันทึกวันนี้สูง — ถ้าเกิน 20,000 ครั้ง/วัน ระบบจะบันทึกไม่ได้จนถึง ~15:00 น. (ควรอัปเกรด Blaze)');
+  if (h.stale.length) tips.push('มีรูปเกิน '+h.K+' วันที่ยังไม่ถูกลบ (แอปสาขาไม่ได้เปิดใช้งาน) — กด <b>ล้างรูปเก่า</b> ได้เลย');
+  modal('<h3>🛡️ สุขภาพระบบ</h3><div class="sub">ตรวจล่าสุด '+new Date(h.at).toLocaleString('th-TH')+' • '+h.deps+' สาขา • รูป '+h.total.toLocaleString()+' ใบ (เฉลี่ย '+Math.round(h.avg/1024)+' KB)</div>'
+    + '<div style="margin:12px 0"><b>💾 พื้นที่ใช้ตอนนี้</b> '+Math.round(h.mbNow)+' / '+HLIM.mb+' MB'+hBar(h.mbNow, HLIM.mb, .5, .75)
+    + '<b>📈 คาดการณ์เมื่อครบรอบเก็บรูป '+h.K+' วัน</b> ~'+Math.round(h.mbFull)+' MB'+hBar(h.mbFull, HLIM.mb, .6, .85)
+    + '<b>✍️ การบันทึกวันนี้ (ประมาณ)</b> '+h.writes.toLocaleString()+' / 20,000'+hBar(h.writes, HLIM.writes, .4, .7)
+    + '<b>🧹 รูปเก่าที่ยังไม่ถูกลบ</b> '+(h.stale.length ? h.stale.map(s=>s.d+' ('+s.old+')').join(', ') : 'ไม่มี ✓')+'</div>'
+    + (tips.length ? '<div style="background:#fff8e1;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6"><b>ควรทำ</b><ul style="margin:4px 0 0;padding-left:18px">'+tips.map(t=>'<li>'+t+'</li>').join('')+'</ul></div>' : '<div style="color:#1e7a3c;font-weight:700">✓ ทุกอย่างปกติ ยังไม่ต้องทำอะไร</div>')
+    + '<div style="margin-top:12px;font-size:13px"><b>วันเก็บรูป:</b> '+[30,21,14].map(n=>'<button class="btn '+(n===h.K?'btn-y':'btn-o')+'" style="margin:3px;padding:6px 12px;" onclick="window.__hKeep('+n+')">'+n+' วัน</button>').join('')+'</div>'
+    + '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
+    + (h.stale.length ? '<button class="btn btn-r" onclick="window.__hPurge()">🧹 ล้างรูปเก่า</button>' : '')
+    + '<button class="btn btn-o" onclick="window.__hRefresh()">↻ ตรวจใหม่</button></div>'
+    + '<div class="small" style="margin-top:10px;color:#888">ขีดจำกัดแพ็กเกจฟรี (Spark): พื้นที่ 1 GB • บันทึก 20,000 / อ่าน 50,000 ครั้งต่อวัน • ตัวเลขเป็นค่าประมาณ ดูตัวจริงได้ที่ Firebase Console → Usage</div>');
+};
+window.__hRefresh = async () => { $('mdl').classList.remove('show'); await health(true); window.__health(); };
+window.__hKeep = async n => {
+  if (n === keepDays()) return;
+  if (!confirm('เปลี่ยนวันเก็บรูปเป็น '+n+' วัน?\nรูปที่เก่ากว่านี้จะถูกลบเมื่อแอปสาขาเปิดครั้งถัดไป (ลบแล้วกู้คืนไม่ได้)')) return;
+  try { await fb.set('config/app', { keepDays: n }); CFG.keepDays = n; await window.__hRefresh(); } catch(e){ alert('บันทึกไม่สำเร็จ: '+(e.code||e.message)); }
+};
+window.__hPurge = async () => {
+  const h = HEALTH; if (!h || !h.stale.length) return;
+  if (!confirm('ลบรูปที่เก่ากว่า '+h.K+' วัน ของ '+h.stale.length+' สาขา?\n(เวลาเช็คอินยังอยู่ครบ ลบเฉพาะรูป • กู้คืนไม่ได้)')) return;
+  const cut = new Date(); cut.setDate(cut.getDate() - h.K); const cutKey = ymd(cut); let n = 0;
+  for (const s of h.stale) {
+    try { const old = await fb.list('depots/'+s.d+'/photos', 'date', '<', cutKey); for (const o of old.slice(0, 500)) { await fb.del('depots/'+s.d+'/photos/'+o.id); n++; } } catch(e){}
+  }
+  alert('ลบรูปเก่าแล้ว '+n+' ใบ'); await window.__hRefresh();
+};
 
 /* ================= โมดูล On-time / ย้อนหลัง (ตัวเดียวกับต้นฉบับ) ================= */
 const depsInView = () => SCOPE.filter(d => !REG || ((DEPS[d]&&DEPS[d].region)===REG));

@@ -5,7 +5,7 @@
                  ใช้ทดสอบระบบ และใช้ฝึก UPC Manager / Staff ก่อนใช้งานจริง
    Design By Winnie
    =================================================================== */
-export const FB_VER = '2026.09.26-e';
+export const FB_VER = '2026.09.26-f';
 export const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* ⚙️ ค่าเชื่อมต่อโปรเจกต์ Firebase ใหม่ของ UPC — วางค่าจาก Firebase Console ตรงนี้ */
@@ -68,11 +68,18 @@ async function makeReal(appName) {
     return o;
   };
   let second = null;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const settle = async uid => {
+    await new Promise(res => { const un = U.onAuthStateChanged(auth, u => { if (u && u.uid === uid) { un(); res(); } }); });
+    try { await auth.currentUser.getIdToken(); } catch (e) {}
+    await wait(300);
+  };
   return {
     mode: 'real',
     uid: () => auth.currentUser ? auth.currentUser.uid : null,
     onAuth: cb => U.onAuthStateChanged(auth, u => cb(u ? u.uid : null)),
-    signIn: async (email, pw) => (await U.signInWithEmailAndPassword(auth, email, pw)).user.uid,
+    /* รอให้ Firestore ได้ token ของผู้ใช้ก่อน ค่อยเริ่มอ่านข้อมูล (กันอ่านเร็วเกินแล้วโดนปฏิเสธ) */
+    signIn: async (email, pw) => { const uid = (await U.signInWithEmailAndPassword(auth, email, pw)).user.uid; await settle(uid); return uid; },
     signOut: () => U.signOut(auth),
     /* สร้างบัญชีใหม่ผ่านแอปสำรอง — ไม่ทำให้แอดมินหลุดจากระบบ */
     createUser: async (email, pw) => {
@@ -80,14 +87,31 @@ async function makeReal(appName) {
       const c = await U.createUserWithEmailAndPassword(second, email, pw);
       const id = c.user.uid; await U.signOut(second); return id;
     },
-    createSelf: async (email, pw) => (await U.createUserWithEmailAndPassword(auth, email, pw)).user.uid,
-    get: async p => { const s = await F.getDoc(ref(p)); return s.exists() ? s.data() : null; },
+    createSelf: async (email, pw) => { const uid = (await U.createUserWithEmailAndPassword(auth, email, pw)).user.uid; await settle(uid); return uid; },
+    get: async p => {
+      for (let i = 0; ; i++) {
+        try { const s = await F.getDoc(ref(p)); return s.exists() ? s.data() : null; }
+        catch (e) { if (e.code !== 'permission-denied' || i >= 3 || !auth.currentUser) throw e; await wait(800 * (i + 1)); }
+      }
+    },
     set: (p, d, merge = true) => F.setDoc(ref(p), conv(d), { merge }),
     update: (p, d) => F.updateDoc(ref(p), conv(d)),
     del: p => F.deleteDoc(ref(p)),
-    listen: (p, cb) => F.onSnapshot(ref(p), { includeMetadataChanges: true },
-      s => cb(s.exists() ? s.data() : null, { pending: s.metadata.hasPendingWrites, cache: s.metadata.fromCache }),
-      e => cb(null, { error: e })),
+    /* ถ้าโดนปฏิเสธช่วงเพิ่งล็อกอิน ให้ลองฟังใหม่ 3 ครั้งก่อนแจ้ง error (ถ้า PIN ถูกรีเซ็ตจริง จะยังโดนปฏิเสธและแจ้งตามเดิม) */
+    listen: (p, cb) => {
+      let un = null, stop = false, tries = 0;
+      const go = () => {
+        un = F.onSnapshot(ref(p), { includeMetadataChanges: true },
+          s => { tries = 0; cb(s.exists() ? s.data() : null, { pending: s.metadata.hasPendingWrites, cache: s.metadata.fromCache }); },
+          e => {
+            if (stop) return;
+            if (e.code === 'permission-denied' && tries < 3 && auth.currentUser) { tries++; setTimeout(() => { if (!stop) go(); }, 1000 * tries); return; }
+            cb(null, { error: e });
+          });
+      };
+      go();
+      return () => { stop = true; un && un(); };
+    },
     list: async (col, field, op, val) => {
       const c = F.collection(db, ...col.split('/'));
       const q = field ? F.query(c, F.where(field, op, val)) : c;

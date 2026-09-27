@@ -84,7 +84,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
 <div id="feed"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.26-h';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.27-i';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 /* ภาคตามโครงสร้าง UPC: Central / East / North / North-East / South */
@@ -462,7 +462,7 @@ async function loadThumbs(dep, ids){
 
 /* ================= ⚙️ ผู้ดูแลระบบ (Admin) ================= */
 let ADM = 'dep', MGRS = [], STAFFN = {};
-const staffUrl = () => { const u = new URL('staff.html', location.href); u.search = DEMO ? '?demo' : '?openExternalBrowser=1'; return u.toString(); };
+const staffUrl = code => { const u = new URL('staff.html', location.href); u.search = DEMO ? '?demo' : '?openExternalBrowser=1'; if (code) u.searchParams.set('d', code); return u.toString(); };
 const mgrUrl = () => { const u = new URL('manager.html', location.href); u.search = DEMO ? '?demo' : '?openExternalBrowser=1'; return u.toString(); };
 window.__copy = t => { navigator.clipboard && navigator.clipboard.writeText(t).then(()=>feed('<b>คัดลอกแล้ว</b>','ok'), ()=>feed('คัดลอกไม่ได้','bad')); };
 function credBox(title, lines){ const txt = lines.join('\n');
@@ -567,7 +567,7 @@ window.__aDepSave = async code => {
     const staff = $('dStaff').value.split(/[,\n]/).map(x=>x.trim()).filter(Boolean);
     await createDepot(c, name, reg, prov, pin, staff, cut, upc);
     $('dGo').style.display = 'none';
-    $('dOut').innerHTML = credBox('ส่งให้หัวหน้าสาขา '+esc(c), ['ลิงก์: '+staffUrl(), 'สาขา: '+c+' · '+name, 'PIN: '+pin, 'เวลาเข้างาน: '+hmCut(cut)+' น.'])
+    $('dOut').innerHTML = credBox('ส่งให้หัวหน้าสาขา '+esc(c), ['ลิงก์: '+staffUrl(c), 'สาขา: '+c+' · '+name, 'PIN: '+pin, 'เวลาเข้างาน: '+hmCut(cut)+' น.'])
       + '<div class="small" style="margin-top:8px">👥 UPC ที่เห็นสาขานี้: '+(upc.length ? esc(upc.join(', ')) : 'ยังไม่ได้เลือก (Admin เห็นอย่างเดียว)')+'</div>';
   } catch(e){ err('ไม่สำเร็จ: '+(e.code||e.message)); }
 };
@@ -584,7 +584,7 @@ window.__aPinGo = async code => {
     await fb.set('depots/'+code, { authUid: uid, authVer: ver, updatedAt: NOW });
     await fb.set('pub/depots', { [code]: { ver, name: PUB[code].name||'' } }); PUB[code].ver = ver;
     $('pGo').style.display = 'none';
-    $('pOut').innerHTML = credBox('PIN ใหม่ของสาขา '+esc(code), ['ลิงก์: '+staffUrl(), 'สาขา: '+code, 'PIN: '+pin]);
+    $('pOut').innerHTML = credBox('PIN ใหม่ของสาขา '+esc(code), ['ลิงก์: '+staffUrl(code), 'สาขา: '+code, 'PIN: '+pin]);
   } catch(e){ $('pErr').textContent = 'ไม่สำเร็จ: '+(e.code||e.message); $('pGo').disabled = false; }
 };
 window.__aBulk = () => {
@@ -611,7 +611,7 @@ window.__aBulkGo = async () => {
     try { await createDepot(c, r[1], reg, r[3]||'', pin, staff, cut, upc); res.push([c, r[1], pin, hmCut(cut), upc.join(', ')||'—', '✅']); }
     catch(e){ res.push([c, r[1], '', '', '', '❌ '+(e.code||e.message)]); }
   }
-  const csv = '﻿'+[['รหัสสาขา','ชื่อสาขา','PIN','เวลาเข้างาน','UPC','ผล','ลิงก์'], ...res.map(r=>[...r, staffUrl()])].map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const csv = '﻿'+[['รหัสสาขา','ชื่อสาขา','PIN','เวลาเข้างาน','UPC','ผล','ลิงก์'], ...res.map(r=>[...r, staffUrl(r[0])])].map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
   window.__bulkCsv = () => { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='depot_pins.csv'; a.click(); };
   $('bGo').style.display = 'none';
   $('bOut').innerHTML = '<table class="dtbl" style="margin-top:8px"><thead><tr><th class="l">รหัส</th><th class="l">ชื่อ</th><th>PIN</th><th>เข้างาน</th><th class="l">UPC</th><th>ผล</th></tr></thead><tbody>'

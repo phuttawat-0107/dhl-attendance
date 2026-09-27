@@ -5,7 +5,7 @@
                  ใช้ทดสอบระบบ และใช้ฝึก UPC Manager / Staff ก่อนใช้งานจริง
    Design By Winnie
    =================================================================== */
-export const FB_VER = '2026.09.27-i';
+export const FB_VER = '2026.09.27-j';
 export const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* ⚙️ ค่าเชื่อมต่อโปรเจกต์ Firebase ใหม่ของ UPC — วางค่าจาก Firebase Console ตรงนี้ */
@@ -118,11 +118,20 @@ async function makeReal(appName) {
       const s = await F.getDocs(q); return s.docs.map(d => ({ id: d.id, data: d.data() }));
     },
     /* อ่าน-แก้-เขียนแบบกันชนกัน (2 เครื่องแก้พร้อมกันไม่ทับกัน) — fn(ข้อมูลล่าสุดจากเซิร์ฟเวอร์) คืน patch หรือ null */
-    tx: (p, fn) => F.runTransaction(db, async t => {
-      const r = ref(p), s = await t.get(r), patch = fn(s.exists() ? s.data() : null);
-      if (patch) t.set(r, conv(patch), { merge: true });
-      return patch;
-    }),
+    tx: async (p, fn) => {
+      for (let i = 0; ; i++) {
+        try {
+          return await F.runTransaction(db, async t => {
+            const r = ref(p), s = await t.get(r), patch = fn(s.exists() ? s.data() : null);
+            if (patch) t.set(r, conv(patch), { merge: true });
+            return patch;
+          }, { maxAttempts: 10 });
+        } catch (e) {   /* หลายเครื่องแก้พร้อมกันมาก ๆ → รอสุ่มแล้วลองใหม่ (ไม่ลองซ้ำถ้าไม่มีสิทธิ์/ออฟไลน์) */
+          if (i >= 4 || /permission|unauthenticated|unavailable/.test(e.code || '')) throw e;
+          await wait(200 + Math.random() * 600 * (i + 1));
+        }
+      }
+    },
     /* นับจำนวนเอกสาร (คิดโควตา 1 read ต่อ 1,000 รายการ) */
     count: async (col, field, op, val) => {
       const c = F.collection(db, ...col.split('/'));

@@ -4,7 +4,7 @@
    จำนวนรูปต่อแถวปรับตามจำนวนพนักงาน: ≤6 คน = 3 · ≤16 = 4 · ≤30 = 5 · มากกว่า = 6  */
 export const REPORT_VER = 1;
 
-const W = 1080, P = 40, SCALE = 2;
+const W = 1080, P = 40;
 const C = { y: '#FFCC00', r: '#D40511', k: '#1a1a1a', g: '#2e7d32', gbg: '#f2fbf6', rbg: '#fff5f5', mute: '#777', line: '#eee', am: '#b7791f', ambg: '#fff8e6' };
 
 function rr(x, px, py, w, h, r) { x.beginPath(); x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath(); }
@@ -50,7 +50,9 @@ export async function drawReport(ctx) {
   const listH = listN ? 70 + Math.ceil(listN / 2) * 34 : 0;
   const gridH = n ? 70 + rows * (CELLH + 16) : 110;
   const H = 180 + 150 + 300 + riskH + gridH + listH + 70;
-  const cv = document.createElement('canvas'); cv.width = W * SCALE; cv.height = H * SCALE;
+  /* ความละเอียด 2 เท่าเพื่อความคมชัด — ลดลงอัตโนมัติถ้าภาพสูงมาก (iPhone รับผืนภาพได้ไม่เกิน ~16 ล้านพิกเซล) */
+  const SCALE = Math.max(1, Math.min(2, Math.sqrt(15.5e6 / (W * H))));
+  const cv = document.createElement('canvas'); cv.width = Math.round(W * SCALE); cv.height = Math.round(H * SCALE);
   const x = cv.getContext('2d'); x.scale(SCALE, SCALE); x.imageSmoothingQuality = 'high';
   x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
 
@@ -69,14 +71,15 @@ export async function drawReport(ctx) {
   /* KPI */
   const pct = v => S.recs.length ? Math.round(v / S.recs.length * 100) : 0;
   const kY = 166, kW = (W - P * 2 - 3 * 16) / 4;
-  [{ l: 'Check-in', v: n + ' / ' + S.need, c: C.k, bg: '#f7f7f7' },
-   { l: 'Ontime', v: S.on + '  (' + pct(S.on) + '%)', c: C.g, bg: C.gbg },
-   { l: 'Late', v: S.late + '  (' + pct(S.late) + '%)', c: C.r, bg: C.rbg },
-   { l: 'ขาด/ลา • ยังไม่ลง', v: S.absent.length + ' • ' + S.none.length, c: C.am, bg: C.ambg }].forEach((k, i) => {
+  [{ l: 'Check-in', v: String(n), s: '/ ' + S.need, c: C.k, bg: '#f7f7f7' },
+   { l: 'Ontime', v: String(S.on), s: pct(S.on) + '%', c: C.g, bg: C.gbg },
+   { l: 'Late', v: String(S.late), s: pct(S.late) + '%', c: C.r, bg: C.rbg },
+   { l: 'ขาด/ลา • ยังไม่ลง', v: S.absent.length + ' • ' + S.none.length, s: '', c: C.am, bg: C.ambg }].forEach((k, i) => {
     const kx = P + i * (kW + 16);
     x.fillStyle = k.bg; rr(x, kx, kY, kW, 110, 14); x.fill();
     x.fillStyle = k.c; rr(x, kx, kY, 10, 110, 5); x.fill();
-    x.font = F('800', 40); x.fillStyle = k.c; x.fillText(trunc(x, k.v, kW - 36), kx + 26, kY + 58);
+    x.font = F('800', 42); x.fillStyle = k.c; x.fillText(k.v, kx + 26, kY + 58);
+    if (k.s) { const vw = x.measureText(k.v).width; x.font = F('700', 22); x.fillText(k.s, kx + 26 + vw + 10, kY + 58); }
     x.font = F('700', 19); x.fillStyle = C.mute; x.fillText(k.l, kx + 26, kY + 92);
   });
 

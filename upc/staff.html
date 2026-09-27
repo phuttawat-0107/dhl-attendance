@@ -531,7 +531,7 @@ async function renderHist(){
 let HIST = {};
 /* รายงานประจำวัน (ภาพเดียว มีรูปทุกคน) → ส่งผู้บังคับบัญชา */
 window.openReport = async k => {
-  const m = await import('./upc-report.js?v=1');
+  const m = await import('./upc-report.js?v=2');
   m.openReport({ fb, code: CODE, key: k || DAYKEY, dep: DEP, roster: couriers(), staff: STAFF, sheet, flash, thDate, fmtTime, hmCut, cutOf, ymd });
 };
 window.openDay = k => {

@@ -60,6 +60,7 @@
     <div class="progress-wrap"><div class="progress-bar" id="ciProg" style="width:0%"></div></div>
     <div class="small" id="ciProgTxt" style="margin-top:5px;">เช็คอินแล้ว 0/0 คน</div>
   </div>
+  <button class="btn btn-r btn-block" style="margin:0 0 12px;" onclick="openReport()">📄 สร้างรายงานวันนี้ (ส่งหัวหน้า)</button>
   <div id="dsSum" class="go"></div>
   <div id="dsGrpBar"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" onclick="dsTogglePhoto()">📷 ซ่อนรูป</button></div>
   <div id="ciList"></div>
@@ -528,6 +529,11 @@ async function renderHist(){
   }).join('');
 }
 let HIST = {};
+/* รายงานประจำวัน (ภาพเดียว มีรูปทุกคน) → ส่งผู้บังคับบัญชา */
+window.openReport = async k => {
+  const m = await import('./upc-report.js?v=1');
+  m.openReport({ fb, code: CODE, key: k || DAYKEY, dep: DEP, roster: couriers(), staff: STAFF, sheet, flash, thDate, fmtTime, hmCut, cutOf, ymd });
+};
 window.openDay = k => {
   const x = HIST[k]; if (!x) return;
   const rows = Object.keys(x.checkins||{}).filter(id=>x.checkins[id]&&x.checkins[id].ts).sort((a,b)=>x.checkins[a].ts-x.checkins[b].ts).map(id => {
@@ -538,7 +544,8 @@ window.openDay = k => {
   const abs = Object.keys(x.absent||{}).map(id => { const c = byId(id)||{code:'#'+id,name:''};
     return '<div class="row-c dsAbsRow"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+'</div><span class="dsAbsTag">'+escapeHtml(x.absent[id].note||'ขาด')+'</span></div></div>'; }).join('');
   sheet('<h2>'+thDate(k)+'</h2>'+(rows||'<div class="hint">ไม่มีการเช็คอิน</div>')+(abs?'<div class="dsHdr abs"><span>🚫 ขาด / ลา</span></div>'+abs:'')
-    +'<div style="height:10px"></div><button class="btn btn-o btn-block" onclick="closeSheet()">ปิด</button>');
+    +'<div style="height:10px"></div><button class="btn btn-r btn-block" onclick="openReport(\''+k+'\')">📄 สร้างรายงานของวันที่เลือก (ส่งหัวหน้า)</button>'
+    +'<div style="height:8px"></div><button class="btn btn-o btn-block" onclick="closeSheet()">ปิด</button>');
 };
 
 /* ================= MANAGE ================= */

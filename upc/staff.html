@@ -473,10 +473,10 @@ window.flipCamera = async () => {
   catch(e){ try { camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); $('camVideo').srcObject = camStream; } catch(e2){ $('camFb').style.display='flex'; } }
 };
 function toJpeg(src, w, h){
-  const max = 480, sc = Math.min(1, max/Math.max(w,h)), cv = document.createElement('canvas');
+  const max = 640, sc = Math.min(1, max/Math.max(w,h)), cv = document.createElement('canvas');   /* เท่าระบบเดิม: 640px */
   cv.width = Math.round(w*sc); cv.height = Math.round(h*sc);
   cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
-  let q = .6, out = cv.toDataURL('image/jpeg', q);
+  let q = .7, out = cv.toDataURL('image/jpeg', q);   /* เท่าระบบเดิม: คุณภาพ 70% */
   while (out.length > 170000 && q > .25) { q -= .1; out = cv.toDataURL('image/jpeg', q); }
   return out;
 }

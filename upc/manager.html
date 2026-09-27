@@ -130,7 +130,9 @@ const DEP_PRESET = [
   ['PCG','PCG','North-East','','07:00','K.Wanchai Prukrunggroj','K.Thanyaporn Yotkhwan'],
   ['SNN','SNN','North-East','','07:00','K.Wanchai Prukrunggroj','K.Chainarong Janpotia, K.Jutamas Ratsungnoen'],
   ['SRN','SRN','North-East','','07:30','K.Wanchai Prukrunggroj','K.Jatuporn Kertsup, K.Kornkrit Tantiworasri'],
-  ['TLK','TLK','North-East','','07:00','K.Wanchai Prukrunggroj','K.Piyawat Phonkong, K.Natthakran Jaroenram']
+  ['TLK','TLK','North-East','','07:00','K.Wanchai Prukrunggroj','K.Piyawat Phonkong, K.Natthakran Jaroenram'],
+  ['AMN','AMN','Central','','07:00','K.Prasitchai Krobsuan','K.Kamarat Inchum, K.Tanit Kuisakron'],
+  ['KRI','KRI','Central','','07:00','K.Prasitchai Krobsuan','K.Chisanupong Suteeraksomboon, K.Chaichana Chattongdee']
 ];
 const genPin = () => String(Math.floor(100000 + Math.random()*900000));
 
@@ -589,7 +591,7 @@ window.__aBulk = () => {
   const pre = DEP_PRESET.filter(r => !PUB[r[0]]).map(r => r.join('\t')).join('\n');
   modal(back('dep')+'<h3>📥 เพิ่มหลายสาขาพร้อมกัน</h3><div class="sub">วางจาก Excel 7 คอลัมน์: <b>รหัสสาขา · ชื่อสาขา · ภาค · จังหวัด · เวลาเข้างาน · UPC ผู้ดูแล · ชื่อ Staff (คั่นด้วย ,)</b> — ระบบสุ่ม PIN ให้ แล้วดาวน์โหลดไฟล์ PIN ได้</div>'
     + '<div class="frm2"><textarea id="bText" rows="10" placeholder="BRM	บุรีรัมย์	North-East	บุรีรัมย์	07:00	K.Wanchai Prukrunggroj	K.Pongsak Kodram, K.Atitiya Inta">'+esc(pre)+'</textarea>'
-    + (pre ? '<div class="small" style="margin-top:4px">เติมสาขาของ K.Wanchai Prukrunggroj ไว้ให้แล้ว '+pre.split('\n').length+' สาขา — แก้ชื่อสาขา/จังหวัดในช่องที่ 2 และ 4 ได้ก่อนกดสร้าง</div>' : '')
+    + (pre ? '<div class="small" style="margin-top:4px">เติมสาขาของ '+esc([...new Set(DEP_PRESET.filter(r => !PUB[r[0]]).map(r => r[5]))].join(', '))+' ไว้ให้แล้ว '+pre.split('\n').length+' สาขา — แก้ชื่อสาขา/จังหวัดในช่องที่ 2 และ 4 ได้ก่อนกดสร้าง</div>' : '')
     + '<div class="err2" id="bErr"></div><button class="btn btn-y btn-block" id="bGo" onclick="window.__aBulkGo()">สร้างสาขา</button><div id="bOut"></div></div>');
 };
 window.__aBulkGo = async () => {

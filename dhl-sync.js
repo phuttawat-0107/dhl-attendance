@@ -7,7 +7,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebas
 import { getAuth, signInAnonymously, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection,
-         query, where, getDocs, deleteDoc, serverTimestamp, addDoc, orderBy, arrayUnion, arrayRemove, deleteField }
+         query, where, getDocs, deleteDoc, serverTimestamp, addDoc, orderBy, arrayUnion, arrayRemove, deleteField, runTransaction }
   from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -426,6 +426,12 @@ async function pushAll(){
     const up={};
     recs.forEach(r=>{ up['checkins.'+r.courierId]={ ts:r.ts, status:r.status, buffer:!!r.buffer,
       uniform:r.uniform!==false, manualEdit:!!r.manualEdit, staff:r.staff||S.staff, hasPhoto:!!r.photo }; });
+    /* 🛡 2 เครื่องเช็คอินคนเดียวกัน → เก็บรายการแรก (เวลาเร็วกว่า) ไม่ให้เครื่องที่ส่งทีหลังเขียนทับ
+       ยกเว้นแก้เวลาด้วยมือ (manualEdit) · ปุ่มบันทึกใหม่/ลบ จะลบของเดิมบนคลาวด์ก่อนอยู่แล้ว */
+    const keepFirst=(cloudCk)=>{ const o=Object.assign({},up);
+      recs.forEach(r=>{ const c=cloudCk&&cloudCk[r.courierId];
+        if(c && c.ts && r.ts && Number(c.ts)<Number(r.ts) && !r.manualEdit && !isDeleted(ckDel, r.courierId, c.ts)) delete o['checkins.'+r.courierId]; });
+      return o; };
     if(pph){
       ['staffN','sorterN','courierN','pNew','pOld'].forEach(k=>{ if(pph[k]!=null) up['pph.'+k]=+pph[k]||0; });
       if(pph.inboundTs)     up['pph.inboundTs']=pph.inboundTs;
@@ -458,7 +464,10 @@ async function pushAll(){
       try{ await setDoc(depRef(S.depot),{ couriers, couriersAt:Date.now() },{merge:true}); }catch(e){}
     }
 
-    if(Object.keys(up).length) await updateDoc(ref,up);
+    if(Object.keys(up).length){
+      try{ await runTransaction(dbF, async t=>{ const cs=await t.get(ref); const o=keepFirst(cs.exists()?(cs.data().checkins||{}):{}); if(Object.keys(o).length) t.update(ref,o); }); }
+      catch(e){ console.warn('keepFirst tx → ส่งแบบเดิม',e); await updateDoc(ref,up); }
+    }
     H.lastPush=Date.now(); H.saves++; H.err=''; H.ok=true;
     const eb=document.getElementById('dsErrBar'); if(eb) eb.remove();
   }catch(e){ console.warn('sync push',e); flagErr('ส่งข้อมูลขึ้นคลาวด์ไม่สำเร็จ: '+e.message); }
@@ -597,6 +606,19 @@ async function queuePdPull(date){
   }catch(e){ console.warn('pd pull',e); }
 }
 
+/* 📷 รูปเช็คอิน: เขียนแบบ transaction — 2 เครื่องเช็คอินคนเดียวกัน จะเก็บรูปของรายการแรก (เวลาเร็วกว่า) ไม่ให้รูปที่มาทีหลังทับ
+   ถ้า transaction ใช้ไม่ได้ (เช่น ออฟไลน์) จะส่งแบบเดิม + เข้าคิวส่งซ้ำตามเดิม */
+async function pushPhotoCi(rec){
+  if(!S.ready||!rec||!rec.photo) return;
+  try{
+    const small=await shrink(rec.photo); if(!small) return;
+    const date=tKey(), ref=doc(phoCol(S.depot),'ci_'+rec.courierId+'_'+date);
+    await runTransaction(dbF, async t=>{ const s=await t.get(ref); const o=s.exists()?s.data():null;
+      if(o && o.ts && rec.ts && Number(o.ts)<Number(rec.ts) && !rec.manualEdit) return;
+      t.set(ref,{ kind:'ci', cid:rec.courierId, date, d:small, at:Date.now(), by:S.staff, ts:rec.ts||null }); });
+    return true;
+  }catch(e){ console.warn('photo tx → ส่งแบบเดิม',e); return pushPhoto('ci',rec.courierId,rec.photo); }
+}
 async function pushPhoto(kind, cid, dataUrl){
   if(!S.ready||!dataUrl) return;
   try{
@@ -1315,7 +1337,7 @@ function wrap(){
     const o=window.putCheckin; S._rawPutCheckin=o;
     const f=async function(rec){ const r=await o(rec);
       if(!S.merging){
-        pushSoon(); if(rec&&rec.photo) pushPhoto('ci',rec.courierId,rec.photo);
+        pushSoon(); if(rec&&rec.photo) pushPhotoCi(rec);
       }
       return r; };
     f.__ds=true; window.putCheckin=f;

@@ -84,7 +84,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
 <div id="feed"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.27-j';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.28-r';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 /* ภาคตามโครงสร้าง UPC: Central / East / North / North-East / South */
@@ -237,6 +237,7 @@ function checkVer(){
   if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k,'1'); const u=new URL(location.href); u.searchParams.set('r',Date.now()); location.replace(u.toString()); }
   else { bar.textContent = 'มีเวอร์ชันใหม่ ('+want+') — กด Ctrl+F5 หรือปิดแล้วเปิดใหม่'; bar.style.display='block'; }
 }
+
 
 /* ================= 🛡️ สุขภาพระบบ (เห็นเฉพาะผู้ดูแล) =================
    ตรวจ: พื้นที่เก็บข้อมูล (แพ็กเกจฟรี 1 GB) · ประมาณการเมื่อครบรอบเก็บรูป · โควตาบันทึกรายวัน · รูปเก่าที่ยังไม่ถูกลบ

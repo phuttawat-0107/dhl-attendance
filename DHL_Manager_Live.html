@@ -2222,10 +2222,12 @@ window.__settings=async ()=>{
   b+='<div style="font-weight:800;font-size:13.5px;margin-bottom:7px;">🏢 PIN ของแต่ละสาขา</div>'
     +'<div class="small" style="margin-bottom:9px;">Staff จะล็อกอินได้เฉพาะชื่อที่เพิ่มไว้ที่นี่เท่านั้น • 🟢 = กำลังออนไลน์ • จำกัดจำนวนเครื่องต่อสาขาได้</div>'
     +'<div id="pinList"><div class="small">กำลังโหลด...</div></div>';
+  b+='<div id="sysBox"></div>';
   b+='<div style="display:flex;gap:8px;margin-top:16px;">'
     +'<button class="btn btn-o btn-block" onclick="document.getElementById(\'mdl\').classList.remove(\'show\')">ปิด</button></div>';
   document.getElementById('mdlBody').innerHTML=b;
   document.getElementById('mdl').classList.add('show');
+  import('./dhl-health.js?v=1').then(()=>window.__sysBox&&window.__sysBox(DEPOTS)).catch(e=>console.warn('health',e));
 
   const rows=[]; const now=Date.now();
   const _pf={};

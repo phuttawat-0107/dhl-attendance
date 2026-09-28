@@ -188,7 +188,7 @@ function issues(){
   S().DEPOTS.forEach(dep=>{
     const a=aggDep(dep,dks), act=roster(dep).filter(c=>c.active!==false).length;
     if(!a){
-      if(act && (!only || nowSec()>=7.5*3600))
+      if(act && (!only || nowSec()>=cutD(dep)+1800))   /* วันนี้: เตือนเมื่อเลยเวลาเข้างานของสาขานั้น 30 นาที (ไม่ใช่ 07:30 ตายตัว) */
         out.push({dep,k:'none',lv:'crit',ic:'📵',ti:dep+' ไม่มีการลงเวลาเลย',
           de: only? 'ยังไม่มีการเช็คอินวันนี้ — ตรวจว่าสาขาเปิดแอปและล็อกอินแล้วหรือยัง' : 'ไม่มีข้อมูลตลอด '+dks.length+' วันทำงานที่เลือก'});
       return;

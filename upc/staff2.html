@@ -869,7 +869,7 @@ async function renderHist(){
   if (!CALSEL || !HIST[CALSEL]) CALSEL = HIST[todayKey()] ? todayKey() : L[0].date;
   CALM = CALSEL.slice(0,7);
   el.innerHTML = nxTrend(L) + '<div class="nx-sec"><span>🗓 ปฏิทิน <em style="color:#8a8270;font-weight:700">แตะวันที่เพื่อดูรายชื่อ</em></span></div><div id="nxCalBox" class="nx-cal"></div><div id="nxDayBox"></div>';
-  nxCal(); $('nxDayBox').innerHTML = nxDayHTML(CALSEL);
+  nxCal(); $('nxDayBox').innerHTML = nxDayHTML(CALSEL); nxLoadDayPh(CALSEL);
 }
 /* ---- ปฏิทินรายเดือน ---- */
 let CALM = null, CALSEL = null;
@@ -903,18 +903,46 @@ function nxCal(){
   el.innerHTML = h;
 }
 window.nxCalMove = n => { const [y, m] = CALM.split('-').map(Number), d = new Date(y, m-1+n, 1); CALM = d.getFullYear()+'-'+pad(d.getMonth()+1); nxCal(); };
-window.nxPickDay = k => { CALSEL = k; nxCal(); $('nxDayBox').innerHTML = nxDayHTML(k); const b = $('nxDayBox'); b.classList.remove('nx-in'); void b.offsetWidth; b.classList.add('nx-in'); b.scrollIntoView({ behavior:'smooth', block:'start' }); };
+window.nxPickDay = k => { CALSEL = k; nxCal(); $('nxDayBox').innerHTML = nxDayHTML(k); nxLoadDayPh(k); const b = $('nxDayBox'); b.classList.remove('nx-in'); void b.offsetWidth; b.classList.add('nx-in'); b.scrollIntoView({ behavior:'smooth', block:'start' }); };
+/* โหลดรูปของวันที่เลือก ทีละ 6 ใบ · เน็ตสะดุดลองใหม่ 3 ครั้ง · รูปเกินอายุเก็บจะแจ้งว่าหมดอายุ */
+async function nxLoadDayPh(k){
+  const x = HIST[k]; if (!x) return;
+  const ids = Object.keys(x.checkins||{}).filter(id => x.checkins[id] && x.checkins[id].ts && !PH['ci_'+id+'_'+k]);
+  for (let i = 0; i < ids.length; i += 6) {
+    await Promise.all(ids.slice(i, i+6).map(async id => {
+      const pk = 'ci_'+id+'_'+k; let got = null, miss = false;
+      for (let a = 0; a < 3 && !got && !miss; a++) {
+        try { const p = await fb.get(`depots/${CODE}/photos/${pk}`); got = p && p.d || null; if (!got) miss = true; }
+        catch(e){ await new Promise(r => setTimeout(r, 1200*(a+1))); }
+      }
+      if (got) PH[pk] = got;
+      if (CALSEL !== k) return;
+      const el = $('hp_'+id); if (!el) return;
+      el.outerHTML = got ? '<img class="photo-thumb" src="'+got+'" alt="">' : '<span class="photo-thumb" style="font-size:11px;text-align:center;line-height:1.3;color:#B7791F">'+(miss ? 'ไม่มีรูป<br>(เกิน '+KEEP_DAYS+' วัน)' : '↻ แตะ<br>โหลดใหม่')+'</span>';
+    }));
+    if (CALSEL !== k) return;
+  }
+}
+window.nxViewDayPh = (k, id) => {
+  const x = HIST[k], r = x && x.checkins && x.checkins[id], c = byId(id) || { code:'#'+id, name:'' }, src = PH['ci_'+id+'_'+k];
+  if (!src) { nxLoadDayPh(k); return; }
+  sheet('<h2>'+escapeHtml(c.name)+'</h2><div class="small" style="margin-bottom:10px;">'+escapeHtml(c.code)+' • '+thDate(k)+' • '+(r?fmtSec(r.ts):'')+' • '+(r&&r.status==='late'?'Late':'Ontime')+' • โดย '+escapeHtml(r&&r.staff||'-')+'</div>'
+    + '<img src="'+src+'" style="width:100%;border-radius:14px;">'
+    + '<div style="height:10px"></div><button class="btn btn-y btn-block" onclick="closeSheet()">ปิด</button>');
+};
 function nxDayHTML(k){
   const x = HIST[k]; if (!x) return '';
   const s = nxDayStat(x), sun = new Date(k+'T00:00:00').getDay() === 0;
+  /* รูปทุกคนของวันนั้น (กริดแบบหน้าเช็คอิน) — แตะรูปเพื่อดูภาพใหญ่ */
   const rows = Object.keys(x.checkins||{}).filter(id=>x.checkins[id]&&x.checkins[id].ts).sort((a,b)=>x.checkins[a].ts-x.checkins[b].ts).map(id => {
-    const c = byId(id) || { code:'#'+id, name:'(ไม่อยู่ในรายชื่อ)' }, r = x.checkins[id], ok = r.status!=='late';
-    return '<div class="row-c"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • โดย '+escapeHtml(r.staff||'-')+'</div></div>'
-      +(ok ? '<span class="chip ontime">✔ '+fmtTime(r.ts)+'</span>' : '<span class="chip late">✖ Late '+fmtTime(r.ts)+'</span>')+'</div>'; }).join('');
+    const c = byId(id) || { code:'#'+id, name:'(ไม่อยู่ในรายชื่อ)' }, r = x.checkins[id], ok = r.status!=='late', pk = 'ci_'+id+'_'+k;
+    const ph = PH[pk] ? '<img class="photo-thumb" src="'+PH[pk]+'" alt="">' : '<span class="photo-thumb" id="hp_'+id+'">⏳</span>';
+    return '<div class="nx-tile '+(ok?'ok':'late')+'" onclick="nxViewDayPh(\''+k+'\',\''+id+'\')"><div class="nx-ph">'+ph+'<span class="nx-tt">'+(ok?'✔ ':'Late ')+fmtTime(r.ts)+'</span></div>'
+      +'<div class="nx-tn">'+escapeHtml(firstName(c.name))+'</div><div class="nx-tc">'+escapeHtml(c.code)+'</div></div>'; }).join('');
   const abs = Object.keys(x.absent||{}).map(id => { const c = byId(id)||{code:'#'+id,name:''};
     return '<div class="row-c dsAbsRow"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+'</div><span class="dsAbsTag">'+escapeHtml(x.absent[id].note||'ขาด')+'</span></div></div>'; }).join('');
   return '<div class="nx-dh"><div><b>'+thDate(k)+'</b>'+(sun?' <span class="small">(อาทิตย์)</span>':'')+'</div><div class="nx-chips"><span class="c-ok">เช็คอิน '+s.n+'</span>'+(s.late?'<span class="c-late">Late '+s.late+'</span>':'<span class="c-ok">Ontime ทุกคน</span>')+(s.ab?'<span class="c-ab">ขาด/ลา '+s.ab+'</span>':'')+'</div></div>'
-    + (rows || '<div class="hint">ไม่มีการเช็คอิน</div>') + (abs ? '<div class="nx-sec"><span>🟣 ขาด / ลา</span></div>'+abs : '')
+    + (rows ? '<div class="nx-grid">'+rows+'</div>' : '<div class="hint">ไม่มีการเช็คอิน</div>') + (abs ? '<div class="nx-sec"><span>🟣 ขาด / ลา</span></div>'+abs : '')
     + '<button class="nx-rep" style="margin-top:10px" onclick="openReport(\''+k+'\')">📄 สร้างรายงานของวันนี้ (ส่งหัวหน้า)</button>';
 }
 let HIST = {};

@@ -104,6 +104,7 @@
 .nx-date{font-size:11.5px;color:#8a8270;}
 #nxSnd{border:1px solid #e6e2d6;background:#fff;border-radius:12px;padding:0 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:40px;}
 #nxSnd.on{background:#fff8d9;border-color:#f0d56a;}
+#nxDemoSnd{border:1px solid #e6e2d6;background:#fff;border-radius:12px;padding:0 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:40px;}
 @media (prefers-reduced-motion: reduce){ #nxPop,.nx-box,.nx-medal,#nxCele *{animation:none!important;transition:none!important;} }
 </style>
 </head>
@@ -135,7 +136,7 @@
   </div>
   <div id="nxRemBar"></div>
   <button class="btn btn-r btn-block" style="margin:0 0 12px;" onclick="tryReport()">📄 สร้างรายงานวันนี้ (ส่งหัวหน้า)</button>
-  <div id="dsGrpBar"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" onclick="dsTogglePhoto()">📷 ซ่อนรูป</button><button id="nxSnd" type="button" onclick="nxToggleSnd()">🔊 เสียง</button></div>
+  <div id="dsGrpBar"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" onclick="dsTogglePhoto()">📷 ซ่อนรูป</button><button id="nxSnd" type="button" onclick="nxToggleSnd()">🔊 เสียง</button><button id="nxDemoSnd" type="button" style="display:none" onclick="nxDemoSound()">🎺 ฟังเสียงฉลอง</button></div>
   <div id="ciList"></div>
 </div>
 
@@ -620,13 +621,49 @@ const SFX = {
   ok:    () => { tone(1047, 0, .09, 'triangle', .2); tone(1568, .08, .16, 'triangle', .2); tone(3136, .08, .12, 'sine', .04); },
   late:  () => { tone(659, 0, .16, 'triangle', .15); },
   bell:  () => { tone(880, 0, .12, 'triangle', .16); tone(880, .16, .16, 'triangle', .16); },
-  win:   () => { [523,659,784,1047,1319].forEach((f,i) => tone(f, i*.075, .16, 'triangle', .17)); [1047,1319,1568].forEach(f => tone(f, .42, .5, 'triangle', .11)); tone(2093, .42, .35, 'sine', .05); },
-  small: () => { [784,1047].forEach((f,i) => tone(f, i*.09, .18, 'triangle', .15)); }
+  win:   () => fanfare(true),
+  small: () => fanfare(false)
 };
+/* เครื่องมือเสียงเพิ่ม: แตร (sawtooth ผ่านฟิลเตอร์) · กลอง/ฉาบ (noise) */
+let MST = null;
+function master(){ const c = acx(); if (!c) return null; if (!MST) { const comp = c.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6; const g = c.createGain(); g.gain.value = .9; comp.connect(g); g.connect(c.destination); MST = comp; } return MST; }
+function brass(f, t0, dur, vol){ const c = acx(), m = master(); if (!c || !m) return; const t = c.currentTime + t0;
+  [0, 7].forEach(dt => { const o = c.createOscillator(), fl = c.createBiquadFilter(), g = c.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t); o.detune.value = dt;
+    fl.type = 'lowpass'; fl.frequency.setValueAtTime(700, t); fl.frequency.linearRampToValueAtTime(3200, t + .06); fl.frequency.linearRampToValueAtTime(1800, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .03); g.gain.setValueAtTime(vol, t + dur * .7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(fl); fl.connect(g); g.connect(m); o.start(t); o.stop(t + dur + .05); }); }
+function noise(t0, dur, vol, type, freq){ const c = acx(), m = master(); if (!c || !m) return; const t = c.currentTime + t0;
+  const b = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2-1;
+  const src = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain(); src.buffer = b; fl.type = type || 'bandpass'; fl.frequency.value = freq || 1800;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); src.connect(fl); fl.connect(g); g.connect(m); src.start(t); }
+function bell(f, t0, dur, vol){ const c = acx(), m = master(); if (!c || !m) return; const t = c.currentTime + t0, o = c.createOscillator(), g = c.createGain();
+  o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(m); o.start(t); o.stop(t + dur + .02); }
+function fanfare(full){
+  /* กลองรัว */
+  const roll = full ? 14 : 8; for (let i = 0; i < roll; i++) noise(i * .045, .05, .12 + i * .012, 'bandpass', 1200);
+  const s = roll * .045;
+  /* แตรไล่ขึ้น (G4 C5 E5 G5 → C6) */
+  const run = full ? [392,523,659,784] : [523,659];
+  run.forEach((f,i) => brass(f, s + i * .11, .14, .14));
+  const top = s + run.length * .11;
+  /* คอร์ดใหญ่ C major + เบสต่ำ + ฉาบ */
+  const chord = full ? [262,523,659,784,1047] : [523,659,784];
+  chord.forEach(f => brass(f, top, full ? 1.5 : .9, full ? .11 : .1));
+  bell(131, top, full ? 1.4 : .8, .18);
+  noise(top, full ? 1.4 : .8, .22, 'highpass', 6000);
+  noise(top, .12, .3, 'lowpass', 180);
+  /* ประกายระยิบ */
+  const sp = full ? [2093,2637,3136,4186,3136,4186,5274] : [2093,2637,3136];
+  sp.forEach((f,i) => bell(f, top + .15 + i * .07, .35, .06));
+  if (full) { [523,659,784,1047].forEach(f => brass(f, top + 1.6, .9, .08)); noise(top + 1.6, .9, .12, 'highpass', 7000); }
+}
 function sfx(k){ if (!SND) return; try { SFX[k] && SFX[k](); } catch(e){} }
 window.nxToggleSnd = () => { SND = !SND; lsSet('nxSnd', SND ? '1' : '0'); nxSndBtn(); if (SND) sfx('ok'); };
 function nxSndBtn(){ const b = $('nxSnd'); if (b) { b.textContent = SND ? '🔊 เสียง' : '🔇 ปิดเสียง'; b.classList.toggle('on', SND); } }
 nxSndBtn();
+if (DEMO) $('nxDemoSnd').style.display = '';
+let DSN = 0; window.nxDemoSound = () => { const k = ['win','small'][DSN++ % 2]; const was = SND; SND = true; sfx(k); SND = was; flash(k === 'win' ? '🎺 เสียงฉลอง: Ontime ทุกคน' : '🎺 เสียงฉลอง: ครบแต่มีคน Late'); };
 /* เสียงคลิกเวลากดปุ่ม / การ์ด */
 document.addEventListener('pointerdown', e => { if (e.target.closest('button, .nx-todo, .nx-who, .nav button, label.btn, #dsDoneHdr, .hrow')) sfx('tap'); }, { passive: true });
 function nxPop(c, ts, status, photo){

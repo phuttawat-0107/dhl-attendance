@@ -105,6 +105,51 @@
 #nxSnd{border:1px solid #e6e2d6;background:#fff;border-radius:12px;padding:0 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:40px;}
 #nxSnd.on{background:#fff8d9;border-color:#f0d56a;}
 #nxDemoSnd{border:1px solid #e6e2d6;background:#fff;border-radius:12px;padding:0 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:40px;}
+/* ===== HERO ===== */
+#dsSum.nx-hero{display:flex;flex-direction:row;align-items:center;gap:14px;padding:14px 16px;border-radius:22px;margin:0 0 12px;background:linear-gradient(135deg,#fff6d1,#ffe98a);box-shadow:0 6px 18px rgba(212,160,0,.18);}
+#dsSum.nx-hero.fin-ok{background:linear-gradient(135deg,#e3f6e9,#bfe8cc);box-shadow:0 6px 18px rgba(46,158,87,.2);}
+#dsSum.nx-hero.fin-late{background:linear-gradient(135deg,#eef6f0,#dcefe2);}
+.nx-ring{position:relative;width:104px;height:104px;flex:none;}
+.nx-ring svg{width:100%;height:100%;}
+.nx-ring circle{transition:stroke-dasharray .6s ease, stroke-dashoffset .6s ease;}
+.nx-rc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;}
+.nx-rc b{font-size:25px;font-weight:900;letter-spacing:-.5px;}
+.nx-rc span{font-size:12px;font-weight:700;color:#6b6250;}
+.nx-hr{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.nx-hr .nx-cut{align-self:flex-start;text-align:left;padding:4px 9px;font-size:11.5px;}
+.nx-hr .nx-cut b{display:inline;font-size:13px;margin-left:4px;}
+.nx-head{font-size:19px;font-weight:900;line-height:1.15;}
+.nx-head b{font-size:26px;color:var(--r);}
+.nx-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.nx-chips span{font-size:11.5px;font-weight:800;padding:3px 8px;border-radius:9px;background:rgba(255,255,255,.75);}
+.c-ok{color:#2e7d32;}.c-late{color:#c62828;}.c-ab{color:#5b3fa6;}.c-wait{color:#8a6100;}
+/* ปุ่มรายงาน: รองลงมาจนกว่าจะครบ แล้วค่อยเด่น */
+.nx-rep{width:100%;border:2px solid var(--r);background:#fff;color:var(--r);border-radius:16px;padding:12px;font:inherit;font-weight:800;font-size:15px;cursor:pointer;margin:0 0 12px;}
+.nx-rep.ready{background:var(--r);color:#fff;box-shadow:0 6px 16px rgba(212,5,17,.3);animation:nxglow 1.8s ease-in-out infinite;}
+@keyframes nxglow{50%{box-shadow:0 6px 24px rgba(212,5,17,.55)}}
+/* แถบเครื่องมือ */
+#nxTools{display:flex;gap:6px;margin:0 0 10px;}
+#nxTools input{flex:1;min-width:0;margin:0;border-radius:14px;}
+#nxTools button{width:44px;min-width:44px;height:44px;border:1px solid #e6e2d6;background:#fff;border-radius:14px;font-size:18px;cursor:pointer;padding:0;}
+#nxTools button.on{background:#fff8d9;border-color:#f0d56a;}
+/* หัวข้อกลุ่ม */
+.nx-sec{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-size:14px;font-weight:800;color:#3a3528;}
+.nx-sec b{font-size:16px;}.nx-sec em{font-style:normal;color:#c62828;}
+.nx-fold{font-size:12.5px;color:#8a8270;font-weight:700;}
+/* กริดรูป — จุดเด่นของแอป */
+.nx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.nx-tile{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06);cursor:pointer;border:2.5px solid #bfe3cc;animation:fadeUp .25s ease;}
+.nx-tile.late{border-color:#f3b4b4;}
+.nx-ph{position:relative;aspect-ratio:3/4;background:#f3f0e7;}
+.nx-ph .photo-thumb{width:100%!important;height:100%!important;object-fit:cover;border-radius:0!important;display:grid;place-items:center;font-size:18px;color:#aaa;margin:0!important;}
+.nx-tt{position:absolute;left:5px;bottom:5px;font-size:11px;font-weight:800;padding:2px 6px;border-radius:7px;background:rgba(46,125,50,.92);color:#fff;}
+.nx-tile.late .nx-tt{background:rgba(198,40,40,.92);}
+.nx-tn{font-size:13px;font-weight:800;padding:5px 7px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nx-tc{font-size:11px;color:#8a8270;padding:0 7px 6px;}
+.nx-tile.nx-pop{animation:nxtile .7s cubic-bezier(.2,1.5,.4,1);}
+.nx-ring.nx-beat{animation:nxbeat .6s 2;}
+@keyframes nxbeat{50%{transform:scale(1.08)}}
+@keyframes nxtile{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
 @media (prefers-reduced-motion: reduce){ #nxPop,.nx-box,.nx-medal,#nxCele *{animation:none!important;transition:none!important;} }
 </style>
 </head>
@@ -135,8 +180,8 @@
     <div class="small" id="ciProgTxt" style="margin-top:5px;">เช็คอินแล้ว 0/0 คน</div>
   </div>
   <div id="nxRemBar"></div>
-  <button class="btn btn-r btn-block" style="margin:0 0 12px;" onclick="tryReport()">📄 สร้างรายงานวันนี้ (ส่งหัวหน้า)</button>
-  <div id="dsGrpBar"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" onclick="dsTogglePhoto()">📷 ซ่อนรูป</button><button id="nxSnd" type="button" onclick="nxToggleSnd()">🔊 เสียง</button><button id="nxDemoSnd" type="button" style="display:none" onclick="nxDemoSound()">🎺 ฟังเสียงฉลอง</button></div>
+  <button class="nx-rep" id="nxRepBtn" onclick="tryReport()">📄 สร้างรายงานวันนี้ (ส่งหัวหน้า)</button>
+  <div id="nxTools"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" title="ซ่อน/แสดงรูป" onclick="dsTogglePhoto()">📷</button><button id="nxSnd" type="button" title="เปิด/ปิดเสียง" onclick="nxToggleSnd()">🔊</button><button id="nxDemoSnd" type="button" title="ฟังเสียงฉลอง" style="display:none" onclick="nxDemoSound()">🎺</button></div>
   <div id="ciList"></div>
 </div>
 
@@ -420,8 +465,8 @@ const couriers = () => (DEP && DEP.roster) || [];
 const byId = id => couriers().find(c => String(c.id) === String(id));
 $('ciSearch').addEventListener('input', () => renderCheckin());
 
-window.dsTogglePhoto = () => { document.body.classList.toggle('dsNoPh'); const on = !document.body.classList.contains('dsNoPh'); $('dsPhoto').classList.toggle('on', on); $('dsPhoto').textContent = on ? '📷 ซ่อนรูป' : '📷 แสดงรูป'; lsSet('dsNoPh', on?'0':'1'); };
-if (lsGet('dsNoPh')==='1') { document.body.classList.add('dsNoPh'); $('dsPhoto').textContent='📷 แสดงรูป'; } else $('dsPhoto').classList.add('on');
+window.dsTogglePhoto = () => { document.body.classList.toggle('dsNoPh'); const on = !document.body.classList.contains('dsNoPh'); $('dsPhoto').classList.toggle('on', on); $('dsPhoto').textContent = on ? '📷' : '🚫'; lsSet('dsNoPh', on?'0':'1'); };
+if (lsGet('dsNoPh')==='1') { document.body.classList.add('dsNoPh'); $('dsPhoto').textContent='🚫'; } else $('dsPhoto').classList.add('on');
 window.dsToggleDone = () => { SHOWDONE = !SHOWDONE; lsSet('dsShowDone', SHOWDONE?'1':'0'); renderCheckin(); };
 
 function renderCheckin(){
@@ -431,55 +476,56 @@ function renderCheckin(){
   const act = couriers().filter(c => c.active !== false);
   const done = act.filter(c => ck[c.id] && ck[c.id].ts), abs = act.filter(c => !ck[c.id] && ab[c.id]);
   const todo = act.filter(c => !(ck[c.id] && ck[c.id].ts) && !ab[c.id]);
-  const late = done.filter(c => ck[c.id].status === 'late').length;
+  const late = done.filter(c => ck[c.id].status === 'late').length, ontime = done.length - late;
   const denom = act.length - abs.length;
   $('ciProg').style.width = denom ? (done.length/denom*100)+'%' : '0%';
-  $('ciProgTxt').textContent = 'เช็คอินแล้ว '+done.length+'/'+denom+' คน' + (abs.length ? ' • ขาด/ลา '+abs.length+' คน' : '');
-  const pct = denom ? Math.round(done.length/denom*100) : 0, all = denom && done.length >= denom;
-  const sum = $('dsSum'); sum.className = all ? 'ok' : 'go';
-  sum.innerHTML = '<div class="nx-s1"><div><div class="pv">'+pct+'%</div><div class="ps">เช็คอินแล้ว '+done.length+'/'+denom+' คน'+(late?' <span class="lt">· Late '+late+'</span>':'')+(abs.length?' · ขาด/ลา '+abs.length:'')+'</div></div>'
-    + '<div class="nx-cut" id="nxCut"></div></div><div class="nx-bar"><i id="nxProg" style="width:'+(act.length?Math.round((done.length+abs.length)/act.length*100):0)+'%"></i></div>'
-    + '<div class="nx-date">'+thDate(todayKey())+'</div>';
+  $('ciProgTxt').textContent = 'เช็คอินแล้ว '+done.length+'/'+denom+' คน';
+  /* ===== HERO: วงแหวน + สถานะ ===== */
+  const N = act.length || 1, fin = !todo.length && act.length, pctAll = Math.round((done.length+abs.length)/N*100);
+  const R = 42, C = 2*Math.PI*R; let off = 0;
+  const seg = [[ontime,'#2e9e57'],[late,'#d64545'],[abs.length,'#8e6bd1']].map(([v,col]) => { if (!v) return ''; const L = v/N*C, sv = '<circle cx="50" cy="50" r="'+R+'" fill="none" stroke="'+col+'" stroke-width="11" stroke-linecap="butt" stroke-dasharray="'+L+' '+C+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 50 50)"/>'; off += L; return sv; }).join('');
+  const state = !act.length ? 'go' : fin ? (late ? 'fin-late' : 'fin-ok') : 'go';
+  const head = !act.length ? 'ยังไม่มีรายชื่อ' : fin ? (late ? 'ครบแล้ว ✓' : 'Ontime ทุกคน! 🎉') : 'เหลืออีก <b>'+todo.length+'</b> คน';
+  const sum = $('dsSum'); sum.className = 'nx-hero '+state;
+  sum.innerHTML = '<div class="nx-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="'+R+'" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="11"/>'+seg+'</svg><div class="nx-rc"><b>'+pctAll+'%</b><span>'+(done.length+abs.length)+'/'+act.length+'</span></div></div>'
+    + '<div class="nx-hr"><div class="nx-cut" id="nxCut"></div><div class="nx-head">'+head+'</div>'
+    + '<div class="nx-chips"><span class="c-ok">Ontime '+ontime+'</span>'+(late?'<span class="c-late">Late '+late+'</span>':'')+(abs.length?'<span class="c-ab">ขาด/ลา '+abs.length+'</span>':'')+(todo.length?'<span class="c-wait">รอ '+todo.length+'</span>':'')+'</div>'
+    + '<div class="nx-date">'+thDate(todayKey())+'</div></div>';
   nxCutTick();
+  const rb = $('nxRepBtn'); if (rb) rb.classList.toggle('ready', !!fin);
 
   const list = $('ciList');
-  if (!act.length) { list.innerHTML = '<div class="hint">ยังไม่มีรายชื่อพนักงาน — ไปที่แท็บ <b>จัดการ</b> เพื่อเพิ่มรายชื่อสาขาของคุณก่อน</div>'; return; }
+  if (!act.length) { list.innerHTML = '<div class="hint">ยังไม่มีรายชื่อพนักงาน — ไปที่แท็บ <b>จัดการ</b> เพื่อเพิ่มรายชื่อสาขาของคุณก่อน</div>'; nxAfterRender(todo, done, abs, ck, ab); return; }
   const q = ($('ciSearch').value||'').toLowerCase();
   const f = c => !q || (c.name+c.code+(c.vendor||'')).toLowerCase().includes(q);
   const info = c => '<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor||'-')+'</div></div>';
   let h = '';
   const T = todo.filter(f).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
-  if (!todo.length) h += '<div id="dsAllDone">✅ เช็คอินครบทุกคนแล้ว '+done.length+' คน</div>';
-  else {
+  if (todo.length) {
     const over = nxPast();
-    h += '<div class="dsHdr todo"><span>⏳ ยังไม่เช็คอิน '+todo.length+' คน'+(over?' · เลยเวลาแล้ว':'')+'</span><span class="c">แตะการ์ดเพื่อถ่ายภาพ</span></div>';
+    h += '<div class="nx-sec"><span>📷 รอถ่ายรูป <b>'+todo.length+'</b> คน'+(over?' <em>· เลยเวลาแล้ว</em>':'')+'</span></div>';
     h += T.map(c => '<div class="nx-todo'+(over?' over':'')+'" id="td_'+c.id+'" onclick="openCamera('+c.id+')"><div class="nx-cam">📷</div>'+info(c)
       +'<div class="nx-act"><span class="nx-go">ถ่ายรูป ›</span><button class="nx-ab" onclick="event.stopPropagation();openAbsent('+c.id+')">ลา / ขาด</button></div></div>').join('');
   }
+  if (done.length) {
+    const noPh = document.body.classList.contains('dsNoPh');
+    h += '<div class="nx-sec" onclick="dsToggleDone()" style="cursor:pointer"><span>🖼 เช็คอินแล้ว <b>'+done.length+'</b> คน'+(late?' <em>· Late '+late+'</em>':'')+'</span><span class="nx-fold">'+(SHOWDONE?'ซ่อน ▴':'แสดง ▾')+'</span></div>';
+    if (SHOWDONE) {
+      const D = done.filter(f).sort((a,b)=>ck[b.id].ts-ck[a.id].ts);
+      if (noPh) h += '<div id="dsDone">' + D.map(c => { const r = ck[c.id], ok = r.status !== 'late';
+          return '<div class="row-c" id="dn_'+c.id+'" onclick="viewPhoto('+c.id+')" style="cursor:pointer">'+info(c)+(ok?'<span class="chip ontime">✔ '+fmtTime(r.ts)+'</span>':'<span class="chip late">✖ Late '+fmtTime(r.ts)+'</span>')+'</div>'; }).join('') + '</div>';
+      else h += '<div id="dsDone" class="nx-grid">' + D.map(c => { const r = ck[c.id], ok = r.status !== 'late', k = 'ci_'+c.id+'_'+DAYKEY;
+          const ph = PH[k] ? '<img class="photo-thumb" src="'+PH[k]+'" alt="">' : '<span class="photo-thumb" id="ph_'+c.id+'">⏳</span>';
+          return '<div class="nx-tile '+(ok?'ok':'late')+'" id="dn_'+c.id+'" onclick="viewPhoto('+c.id+')"><div class="nx-ph">'+ph+'<span class="nx-tt">'+(ok?'✔ ':'Late ')+fmtTime(r.ts)+'</span></div>'
+            +'<div class="nx-tn">'+escapeHtml(firstName(c.name))+'</div><div class="nx-tc">'+escapeHtml(c.code)+'</div></div>'; }).join('') + '</div>';
+    }
+  }
   if (abs.length) {
-    h += '<div class="dsHdr abs"><span>🚫 ขาด / ลา '+abs.length+' คน</span></div>';
+    h += '<div class="nx-sec"><span>🟣 ขาด / ลา <b>'+abs.length+'</b> คน</span></div>';
     h += abs.filter(f).map(c => { const a = ab[c.id];
-      return '<div class="row-c dsAbsRow"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor||'-')+'</div>'
+      return '<div class="row-c dsAbsRow"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.vendor||'-')+'</div>'
         +'<span class="dsAbsTag">'+escapeHtml(a.note||'ขาด')+' · โดย '+escapeHtml(a.by||'-')+'</span></div>'
         +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="clearAbsent('+c.id+')">↺ ยกเลิก</button></div>'; }).join('');
-  }
-  if (done.length) {
-    h += '<div class="dsHdr done'+(SHOWDONE?' open':'')+'" id="dsDoneHdr" onclick="dsToggleDone()"><span>✓ เช็คอินแล้ว '+done.length+' คน'+(late?' · Late '+late:'')+'</span><span class="cv">⌄</span></div>';
-    if (SHOWDONE) {
-      h += '<div id="dsDone">' + done.filter(f).sort((a,b)=>ck[b.id].ts-ck[a.id].ts).map(c => {
-        const r = ck[c.id], ok = r.status !== 'late';
-        const chip = ok ? '<span class="chip ontime">✔ Ontime '+fmtTime(r.ts)+'</span>' : '<span class="chip late">✖ Late '+fmtTime(r.ts)+'</span>';
-        const stIc = ok ? '<span class="st-ic ok">✓</span>' : '<span class="st-ic no">!</span>';
-        const k = 'ci_'+c.id+'_'+DAYKEY;
-        const ph = PH[k] ? '<img class="photo-thumb" src="'+PH[k]+'" onclick="viewPhoto('+c.id+')">'
-                 : '<span class="photo-thumb" id="ph_'+c.id+'" style="display:inline-grid;place-items:center;font-size:11px;color:#aaa;">⏳</span>';
-        return '<div class="row-c st-'+(ok?'ontime':'late')+'" id="dn_'+c.id+'" style="flex-direction:column;align-items:stretch;gap:8px;">'
-          +'<div style="display:flex;align-items:center;gap:8px;">'+stIc+info(c)+'<div style="flex-shrink:0;">'+chip+'</div></div>'
-          +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'+ph
-          +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="redo('+c.id+')">↺ ใหม่</button>'
-          +'<span class="small">โดย '+escapeHtml(r.staff||'-')+'</span></div></div>';
-      }).join('') + '</div>';
-    }
   }
   list.innerHTML = h;
   if (SHOWDONE && !document.body.classList.contains('dsNoPh')) loadThumbs(done.map(c=>c.id));
@@ -505,7 +551,8 @@ window.viewPhoto = id => {
   const c = byId(id), r = (DAY.checkins||{})[id], src = PH['ci_'+id+'_'+DAYKEY];
   sheet('<h2>'+escapeHtml(c?c.name:'#'+id)+'</h2><div class="small" style="margin-bottom:10px;">'+escapeHtml(c?c.code:'')+' • '+(r?fmtSec(r.ts):'')+' • โดย '+escapeHtml(r&&r.staff||'-')+'</div>'
     + (src ? '<img src="'+src+'" style="width:100%;border-radius:14px;">' : '<div class="hint">ไม่พบรูป</div>')
-    + '<div style="height:10px"></div><button class="btn btn-o btn-block" onclick="closeSheet()">ปิด</button>');
+    + '<div style="height:10px"></div><button class="btn btn-o btn-block" onclick="closeSheet();redo('+id+')">↺ ถ่ายใหม่ (ลบรูปนี้)</button>'
+    + '<div style="height:8px"></div><button class="btn btn-y btn-block" onclick="closeSheet()">ปิด</button>');
 };
 function sheet(h){ $('sheetBody').innerHTML = h; $('sheetModal').classList.add('show'); }
 window.closeSheet = () => $('sheetModal').classList.remove('show');
@@ -660,7 +707,7 @@ function fanfare(full){
 }
 function sfx(k){ if (!SND) return; try { SFX[k] && SFX[k](); } catch(e){} }
 window.nxToggleSnd = () => { SND = !SND; lsSet('nxSnd', SND ? '1' : '0'); nxSndBtn(); if (SND) sfx('ok'); };
-function nxSndBtn(){ const b = $('nxSnd'); if (b) { b.textContent = SND ? '🔊 เสียง' : '🔇 ปิดเสียง'; b.classList.toggle('on', SND); } }
+function nxSndBtn(){ const b = $('nxSnd'); if (b) { b.textContent = SND ? '🔊' : '🔇'; b.classList.toggle('on', SND); } }
 nxSndBtn();
 if (DEMO) $('nxDemoSnd').style.display = '';
 let DSN = 0; window.nxDemoSound = () => { const k = ['win','small'][DSN++ % 2]; const was = SND; SND = true; sfx(k); SND = was; flash(k === 'win' ? '🎺 เสียงฉลอง: Ontime ทุกคน' : '🎺 เสียงฉลอง: ครบแต่มีคน Late'); };
@@ -689,9 +736,9 @@ function nxAfterRender(todo, done, abs, ck, ab){
   document.title = todo.length && act ? '('+todo.length+') ยังไม่ลง — '+CODE : 'DHL eCommerce — Courier Attendance';
   /* ครึ่งทาง */
   const half = Math.ceil(act/2);
-  if (NX.lastDone < half && done.length >= half && NX.mine) { const b = $('nxProg'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); }
+  if (NX.lastDone < half && done.length >= half && NX.mine) { const b = document.querySelector('.nx-ring'); if (b) { b.classList.remove('nx-beat'); void b.offsetWidth; b.classList.add('nx-beat'); } }
   /* ไฮไลต์รายการที่เพิ่งเช็คอิน */
-  if (NX.mine && done.length > NX.lastDone) { const last = done.slice().sort((a,b)=>ck[b.id].ts-ck[a.id].ts)[0]; const el = last && $('dn_'+last.id); if (el) el.classList.add('nx-flash'); }
+  if (NX.mine && done.length > NX.lastDone) { const last = done.slice().sort((a,b)=>ck[b.id].ts-ck[a.id].ts)[0]; const el = last && $('dn_'+last.id); if (el) el.classList.add(el.classList.contains('nx-tile') ? 'nx-pop' : 'nx-flash'); }
   /* ครบทุกคน → ฉลอง (ครั้งเดียวต่อวันต่อเครื่อง เฉพาะตอนที่เพิ่งครบจากการใช้งาน) */
   const key = 'upcCele_'+CODE+'_'+DAYKEY;
   if (act && !todo.length && NX.lastTodo > 0 && NX.mine && (DEMO || lsGet(key) !== '1')) { lsSet(key, '1'); setTimeout(() => nxCelebrate(done, abs, ck, ab), 900); }

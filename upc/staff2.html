@@ -500,7 +500,7 @@ function renderCheckin(){
   /* ===== HERO: วงแหวน + สถานะ ===== */
   const N = act.length || 1, fin = !todo.length && act.length, pctAll = Math.round((done.length+abs.length)/N*100);
   const R = 42, C = 2*Math.PI*R; let off = 0;
-  const seg = [[ontime,'#2e9e57'],[late,'#d64545'],[abs.length,'#8e6bd1']].map(([v,col]) => { if (!v) return ''; const L = v/N*C, sv = '<circle cx="50" cy="50" r="'+R+'" fill="none" stroke="'+col+'" stroke-width="11" stroke-linecap="butt" stroke-dasharray="'+L+' '+C+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 50 50)"/>'; off += L; return sv; }).join('');
+  const seg = [[done.length,'#2e9e57'],[abs.length,'#8e6bd1']]   /* วงแหวน = ความคืบหน้า: ทำแล้ว = เขียว (Ontime/Late ดูที่ป้ายข้าง ๆ) */.map(([v,col]) => { if (!v) return ''; const L = v/N*C, sv = '<circle cx="50" cy="50" r="'+R+'" fill="none" stroke="'+col+'" stroke-width="11" stroke-linecap="butt" stroke-dasharray="'+L+' '+C+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 50 50)"/>'; off += L; return sv; }).join('');
   const state = !act.length ? 'go' : fin ? (late ? 'fin-late' : 'fin-ok') : 'go';
   const head = !act.length ? 'ยังไม่มีรายชื่อ' : fin ? (late ? 'ครบแล้ว ✓' : 'Ontime ทุกคน! 🎉') : 'เหลืออีก <b>'+todo.length+'</b> คน';
   const sum = $('dsSum'); sum.className = 'nx-hero '+state;

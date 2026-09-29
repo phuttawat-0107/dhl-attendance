@@ -275,7 +275,7 @@ function track(p){ PENDING++; badge(); return p.then(()=>{ PENDING--; badge(); }
   try { fb = await initFB('upc-staff'); }
   catch(e){ $('dsErr').textContent = e.message; $('dsLogin').classList.add('show'); return; }
   if (DEMO) {
-    document.body.insertAdjacentHTML('beforeend','<div class="demoRib">🧪 โหมดทดลอง</div>');
+    document.body.insertAdjacentHTML('beforeend','<div class="demoRib" style="cursor:pointer" onclick="window.__resetDemo()">🧪 โหมดทดลอง · แตะเพื่อล้างข้อมูล</div>');
     $('dsDemo').innerHTML = '<div class="demo">🧪 <b>โหมดทดลอง</b> — ข้อมูลจำลอง ไม่กระทบระบบจริง<br>สาขา <b>CNX1</b> PIN <b>111111</b> · <b>KKN1</b> PIN <b>444444</b><br><a href="#" onclick="window.__resetDemo();return false">↺ ล้างข้อมูลทดลอง</a></div>';
   }
   try { PUB = JSON.parse(lsGet('upc_pub')||'{}'); } catch(e){}
@@ -656,7 +656,7 @@ function nxAfterRender(todo, done, abs, ck, ab){
   if (NX.mine && done.length > NX.lastDone) { const last = done.slice().sort((a,b)=>ck[b.id].ts-ck[a.id].ts)[0]; const el = last && $('dn_'+last.id); if (el) el.classList.add('nx-flash'); }
   /* ครบทุกคน → ฉลอง (ครั้งเดียวต่อวันต่อเครื่อง เฉพาะตอนที่เพิ่งครบจากการใช้งาน) */
   const key = 'upcCele_'+CODE+'_'+DAYKEY;
-  if (act && !todo.length && NX.lastTodo > 0 && NX.mine && lsGet(key) !== '1') { lsSet(key, '1'); setTimeout(() => nxCelebrate(done, abs, ck, ab), 900); }
+  if (act && !todo.length && NX.lastTodo > 0 && NX.mine && (DEMO || lsGet(key) !== '1')) { lsSet(key, '1'); setTimeout(() => nxCelebrate(done, abs, ck, ab), 900); }
   if (todo.length === 0) $('nxRem').classList.remove('show');
   NX.lastTodo = todo.length; NX.lastDone = done.length;
 }

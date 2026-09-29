@@ -208,6 +208,11 @@
 .nx-mr .sub{font-size:12px;color:#8a8270;}
 .nx-mb{min-height:38px;min-width:44px;border:1px solid #e6e2d6;background:#fff;border-radius:12px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;padding:0 10px;flex:none;}
 .nx-mb.go{background:#FFCC00;border-color:#FFCC00;}
+#nxBoot{position:fixed;inset:0;z-index:500;background:#FFCC00;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .3s}
+#nxBoot img{width:170px}#nxBoot .t1{font-weight:800;font-size:16px;color:#1a1a1a}#nxBoot .t2{font-size:13px;color:#5c4a00}
+#nxBoot .sp{width:34px;height:34px;border:4px solid rgba(0,0,0,.15);border-top-color:#D40511;border-radius:50%;animation:nxspin .8s linear infinite}
+#nxBoot.out{opacity:0;pointer-events:none}
+@keyframes nxspin{to{transform:rotate(360deg)}}
 /* สีสถานะมาตรฐาน (ทับค่าจาก theme.css ให้ตรงทุกแอป) */
 :root{--st-ok:#2E7D32;--st-ok-bg:#E6F5EB;--st-late:#C62828;--st-late-bg:#FDEAEA;--st-ab:#6A4FB3;--st-ab-bg:#EFE9FB;--st-wait:#B7791F;--st-wait-bg:#FFF4D6;--st-none:#D3D1C7;}
 .chip.ontime{background:var(--st-ok-bg)!important;color:var(--st-ok)!important;}
@@ -219,6 +224,7 @@
 </head>
 <body>
 
+<div id="nxBoot"><img src="logo.webp" alt=""><div class="sp"></div><div class="t1" id="nxBootT">กำลังเปิดแอป…</div><div class="t2">รอสักครู่ ระบบกำลังเชื่อมต่อ</div></div>
 <div id="updBar"></div>
 <div class="topbar">
   <div class="ybar"></div>
@@ -468,6 +474,7 @@ function kicked(msg){ stopAll(); fb.signOut(); $('dsErr').textContent = msg || '
 function stopAll(){ UNS.forEach(u=>u&&u()); UNS=[]; DAYUNS&&DAYUNS(); DAYUNS=null; READY=false; DEP=null; DAY={}; $('dsBadge').classList.remove('on'); }
 
 function afterLogin(){
+  nxBootMsg('กำลังโหลดรายชื่อวันนี้…');
   CODE = lsGet('dsDepot'); STAFF = lsGet('dsStaff'); READY = true;
   $('dsLogin').classList.remove('show');
   $('hdDepCode').textContent = CODE;
@@ -487,7 +494,7 @@ function afterLogin(){
 let STAFFNAMES = [];
 function listenDay(){
   DAYKEY = todayKey(); DAYUNS && DAYUNS(); DAY = {};
-  DAYUNS = fb.listen(`depots/${CODE}/days/${DAYKEY}`, d => { DAY = d || {}; renderCheckin(); });
+  DAYUNS = fb.listen(`depots/${CODE}/days/${DAYKEY}`, d => { DAY = d || {}; renderCheckin(); nxBootDone(); });
 }
 function badge(){
   const b = $('dsBadge'); if (!READY) { b.classList.remove('on'); return; }
@@ -709,6 +716,11 @@ function save(ts, photo){
   }).catch(() => { putPhoto(); return fb.set(path, patch); }));
 }
 
+/* จอโหลดตอนเปิดแอป: ปิดเมื่อข้อมูลวันนี้มาถึง หรือเมื่อต้องเข้าสู่ระบบ · กันค้าง: ปิดเองใน 15 วินาที */
+function nxBootMsg(m){ const e = document.getElementById('nxBootT'); if (e) e.textContent = m; }
+function nxBootDone(){ const b = document.getElementById('nxBoot'); if (!b || b.classList.contains('out')) return; b.classList.add('out'); setTimeout(() => b.remove(), 400); }
+new MutationObserver(() => { if ($('dsLogin').classList.contains('show')) nxBootDone(); }).observe($('dsLogin'), { attributes: true, attributeFilter: ['class'] });
+setTimeout(nxBootDone, 15000);
 /* สวิตช์นำร่อง: หน้าใหม่แสดงเฉพาะดีโป้ใน config/app.pilotDepots (หรือ '*') — ไม่อยู่ในรายการ = กลับหน้าเดิมอัตโนมัติ */
 function nxPilotOn(){ const L = (CFG && CFG.pilotDepots) || []; return L.includes('*') || L.includes(CODE); }
 function nxPilotBack(){
@@ -1135,7 +1147,8 @@ function pilotGo(){
   if (!(L.includes('*') || L.includes(CODE))) return;
   if ($('camOverlay').classList.contains('show')) return;
   try { const now = Date.now(), H = JSON.parse(sessionStorage.getItem('upcPilotHop')||'[]').filter(x => now - x < 60000); if (H.length >= 3) return; H.push(now); sessionStorage.setItem('upcPilotHop', JSON.stringify(H)); } catch(e){ return; }
-  const u = new URL('staff2.html', location.href); u.search = location.search; location.replace(u.toString());
+  document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;z-index:9999;background:#FFCC00;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:inherit"><img src="logo.webp" style="width:170px" alt=""><div style="width:34px;height:34px;border:4px solid rgba(0,0,0,.15);border-top-color:#D40511;border-radius:50%;animation:pgspin .8s linear infinite"></div><div style="font-weight:800;font-size:16px;color:#1a1a1a">กำลังเปิดหน้าตาใหม่…</div><div style="font-size:13px;color:#5c4a00">ใช้ PIN และข้อมูลเดิม ไม่ต้องทำอะไรเพิ่ม</div></div><style>@keyframes pgspin{to{transform:rotate(360deg)}}</style>');
+  const u = new URL('staff2.html', location.href); u.search = location.search; setTimeout(() => location.replace(u.toString()), 150);
 }
 
 /* ================= บังคับอัปเดต + ล้างรูปเก่า ================= */

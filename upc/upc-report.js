@@ -33,7 +33,9 @@ async function collect(ctx) {
   const lateCnt = {}; hist.forEach(h => { const c2 = h.checkins || {}; Object.keys(c2).forEach(x => { if (c2[x] && c2[x].status === 'late') lateCnt[x] = (lateCnt[x] || 0) + 1; }); });
   const risk = Object.keys(lateCnt).filter(x => lateCnt[x] >= 2).map(x => ({ c: byId(x) || { code: '#' + x, name: '' }, n: lateCnt[x] })).sort((a, b) => b.n - a.n);
   /* รูปถ่าย (ต้นฉบับ 640px) */
-  const imgs = await Promise.all(recs.map(async r => { try { const p = await fb.get(`depots/${code}/photos/ci_${r.id}_${key}`); return await loadImg(p && p.d); } catch (e) { return null; } }));
+  /* ลองใหม่สูงสุด 3 ครั้งต่อรูป เผื่อเน็ตสะดุด — รายงานที่ส่งหัวหน้าต้องมีรูปครบ */
+  const getPh = async id => { for (let a = 0; a < 3; a++) { try { const p = await fb.get(`depots/${code}/photos/ci_${id}_${key}`); return p && p.d || null; } catch (e) { await new Promise(r => setTimeout(r, 1200 * (a + 1))); } } return null; };
+  const imgs = await Promise.all(recs.map(async r => { try { return await loadImg(await getPh(r.id)); } catch (e) { return null; } }));
   return { recs, imgs, absent, none, late, on, need: act.length - absent.length, act: act.length, trend, risk };
 }
 

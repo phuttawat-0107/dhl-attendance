@@ -411,15 +411,22 @@ function renderCheckin(){
   list.innerHTML = h;
   if (SHOWDONE && !document.body.classList.contains('dsNoPh')) loadThumbs(done.map(c=>c.id));
 }
+const PHL = new Set();   /* รูปที่กำลังโหลดอยู่ — กันโหลดซ้ำตอนหน้าจอรีเฟรชถี่ */
 async function loadThumbs(ids){
+  /* ถ้ารูปยังไม่ขึ้นคลาวด์ (อีกเครื่องกำลังส่ง) หรือเน็ตสะดุด → ไม่จำว่า "ไม่มีรูป" ไว้ถาวร · แตะเพื่อโหลดใหม่ได้ */
   for (const id of ids) {
-    const k = 'ci_'+id+'_'+DAYKEY; if (k in PH) continue;
-    PH[k] = null;
-    try { const p = await fb.get(`depots/${CODE}/photos/${k}`); PH[k] = p && p.d || null; } catch(e){ PH[k] = null; delete PH[k]; continue; }
+    const k = 'ci_'+id+'_'+DAYKEY; if (PH[k] || PHL.has(k)) continue;
+    PHL.add(k); let got = null;
+    for (let a = 0; a < 3 && !got; a++) {
+      try { const p = await fb.get(`depots/${CODE}/photos/${k}`); got = p && p.d || null; if (!got) break; }
+      catch(e){ await new Promise(r => setTimeout(r, 1200*(a+1))); }
+    }
+    PHL.delete(k); if (got) PH[k] = got;
     const el = $('ph_'+id);
-    if (el) el.outerHTML = PH[k] ? '<img class="photo-thumb" src="'+PH[k]+'" onclick="viewPhoto('+id+')">' : '<span class="photo-thumb" style="display:inline-grid;place-items:center;font-size:10px;color:#D40511;">รูปหาย</span>';
+    if (el) el.outerHTML = got ? '<img class="photo-thumb" src="'+got+'" onclick="viewPhoto('+id+')">' : '<span class="photo-thumb" id="ph_'+id+'" onclick="loadThumbs(['+id+'])" style="display:inline-grid;place-items:center;font-size:10px;color:#8a6100;cursor:pointer;text-align:center;line-height:1.2;">↻ แตะ<br>โหลดรูป</span>';
   }
 }
+window.loadThumbs = loadThumbs;
 window.viewPhoto = id => {
   const c = byId(id), r = (DAY.checkins||{})[id], src = PH['ci_'+id+'_'+DAYKEY];
   sheet('<h2>'+escapeHtml(c?c.name:'#'+id)+'</h2><div class="small" style="margin-bottom:10px;">'+escapeHtml(c?c.code:'')+' • '+(r?fmtSec(r.ts):'')+' • โดย '+escapeHtml(r&&r.staff||'-')+'</div>'
@@ -531,7 +538,7 @@ async function renderHist(){
 let HIST = {};
 /* รายงานประจำวัน (ภาพเดียว มีรูปทุกคน) → ส่งผู้บังคับบัญชา */
 window.openReport = async k => {
-  const m = await import('./upc-report.js?v=2');
+  const m = await import('./upc-report.js?v=3');
   m.openReport({ fb, code: CODE, key: k || DAYKEY, dep: DEP, roster: couriers(), staff: STAFF, sheet, flash, thDate, fmtTime, hmCut, cutOf, ymd });
 };
 window.openDay = k => {

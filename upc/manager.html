@@ -469,16 +469,23 @@ function openDep(dep, refresh){
   loadThumbs(dep, ins.map(p=>p.id));
 }
 async function loadThumbs(dep, ids){
+  /* โหลดรูปทีละ 6 ใบ · ถ้าเน็ตสะดุดจะลองใหม่เอง 3 ครั้ง · ถ้ายังไม่ได้ ให้แตะเพื่อโหลดใหม่ (รูปไม่ได้หาย) */
   for (let i = 0; i < ids.length; i += 6) {
-    await Promise.all(ids.slice(i, i+6).map(async id => {
-      const k = dep+'|'+id; if (PH[k]) return;
-      try { const p = await fb.get(`depots/${dep}/photos/ci_${id}_${TKEY}`); if (p && p.d) PH[k] = p.d; } catch(e){}
-      const el = document.getElementById('th_'+dep+'_'+id);
-      if (el) el.outerHTML = PH[k] ? '<img class="thumb" src="'+PH[k]+'" onclick="window.__zoomImg(\''+k+'\')">' : '<div class="thumb" style="display:grid;place-items:center;font-size:9.5px;color:#b3121d;font-weight:800;text-align:center;">รูปหาย</div>';
-      if (PH[k]) zoomSrc[k] = PH[k];
-    }));
+    await Promise.all(ids.slice(i, i+6).map(id => loadThumb(dep, id)));
   }
 }
+async function loadThumb(dep, id){
+  const k = dep+'|'+id; let miss = false;
+  if (!PH[k]) for (let a = 0; a < 3 && !PH[k]; a++) {
+    try { const p = await fb.get(`depots/${dep}/photos/ci_${id}_${TKEY}`); if (p && p.d) PH[k] = p.d; else { miss = true; break; } }
+    catch(e){ await new Promise(r => setTimeout(r, 1200*(a+1))); }
+  }
+  const el = document.getElementById('th_'+dep+'_'+id);
+  if (el) el.outerHTML = PH[k] ? '<img class="thumb" src="'+PH[k]+'" onclick="window.__zoomImg(\''+k+'\')">'
+    : '<div class="thumb" id="th_'+esc(dep)+'_'+esc(String(id))+'" onclick="window.__reThumb(\''+esc(dep)+'\',\''+esc(String(id))+'\')" style="display:grid;place-items:center;font-size:9.5px;color:'+(miss?'#8a6100':'#b3121d')+';font-weight:800;text-align:center;cursor:pointer;line-height:1.25;">'+(miss?'รอรูป<br>แตะโหลด':'↻ แตะ<br>โหลดใหม่')+'</div>';
+  if (PH[k]) zoomSrc[k] = PH[k];
+}
+window.__reThumb = (dep, id) => { const el = document.getElementById('th_'+dep+'_'+id); if (el) el.innerHTML = '⏳'; loadThumb(dep, id); };
 
 /* ================= ⚙️ ผู้ดูแลระบบ (Admin) ================= */
 let ADM = 'dep', MGRS = [], STAFFN = {};

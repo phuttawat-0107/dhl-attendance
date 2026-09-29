@@ -102,6 +102,8 @@
 .nx-bar i{display:block;height:100%;background:#2e9e57;border-radius:6px;transition:width .4s;}
 .nx-bar i.pulse{animation:nxpulse .8s 2;}
 .nx-date{font-size:11.5px;color:#8a8270;}
+#nxSnd{border:1px solid #e6e2d6;background:#fff;border-radius:12px;padding:0 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:40px;}
+#nxSnd.on{background:#fff8d9;border-color:#f0d56a;}
 @media (prefers-reduced-motion: reduce){ #nxPop,.nx-box,.nx-medal,#nxCele *{animation:none!important;transition:none!important;} }
 </style>
 </head>
@@ -133,7 +135,7 @@
   </div>
   <div id="nxRemBar"></div>
   <button class="btn btn-r btn-block" style="margin:0 0 12px;" onclick="tryReport()">📄 สร้างรายงานวันนี้ (ส่งหัวหน้า)</button>
-  <div id="dsGrpBar"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" onclick="dsTogglePhoto()">📷 ซ่อนรูป</button></div>
+  <div id="dsGrpBar"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" onclick="dsTogglePhoto()">📷 ซ่อนรูป</button><button id="nxSnd" type="button" onclick="nxToggleSnd()">🔊 เสียง</button></div>
   <div id="ciList"></div>
 </div>
 
@@ -606,6 +608,27 @@ function nxCutTick(){ const e = $('nxCut'); if (!e || !DEP) return; const K = cu
 setInterval(nxCutTick, 15000);
 const firstName = n => String(n||'').replace(/^K\./,'').split(' ')[0];
 let popT = null;
+/* ---- เสียง: สร้างด้วย Web Audio (ไม่โหลดไฟล์ ไม่กินเน็ต) · เปิด/ปิดได้ · จำค่าในเครื่อง ---- */
+let ACX = null, SND = lsGet('nxSnd') !== '0';
+function acx(){ try { if (!ACX) ACX = new (window.AudioContext || window.webkitAudioContext)(); if (ACX.state === 'suspended') ACX.resume(); } catch(e){ ACX = null; } return ACX; }
+function tone(f, t0, dur, type, vol, f2){ const c = acx(); if (!c) return; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + t0;
+  o.type = type || 'triangle'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || .18, t + .006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + .02); }
+const SFX = {
+  tap:   () => { tone(2200, 0, .035, 'square', .05, 1500); tone(1300, .004, .05, 'triangle', .08); },
+  ok:    () => { tone(1047, 0, .09, 'triangle', .2); tone(1568, .08, .16, 'triangle', .2); tone(3136, .08, .12, 'sine', .04); },
+  late:  () => { tone(659, 0, .16, 'triangle', .15); },
+  bell:  () => { tone(880, 0, .12, 'triangle', .16); tone(880, .16, .16, 'triangle', .16); },
+  win:   () => { [523,659,784,1047,1319].forEach((f,i) => tone(f, i*.075, .16, 'triangle', .17)); [1047,1319,1568].forEach(f => tone(f, .42, .5, 'triangle', .11)); tone(2093, .42, .35, 'sine', .05); },
+  small: () => { [784,1047].forEach((f,i) => tone(f, i*.09, .18, 'triangle', .15)); }
+};
+function sfx(k){ if (!SND) return; try { SFX[k] && SFX[k](); } catch(e){} }
+window.nxToggleSnd = () => { SND = !SND; lsSet('nxSnd', SND ? '1' : '0'); nxSndBtn(); if (SND) sfx('ok'); };
+function nxSndBtn(){ const b = $('nxSnd'); if (b) { b.textContent = SND ? '🔊 เสียง' : '🔇 ปิดเสียง'; b.classList.toggle('on', SND); } }
+nxSndBtn();
+/* เสียงคลิกเวลากดปุ่ม / การ์ด */
+document.addEventListener('pointerdown', e => { if (e.target.closest('button, .nx-todo, .nx-who, .nav button, label.btn, #dsDoneHdr, .hrow')) sfx('tap'); }, { passive: true });
 function nxPop(c, ts, status, photo){
   const ok = status !== 'late', e = $('nxPop');
   $('nxPopImg').src = photo || ''; $('nxPopT1').textContent = c.name;
@@ -615,6 +638,7 @@ function nxPop(c, ts, status, photo){
   e.classList.toggle('late', !ok); e.classList.remove('on'); void e.offsetWidth; e.classList.add('on');
   clearTimeout(popT); popT = setTimeout(nxPopHide, 2300);
   try { navigator.vibrate && navigator.vibrate(ok ? [40] : [20,60,20]); } catch(x){}
+  setTimeout(() => sfx(ok ? 'ok' : 'late'), 120);
 }
 function nxPopHide(){ $('nxPop').classList.remove('on'); }
 
@@ -648,7 +672,7 @@ function nxCelebrate(done, abs, ck, ab){
   const m = $('nxCeleMsg');
   if (perfect) m.style.display = 'none';
   else { m.style.display = 'block'; m.innerHTML = 'อย่าลืมโฟกัสการสื่อสารกับผู้ที่มาสายน้าา<br>' + late.sort((a,b)=>ck[a.id].ts-ck[b.id].ts).map(c => '<span class="lc">'+escapeHtml(firstName(c.name))+' · '+fmtTime(ck[c.id].ts)+'</span>').join(''); }
-  $('nxCele').classList.add('show'); nxConfetti(perfect ? 90 : 30);
+  $('nxCele').classList.add('show'); nxConfetti(perfect ? 90 : 30); sfx(perfect ? 'win' : 'small');
 }
 window.nxCloseCele = () => $('nxCele').classList.remove('show');
 function nxConfetti(n){
@@ -666,7 +690,7 @@ window.nxShowRem = fromReport => {
   $('nxRemSub').textContent = (nxPast() ? 'เลยเวลาเข้างาน '+hmCut(cutOf(DEP))+' น. แล้ว · ' : '') + 'ยังไม่ลงเวลา '+n.length+' คน — แตะชื่อเพื่อไปลงข้อมูล';
   $('nxRemList').innerHTML = n.map(c => '<div class="nx-who" onclick="nxGoTo('+c.id+')">'+escapeHtml(c.name)+'<span>ไปที่คนนี้ ›</span></div>').join('');
   $('nxRemBtns').innerHTML = fromReport === true ? '<button class="nx-o" onclick="nxCloseRem()">กลับไปลงข้อมูล</button><button class="nx-r" onclick="nxCloseRem();openReport()">ส่งรายงานเลย</button>' : '<button class="nx-o" onclick="nxCloseRem()">ดูทีหลัง</button>';
-  $('nxRem').classList.add('show'); try { navigator.vibrate && navigator.vibrate([80,60,80]); } catch(x){}
+  $('nxRem').classList.add('show'); sfx('bell'); try { navigator.vibrate && navigator.vibrate([80,60,80]); } catch(x){}
 };
 window.nxCloseRem = () => $('nxRem').classList.remove('show');
 window.nxGoTo = id => { nxCloseRem(); if (!$('view-checkin').classList.contains('active')) nav('checkin'); if ($('ciSearch').value) { $('ciSearch').value=''; renderCheckin(); }

@@ -45,7 +45,7 @@ export async function drawReport(ctx) {
   const S = await collect(ctx);
   const font = getComputedStyle(document.body).fontFamily || 'sans-serif';
   const F = (w, s) => w + ' ' + s + 'px ' + font;
-  const n = S.recs.length, COLS = colsFor(n), GAP = 14, CELL = (W - P * 2 - (COLS - 1) * GAP) / COLS, CAP = 58, CELLH = CELL + CAP;
+  const n = S.recs.length, COLS = colsFor(n), GAP = 14, CELL = (W - P * 2 - (COLS - 1) * GAP) / COLS, CAP = 58, IH = Math.round(CELL * 4 / 3), CELLH = IH + CAP;   /* ช่องรูปสัดส่วน 3:4 เท่ารูปถ่ายจริง — เห็นทั้งตัว ไม่ตัดหัว/เท้า */
   const rows = Math.ceil(n / COLS);
   const riskH = S.risk.length ? 70 + S.risk.length * 32 : 80;
   const listN = S.absent.length + S.none.length;
@@ -115,16 +115,16 @@ export async function drawReport(ctx) {
   if (!n) { x.fillStyle = '#bbb'; x.font = F('400', 22); x.fillText('ยังไม่มีการเช็คอิน', P + 10, gy + 50); }
   S.recs.forEach((r, i) => {
     const col = i % COLS, row = Math.floor(i / COLS), cx = P + col * (CELL + GAP), cy = gy + row * (CELLH + 16);
-    x.fillStyle = '#f2f2f2'; rr(x, cx, cy, CELL, CELL, 12); x.fill();
+    x.fillStyle = '#f2f2f2'; rr(x, cx, cy, CELL, IH, 12); x.fill();
     const im = S.imgs[i];
-    if (im) { x.save(); rr(x, cx, cy, CELL, CELL, 12); x.clip(); const sc = Math.max(CELL / im.width, CELL / im.height);
-      x.drawImage(im, cx + (CELL - im.width * sc) / 2, cy + (CELL - im.height * sc) / 2, im.width * sc, im.height * sc); x.restore(); }
-    else { x.fillStyle = '#aaa'; x.font = F('400', 15); x.textAlign = 'center'; x.fillText('ไม่มีรูป', cx + CELL / 2, cy + CELL / 2); x.textAlign = 'left'; }
+    if (im) { x.save(); rr(x, cx, cy, CELL, IH, 12); x.clip(); const sc = Math.min(CELL / im.width, IH / im.height);   /* ย่อให้พอดีทั้งภาพ (ไม่ครอป) */
+      x.drawImage(im, cx + (CELL - im.width * sc) / 2, cy + (IH - im.height * sc) / 2, im.width * sc, im.height * sc); x.restore(); }
+    else { x.fillStyle = '#aaa'; x.font = F('400', 15); x.textAlign = 'center'; x.fillText('ไม่มีรูป', cx + CELL / 2, cy + IH / 2); x.textAlign = 'left'; }
     const ok = r.status !== 'late', cc = ok ? C.g : C.r;
-    x.fillStyle = cc; rr(x, cx, cy + CELL + 6, 6, CAP - 12, 3); x.fill();
-    x.fillStyle = C.k; x.font = F('700', COLS >= 6 ? 13 : 16); x.fillText(trunc(x, r.c.name, CELL - 18), cx + 14, cy + CELL + 25);
+    x.fillStyle = cc; rr(x, cx, cy + IH + 6, 6, CAP - 12, 3); x.fill();
+    x.fillStyle = C.k; x.font = F('700', COLS >= 6 ? 13 : 16); x.fillText(trunc(x, r.c.name, CELL - 18), cx + 14, cy + IH + 25);
     x.fillStyle = cc; x.font = F('700', COLS >= 6 ? 12 : 15);
-    x.fillText(trunc(x, r.c.code + '  ' + fmtTime(r.ts) + (ok ? '  ✔' : '  Late'), CELL - 18), cx + 14, cy + CELL + 46);
+    x.fillText(trunc(x, r.c.code + '  ' + fmtTime(r.ts) + (ok ? '  ✔' : '  Late'), CELL - 18), cx + 14, cy + IH + 46);
   });
   y = gy + (n ? rows * (CELLH + 16) + 40 : 110);
 

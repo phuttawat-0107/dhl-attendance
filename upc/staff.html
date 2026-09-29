@@ -24,6 +24,8 @@
 #dsBadge.off{background:#D40511 !important;color:#fff !important;}
 #updBar{display:none;background:#D40511;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:700;}
 #camFile{display:none;}
+/* รูปย่อ: สัดส่วน 3:4 เท่ารูปจริง แสดงทั้งภาพ ไม่ครอปหัว/เท้า */
+.photo-thumb{width:42px !important;height:56px !important;object-fit:contain !important;background:#f3f0e7 !important;}
 .cam-flip.fb{width:auto;padding:0 14px;border-radius:22px;font-size:14px;font-weight:700;}
 .hrow{cursor:pointer;}
 </style>
@@ -532,7 +534,7 @@ async function renderHist(){
 let HIST = {};
 /* รายงานประจำวัน (ภาพเดียว มีรูปทุกคน) → ส่งผู้บังคับบัญชา */
 window.openReport = async k => {
-  const m = await import('./upc-report.js?v=3');
+  const m = await import('./upc-report.js?v=4');
   m.openReport({ fb, code: CODE, key: k || DAYKEY, dep: DEP, roster: couriers(), staff: STAFF, sheet, flash, thDate, fmtTime, hmCut, cutOf, ymd });
 };
 window.openDay = k => {

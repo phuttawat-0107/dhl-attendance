@@ -91,6 +91,17 @@
 #nxCele .b1{background:var(--r);color:#fff;}
 #nxCele .b2{background:transparent;color:#3b2f00;margin-top:4px;}
 @keyframes nxup{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+/* กล่องสรุปเดียว */
+#dsSum{flex-direction:column;align-items:stretch;gap:8px;padding:13px 15px;}
+#dsSum .nx-s1{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+#dsSum .pv{font-size:30px;}
+.nx-cut{text-align:right;font-size:12px;font-weight:700;border-radius:12px;padding:6px 10px;line-height:1.3;white-space:nowrap;}
+.nx-cut b{display:block;font-size:17px;font-weight:900;}
+.nx-cut.ok{background:#e6f5eb;color:#2e7d32;}.nx-cut.warn{background:#fff4d6;color:#8a6100;}.nx-cut.late{background:#fdeaea;color:#c62828;}
+.nx-bar{height:10px;background:rgba(0,0,0,.08);border-radius:6px;overflow:hidden;}
+.nx-bar i{display:block;height:100%;background:#2e9e57;border-radius:6px;transition:width .4s;}
+.nx-bar i.pulse{animation:nxpulse .8s 2;}
+.nx-date{font-size:11.5px;color:#8a8270;}
 @media (prefers-reduced-motion: reduce){ #nxPop,.nx-box,.nx-medal,#nxCele *{animation:none!important;transition:none!important;} }
 </style>
 </head>
@@ -107,13 +118,14 @@
 
 <!-- ============ CHECK-IN ============ -->
 <div class="view active" id="view-checkin">
-  <div class="card" id="clockCard">
+  <div id="dsSum" class="go"></div>
+  <div class="card" id="clockCard" style="display:none">
     <div class="bigclock">
       <div class="t" id="bigTime">--:--:--</div>
       <div class="m" id="bigMsg">เวลาเข้างาน 07:00 น.</div>
     </div>
   </div>
-  <div class="card">
+  <div class="card" style="display:none">
     <h2>เช็คอินเข้างานวันนี้ <span class="small" id="ciDate"></span></h2>
     <div class="small">Staff เป็นผู้ถ่ายภาพและบันทึกเวลา</div>
     <div class="progress-wrap"><div class="progress-bar" id="ciProg" style="width:0%"></div></div>
@@ -121,7 +133,6 @@
   </div>
   <div id="nxRemBar"></div>
   <button class="btn btn-r btn-block" style="margin:0 0 12px;" onclick="tryReport()">📄 สร้างรายงานวันนี้ (ส่งหัวหน้า)</button>
-  <div id="dsSum" class="go"></div>
   <div id="dsGrpBar"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" onclick="dsTogglePhoto()">📷 ซ่อนรูป</button></div>
   <div id="ciList"></div>
 </div>
@@ -423,8 +434,10 @@ function renderCheckin(){
   $('ciProgTxt').textContent = 'เช็คอินแล้ว '+done.length+'/'+denom+' คน' + (abs.length ? ' • ขาด/ลา '+abs.length+' คน' : '');
   const pct = denom ? Math.round(done.length/denom*100) : 0, all = denom && done.length >= denom;
   const sum = $('dsSum'); sum.className = all ? 'ok' : 'go';
-  sum.innerHTML = '<div><div class="pv">'+pct+'%</div><div class="ps">เช็คอินแล้ว '+done.length+'/'+denom+' คน'+(late?' <span class="lt">· Late '+late+'</span>':'')+'</div></div>'
-    + '<div><div class="tl">เวลา</div><div class="tv" id="dsSumT">'+fmtTime(Date.now())+'</div></div>';
+  sum.innerHTML = '<div class="nx-s1"><div><div class="pv">'+pct+'%</div><div class="ps">เช็คอินแล้ว '+done.length+'/'+denom+' คน'+(late?' <span class="lt">· Late '+late+'</span>':'')+(abs.length?' · ขาด/ลา '+abs.length:'')+'</div></div>'
+    + '<div class="nx-cut" id="nxCut"></div></div><div class="nx-bar"><i id="nxProg" style="width:'+(act.length?Math.round((done.length+abs.length)/act.length*100):0)+'%"></i></div>'
+    + '<div class="nx-date">'+thDate(todayKey())+'</div>';
+  nxCutTick();
 
   const list = $('ciList');
   if (!act.length) { list.innerHTML = '<div class="hint">ยังไม่มีรายชื่อพนักงาน — ไปที่แท็บ <b>จัดการ</b> เพื่อเพิ่มรายชื่อสาขาของคุณก่อน</div>'; return; }
@@ -586,6 +599,11 @@ function save(ts, photo){
 const NX = { mine:false, lastTodo:null, lastDone:0, remSlot:null, notiSlot:null };
 const secNow = () => { const s = new Date(); return s.getHours()*3600+s.getMinutes()*60+s.getSeconds(); };
 const nxPast = () => !!DEP && secNow() > cutOf(DEP);
+/* สถานะเวลาเข้างาน (ใช้แทนนาฬิกาใหญ่ — เวลาปัจจุบันดูที่มุมขวาบน) */
+function nxCutTick(){ const e = $('nxCut'); if (!e || !DEP) return; const K = cutOf(DEP), s = secNow();
+  e.className = 'nx-cut ' + (s > K ? 'late' : s >= K - 600 ? 'warn' : 'ok');
+  e.innerHTML = (s > K ? 'เลยเวลาเข้างาน' : s >= K - 600 ? 'ใกล้เวลาเข้างาน' : 'เวลาเข้างาน') + '<b>' + hmCut(K) + ' น.</b>'; }
+setInterval(nxCutTick, 15000);
 const firstName = n => String(n||'').replace(/^K\./,'').split(' ')[0];
 let popT = null;
 function nxPop(c, ts, status, photo){
@@ -609,7 +627,7 @@ function nxAfterRender(todo, done, abs, ck, ab){
   document.title = todo.length && act ? '('+todo.length+') ยังไม่ลง — '+CODE : 'DHL eCommerce — Courier Attendance';
   /* ครึ่งทาง */
   const half = Math.ceil(act/2);
-  if (NX.lastDone < half && done.length >= half && NX.mine) { const b = $('ciProg'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); }
+  if (NX.lastDone < half && done.length >= half && NX.mine) { const b = $('nxProg'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); }
   /* ไฮไลต์รายการที่เพิ่งเช็คอิน */
   if (NX.mine && done.length > NX.lastDone) { const last = done.slice().sort((a,b)=>ck[b.id].ts-ck[a.id].ts)[0]; const el = last && $('dn_'+last.id); if (el) el.classList.add('nx-flash'); }
   /* ครบทุกคน → ฉลอง (ครั้งเดียวต่อวันต่อเครื่อง เฉพาะตอนที่เพิ่งครบจากการใช้งาน) */

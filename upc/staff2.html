@@ -13,7 +13,7 @@
 /* เสริมเล็กน้อยสำหรับ UPC — ใช้คลาส/สีเดียวกับต้นฉบับ */
 .dsAbsBtnC{border:1px solid #e6c9c9;background:#fff5f5;color:#a3151f;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap;min-height:44px;}
 #dsLogin #dsDepQ{letter-spacing:1px;text-align:left;text-transform:uppercase;font-weight:700;}
-#dsLogin #dsDepQ.ok{border:2px solid #2e9e57;background:#f1faf4;}
+#dsLogin #dsDepQ.ok{border:2px solid #2E7D32;background:#f1faf4;}
 #dsDepList{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 10px;}
 #dsDepList button{border:1px solid #e0d6bf;background:#fff;border-radius:10px;padding:8px 12px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;min-height:40px;}
 #dsDepList button small{font-weight:400;color:#888;margin-left:4px;}
@@ -30,7 +30,7 @@
 /* ===== UI ใหม่ (เฟส 1) ===== */
 .nx-todo{display:flex;align-items:center;gap:12px;background:#fff;border:2px solid var(--y);border-radius:18px;padding:12px;margin-bottom:9px;cursor:pointer;transition:transform .1s;animation:fadeUp .2s ease;}
 .nx-todo:active{transform:scale(.98);}
-.nx-todo.over{border-color:var(--r);background:#fff8f8;}
+.nx-todo.over{border-color:#C62828;background:#FDEAEA;}
 .nx-cam{width:54px;height:54px;border-radius:15px;background:var(--y);display:grid;place-items:center;flex:none;font-size:26px;}
 .nx-todo .info{flex:1;min-width:0;}
 .nx-todo .nm{font-weight:800;font-size:16px;}
@@ -39,9 +39,9 @@
 .nx-ab{border:1px solid #d9d4c7;background:#fff;border-radius:10px;padding:6px 10px;font:inherit;font-size:12px;font-weight:700;color:#666;cursor:pointer;min-height:34px;}
 .nx-hl{animation:nxhl 1.4s 2;}
 @keyframes nxhl{0%,100%{box-shadow:0 0 0 0 rgba(212,5,17,0)}50%{box-shadow:0 0 0 7px rgba(212,5,17,.35)}}
-.nx-rem-bar{background:#fdeaea;color:#b3121d;border-radius:14px;padding:11px 13px;font-weight:800;font-size:13.5px;margin:0 0 10px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center;}
-.nx-rem-bar small{font-weight:700;color:#8a1c1c;}
-#nxNotiBtn{border:0;background:#fff;border-radius:10px;padding:6px 10px;font:inherit;font-size:12px;font-weight:800;color:#b3121d;cursor:pointer;white-space:nowrap;}
+.nx-rem-bar{background:#fdeaea;color:#C62828;border-radius:14px;padding:11px 13px;font-weight:800;font-size:13.5px;margin:0 0 10px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center;}
+.nx-rem-bar small{font-weight:700;color:#C62828;}
+#nxNotiBtn{border:0;background:#fff;border-radius:10px;padding:6px 10px;font:inherit;font-size:12px;font-weight:800;color:#C62828;cursor:pointer;white-space:nowrap;}
 .progress-bar.pulse{animation:nxpulse .8s 2;}
 @keyframes nxpulse{50%{filter:brightness(1.35)}}
 /* การ์ดเด้งหลังถ่ายรูป */
@@ -97,9 +97,9 @@
 #dsSum .pv{font-size:30px;}
 .nx-cut{text-align:right;font-size:12px;font-weight:700;border-radius:12px;padding:6px 10px;line-height:1.3;white-space:nowrap;}
 .nx-cut b{display:block;font-size:17px;font-weight:900;}
-.nx-cut.ok{background:#e6f5eb;color:#2e7d32;}.nx-cut.warn{background:#fff4d6;color:#8a6100;}.nx-cut.late{background:#fdeaea;color:#c62828;}
+.nx-cut.ok{background:#e6f5eb;color:#2e7d32;}.nx-cut.warn{background:#fff4d6;color:#B7791F;}.nx-cut.late{background:#fdeaea;color:#c62828;}
 .nx-bar{height:10px;background:rgba(0,0,0,.08);border-radius:6px;overflow:hidden;}
-.nx-bar i{display:block;height:100%;background:#2e9e57;border-radius:6px;transition:width .4s;}
+.nx-bar i{display:block;height:100%;background:#2E7D32;border-radius:6px;transition:width .4s;}
 .nx-bar i.pulse{animation:nxpulse .8s 2;}
 .nx-date{font-size:11.5px;color:#8a8270;}
 #nxSnd{border:1px solid #e6e2d6;background:#fff;border-radius:12px;padding:0 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:40px;}
@@ -119,10 +119,10 @@
 .nx-hr .nx-cut{align-self:flex-start;text-align:left;padding:4px 9px;font-size:11.5px;}
 .nx-hr .nx-cut b{display:inline;font-size:13px;margin-left:4px;}
 .nx-head{font-size:19px;font-weight:900;line-height:1.15;}
-.nx-head b{font-size:26px;color:var(--r);}
+.nx-head b{font-size:26px;color:#B7791F;}
 .nx-chips{display:flex;flex-wrap:wrap;gap:5px;}
 .nx-chips span{font-size:11.5px;font-weight:800;padding:3px 8px;border-radius:9px;background:rgba(255,255,255,.75);}
-.c-ok{color:#2e7d32;}.c-late{color:#c62828;}.c-ab{color:#5b3fa6;}.c-wait{color:#8a6100;}
+.c-ok{color:#2e7d32;}.c-late{color:#c62828;}.c-ab{color:#6A4FB3;}.c-wait{color:#B7791F;}
 /* ปุ่มรายงาน: รองลงมาจนกว่าจะครบ แล้วค่อยเด่น */
 .nx-rep{width:100%;border:2px solid var(--r);background:#fff;color:var(--r);border-radius:16px;padding:12px;font:inherit;font-weight:800;font-size:15px;cursor:pointer;margin:0 0 12px;}
 .nx-rep.ready{background:var(--r);color:#fff;box-shadow:0 6px 16px rgba(212,5,17,.3);animation:nxglow 1.8s ease-in-out infinite;}
@@ -154,7 +154,7 @@
 .nx-th b{display:block;font-size:17px;font-weight:900;}.nx-th span{font-size:12px;color:#8a8270;}
 .nx-avg{font-size:24px;font-weight:900;text-align:right;line-height:1;padding:6px 10px;border-radius:14px;}
 .nx-avg small{display:block;font-size:10.5px;font-weight:700;margin-top:3px;}
-.nx-avg.ok{background:#e6f5eb;color:#2e7d32;}.nx-avg.mid{background:#fff4d6;color:#8a6100;}.nx-avg.bad{background:#fdeaea;color:#c62828;}
+.nx-avg.ok{background:#e6f5eb;color:#2e7d32;}.nx-avg.mid{background:#fff4d6;color:#B7791F;}.nx-avg.bad{background:#fdeaea;color:#c62828;}
 .nx-tbars{display:flex;align-items:flex-end;gap:6px;height:130px;padding-top:4px;}
 .nx-tb{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;}
 .nx-tb i{display:block;width:70%;border-radius:7px 7px 3px 3px;min-height:4px;transition:height .5s;}
@@ -167,6 +167,12 @@
 .nx-tr small{color:#999;font-weight:600;}.nx-tr span{font-size:12px;font-weight:800;padding:2px 8px;border-radius:8px;background:#f6f3ea;white-space:nowrap;}
 .nx-tr.ok{color:#2e7d32;}
 @keyframes nxtile{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
+/* สีสถานะมาตรฐาน (ทับค่าจาก theme.css ให้ตรงทุกแอป) */
+:root{--st-ok:#2E7D32;--st-ok-bg:#E6F5EB;--st-late:#C62828;--st-late-bg:#FDEAEA;--st-ab:#6A4FB3;--st-ab-bg:#EFE9FB;--st-wait:#B7791F;--st-wait-bg:#FFF4D6;--st-none:#D3D1C7;}
+.chip.ontime{background:var(--st-ok-bg)!important;color:var(--st-ok)!important;}
+.chip.late{background:var(--st-late-bg)!important;color:var(--st-late)!important;}
+.dsAbsTag{background:var(--st-ab-bg)!important;color:var(--st-ab)!important;}
+.dsAbsRow{border-left-color:var(--st-ab)!important;}
 @media (prefers-reduced-motion: reduce){ #nxPop,.nx-box,.nx-medal,#nxCele *{animation:none!important;transition:none!important;} }
 </style>
 </head>
@@ -500,7 +506,7 @@ function renderCheckin(){
   /* ===== HERO: วงแหวน + สถานะ ===== */
   const N = act.length || 1, fin = !todo.length && act.length, pctAll = Math.round((done.length+abs.length)/N*100);
   const R = 42, C = 2*Math.PI*R; let off = 0;
-  const seg = [[done.length,'#2e9e57'],[abs.length,'#8e6bd1']]   /* วงแหวน = ความคืบหน้า: ทำแล้ว = เขียว (Ontime/Late ดูที่ป้ายข้าง ๆ) */.map(([v,col]) => { if (!v) return ''; const L = v/N*C, sv = '<circle cx="50" cy="50" r="'+R+'" fill="none" stroke="'+col+'" stroke-width="11" stroke-linecap="butt" stroke-dasharray="'+L+' '+C+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 50 50)"/>'; off += L; return sv; }).join('');
+  const seg = [[done.length,'#2E7D32'],[abs.length,'#6A4FB3']]   /* วงแหวน = ความคืบหน้า: ทำแล้ว = เขียว (Ontime/Late ดูที่ป้ายข้าง ๆ) */.map(([v,col]) => { if (!v) return ''; const L = v/N*C, sv = '<circle cx="50" cy="50" r="'+R+'" fill="none" stroke="'+col+'" stroke-width="11" stroke-linecap="butt" stroke-dasharray="'+L+' '+C+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 50 50)"/>'; off += L; return sv; }).join('');
   const state = !act.length ? 'go' : fin ? (late ? 'fin-late' : 'fin-ok') : 'go';
   const head = !act.length ? 'ยังไม่มีรายชื่อ' : fin ? (late ? 'ครบแล้ว ✓' : 'Ontime ทุกคน! 🎉') : 'เหลืออีก <b>'+todo.length+'</b> คน';
   const sum = $('dsSum'); sum.className = 'nx-hero '+state;
@@ -560,7 +566,7 @@ async function loadThumbs(ids){
     }
     PHL.delete(k); if (got) PH[k] = got;
     const el = $('ph_'+id);
-    if (el) el.outerHTML = got ? '<img class="photo-thumb" src="'+got+'" onclick="viewPhoto('+id+')">' : '<span class="photo-thumb" id="ph_'+id+'" onclick="loadThumbs(['+id+'])" style="display:inline-grid;place-items:center;font-size:10px;color:#8a6100;cursor:pointer;text-align:center;line-height:1.2;">↻ แตะ<br>โหลดรูป</span>';
+    if (el) el.outerHTML = got ? '<img class="photo-thumb" src="'+got+'" onclick="viewPhoto('+id+')">' : '<span class="photo-thumb" id="ph_'+id+'" onclick="loadThumbs(['+id+'])" style="display:inline-grid;place-items:center;font-size:10px;color:#B7791F;cursor:pointer;text-align:center;line-height:1.2;">↻ แตะ<br>โหลดรูป</span>';
   }
 }
 window.loadThumbs = loadThumbs;
@@ -854,7 +860,7 @@ function nxTrend(L){
     Object.keys(x.absent||{}).forEach(id => abCnt[id] = (abCnt[id]||0)+1);
     tOn += ids.length - l.length; tN += ids.length;
     const p = ids.length ? Math.round((ids.length - l.length)/ids.length*100) : null, [,m,d] = x.date.split('-'), today = x.date === todayKey();
-    const col = p == null ? '#ddd' : p >= 95 ? '#2e9e57' : p >= 80 ? '#e0a800' : '#d64545';
+    const col = p == null ? '#ddd' : p >= 95 ? '#2E7D32' : p >= 80 ? '#B7791F' : '#C62828';
     return '<div class="nx-tb'+(today?' today':'')+'"><span class="v">'+(p==null?'—':p+'%')+'</span><i style="height:'+(p==null?4:Math.max(6,p))+'%;background:'+col+'"></i><span class="d">'+(+d)+'/'+(+m)+'</span></div>';
   }).join('');
   const avg = tN ? Math.round(tOn/tN*100) : null;
@@ -863,7 +869,7 @@ function nxTrend(L){
   const nm = id => { const c = byId(id); return c ? escapeHtml(c.name)+' <small>'+escapeHtml(c.code)+'</small>' : '#'+escapeHtml(id); };
   return '<div class="nx-trend"><div class="nx-th"><div><b>แนวโน้มทีม</b><span>'+days.length+' วันทำงานล่าสุด</span></div>'
     + (avg == null ? '' : '<div class="nx-avg '+(avg>=95?'ok':avg>=80?'mid':'bad')+'">'+avg+'%<small>Ontime เฉลี่ย</small></div>') + '</div>'
-    + '<div class="nx-tbars">'+bars+'</div><div class="nx-tleg"><span><i style="background:#2e9e57"></i>≥95%</span><span><i style="background:#e0a800"></i>80–94%</span><span><i style="background:#d64545"></i>&lt;80%</span></div>'
+    + '<div class="nx-tbars">'+bars+'</div><div class="nx-tleg"><span><i style="background:#2E7D32"></i>≥95%</span><span><i style="background:#B7791F"></i>80–94%</span><span><i style="background:#C62828"></i>&lt;80%</span></div>'
     + '<div class="nx-tl"><div class="nx-tt2">⚠ Late ซ้ำ (ตั้งแต่ 2 ครั้ง)</div>'
     + (risk.length ? risk.map(id => '<div class="nx-tr">'+nm(id)+'<span class="c-late">Late '+lateCnt[id]+' ครั้ง</span></div>').join('') : '<div class="nx-tr ok">✓ ไม่มีคน Late ซ้ำ เยี่ยมมาก</div>') + '</div>'
     + (abL.length ? '<div class="nx-tl"><div class="nx-tt2">🟣 ขาด / ลา</div>'+abL.map(id => '<div class="nx-tr">'+nm(id)+'<span class="c-ab">'+abCnt[id]+' วัน</span></div>').join('')+'</div>' : '')

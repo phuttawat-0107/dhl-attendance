@@ -414,9 +414,11 @@ function stat(dep, day){
   P.forEach(p => { if (p.ck) { s.inn++; if (isLate(p.ck)) s.late++; if (clockOff(p.ck)) s.flag++; s.last = Math.max(s.last, p.ck.ts); } else if (p.ab) s.ab++; else s.no++; });
   return s;
 }
-window.__reg = r => { REG = REG===r ? '' : r; MGRF = ''; renderLive(); };
+window.__reg = r => { REG = REG===r ? '' : r;   /* เปลี่ยนภาค: ถ้า Manager ที่เลือกไม่มีสาขาในภาคนั้น → ล้างตัวเลือก Manager */
+  if (MGRF && !SCOPE.some(d => (!REG || (DEPS[d]&&DEPS[d].region)===REG) && ((DEPS[d]&&DEPS[d].upc)||[]).includes(MGRF))) MGRF = '';
+  renderLive(); };
 /* กรองตาม Manager (UPC) ที่ดูแลสาขา */
-window.__mgrf = m => { MGRF = MGRF===m ? '' : m; REG = ''; renderLive(); };
+window.__mgrf = m => { MGRF = MGRF===m ? '' : m; renderLive(); };   /* ภาค → Manager → สาขา (เลือกซ้อนกันได้) */
 let MGNAMES = []; window.__mgrfI = i => window.__mgrf(MGNAMES[i] || '');
 function renderLive(){
   if (!ME) return;
@@ -441,15 +443,15 @@ function renderLive(){
     + '<button class="dbtn all'+(REG?'':' on')+'" onclick="window.__reg(\'\')"><i style="background:#1a1a1a"></i>ทุกภาค</button>'
     + regs.map(r => '<button class="dbtn'+(REG===r?' on':'')+'" onclick="window.__reg(\''+esc(r)+'\')"><i style="background:#FFCC00"></i>'+esc(r)+'</button>').join('') + '</div>' : '';
   /* แถว Manager + สาขาที่ดูแล (แสดงเมื่อเห็นมากกว่า 1 Manager เช่น Admin) */
-  const MG = {}; SCOPE.forEach(d => ((DEPS[d]&&DEPS[d].upc)||[]).forEach(n => { (MG[n] = MG[n] || []).push(d); }));
+  const MG = {}; SCOPE.filter(d => !REG || (DEPS[d]&&DEPS[d].region)===REG).forEach(d => ((DEPS[d]&&DEPS[d].upc)||[]).forEach(n => { (MG[n] = MG[n] || []).push(d); }));   /* เฉพาะผู้ดูแลในภาคที่เลือก */
   const mNames = Object.keys(MG).sort((a,b) => MG[b].length - MG[a].length || a.localeCompare(b));
   MGNAMES = mNames;
-  if (mNames.length > 1) {
+  if (mNames.length > 1 || (REG && mNames.length)) {
     const sh = n => String(n).split(' ').slice(0,2).join(' ').replace(/^K\.(\S+)\s+(\S).*$/, 'K.$1 $2.');
     $('depBar').innerHTML += '<div class="mgbar">'
       + mNames.map((n,i) => '<button class="mgbtn'+(MGRF===n?' on':'')+'" onclick="window.__mgrfI('+i+')"><b>👤 '+esc(sh(n))+'</b><span>'+MG[n].length+' สาขา</span></button>').join('')
       + '</div>'
-      + (MGRF && MG[MGRF] ? '<div class="mgsel">👤 <b>'+esc(MGRF)+'</b> ดูแล '+MG[MGRF].length+' สาขา: '+MG[MGRF].slice().sort().map(esc).join(' · ')+' <a onclick="window.__mgrf(\'\')">ดูทั้งหมด ✕</a></div>' : '');
+      + (MGRF && MG[MGRF] ? '<div class="mgsel">👤 <b>'+esc(MGRF)+'</b> ดูแล '+MG[MGRF].length+' สาขา'+(REG?' ในภาค'+esc(REG):'')+': '+MG[MGRF].slice().sort().map(d => '<b>'+esc(d)+'</b>'+((DEPS[d]&&DEPS[d].name&&DEPS[d].name!==d)?' '+esc(DEPS[d].name):'')).join(' · ')+' <a onclick="window.__mgrf(\'\')">ดูทั้งหมด ✕</a></div>' : '');
   }
   const cell = (dep, cls, b, sp) => '<td class="cell '+cls+'" onclick="window.__dep(\''+dep+'\')"><b>'+b+'</b><span>'+sp+'</span></td>';
   let h = '<colgroup><col class="c-dep"><col class="c-task"><col class="c-task"><col class="c-task"><col class="c-task"></colgroup><tbody>'

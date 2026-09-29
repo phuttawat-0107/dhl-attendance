@@ -261,12 +261,6 @@
   <div class="card"><h2>รายชื่อพนักงาน (<span id="mCount">0</span>)</h2>
     <div style="display:flex;gap:6px;margin-bottom:8px;"><button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="exportCsv()">⬇ ส่งออก CSV</button></div>
     <div id="mList"></div></div>
-  <div class="card">
-    <h2>ชื่อผู้บันทึก (Staff)</h2>
-    <div class="small" style="margin-bottom:8px;">รายชื่อนี้จะแสดงในหน้าเข้าสู่ระบบของสาขา</div>
-    <div id="stList"></div>
-    <div style="display:flex;gap:6px;margin-top:6px;"><input id="stNew" placeholder="เพิ่มชื่อ Staff" style="margin:0;"><button class="btn btn-y" style="flex-shrink:0;" onclick="addStaffName()">+ เพิ่ม</button></div>
-  </div>
   <div class="card" id="dsLogoutCard">
     <h2>☁ บัญชีผู้ใช้</h2>
     <div class="small" id="dsWho" style="margin-bottom:9px;"></div>
@@ -1080,9 +1074,9 @@ function renderStaffNames(){
   el.innerHTML = STAFFNAMES.map((n,i) => '<div class="row-c" style="box-shadow:none;border:1px solid #eee;"><div class="info"><div class="nm">'+escapeHtml(n)+(n===STAFF?' <span class="small">(คุณ)</span>':'')+'</div></div>'
     +(n===STAFF?'':'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="delStaffName('+i+')">✕ ลบ</button>')+'</div>').join('') || '<div class="small">ยังไม่มีรายชื่อ</div>';
 }
-window.addStaffName = () => { const n = $('stNew').value.trim(); if (!n) return; if (STAFFNAMES.includes(n)) { flash('มีชื่อนี้แล้ว'); return; }
+window.addStaffName = () => { return; const n = $('stNew').value.trim(); if (!n) return; if (STAFFNAMES.includes(n)) { flash('มีชื่อนี้แล้ว'); return; }
   staffTx(L => L.includes(n) ? null : [...L, n], '+ เพิ่ม '+n).then(ok => { if (ok) $('stNew').value=''; }); };
-window.delStaffName = i => { const n = STAFFNAMES[i]; if (!confirm('ลบชื่อ '+n+' ?')) return; staffTx(L => L.filter(x=>x!==n), 'ลบ '+n+' แล้ว'); };
+window.delStaffName = i => { return; const n = STAFFNAMES[i]; if (!confirm('ลบชื่อ '+n+' ?')) return; staffTx(L => L.filter(x=>x!==n), 'ลบ '+n+' แล้ว'); };
 async function staffTx(fn, msg){   /* แก้ชื่อ Staff แบบ transaction — 2 เครื่องเพิ่ม/ลบพร้อมกันไม่ทับกัน */
   if (!navigator.onLine) { flash('ต้องต่ออินเทอร์เน็ตก่อน'); return false; }
   try { await fb.tx('pubstaff/'+CODE, d => { const L = fn(((d && d.names) || []).slice()); return L ? { names: L } : null; }); flash(msg); return true; }

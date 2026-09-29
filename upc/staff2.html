@@ -276,6 +276,11 @@
   <div class="card"><h2>📋 รายชื่อพนักงาน (<span id="mCount">0</span>)</h2>
     <div style="display:flex;gap:6px;margin-bottom:8px;"><button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="exportCsv()">⬇ ส่งออก CSV</button></div>
     <div id="mList"></div></div>
+  <div class="card" id="nxNotiCard">
+    <h2>🔔 การแจ้งเตือนบนมือถือ</h2>
+    <div class="small" id="nxNotiSt" style="margin-bottom:8px;"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-y" id="nxNotiOn" onclick="nxAskNoti()">เปิดการแจ้งเตือน</button><button class="btn btn-o" onclick="nxTestNoti()">ทดสอบแจ้งเตือน</button></div>
+  </div>
   <div class="card" id="dsLogoutCard">
     <h2>☁ บัญชีผู้ใช้</h2>
     <div class="small" id="dsWho" style="margin-bottom:9px;"></div>
@@ -858,8 +863,24 @@ document.addEventListener('visibilitychange', () => {
 });
 /* แจ้งเตือนบนหน้าจอมือถือ (Android: อนุญาตครั้งแรก · iPhone: ต้องเพิ่มไปที่หน้าจอโฮม) */
 let SWR = null;
-if ('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('notify-sw.js?v=1').then(r => SWR = r).catch(() => {});
-window.nxAskNoti = async () => { try { const p = await Notification.requestPermission(); flash(p === 'granted' ? '🔔 เปิดการแจ้งเตือนแล้ว' : 'ไม่ได้เปิดการแจ้งเตือน — ใช้ Pop Up ในแอปแทน'); renderCheckin(); } catch(e){} };
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('notify-sw.js?v=1').then(r => SWR = r).catch(() => {});
+window.nxAskNoti = async () => { try { const p = await Notification.requestPermission(); flash(p === 'granted' ? '🔔 เปิดการแจ้งเตือนแล้ว' : 'ไม่ได้เปิดการแจ้งเตือน — ใช้ Pop Up ในแอปแทน'); renderCheckin(); nxNotiState(); } catch(e){} };
+function nxNotiState(){ const e = $('nxNotiSt'); if (!e) return;
+  const inApp = /Line\/|FBAN|FBAV|Instagram/i.test(navigator.userAgent), ios = /iPhone|iPad|iPod/i.test(navigator.userAgent), standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  let msg, can = false;
+  if (inApp) msg = '⚠️ เปิดอยู่ในแอป LINE/Facebook — ให้เปิดลิ้งด้วย Chrome หรือ Safari ก่อน';
+  else if (!('Notification' in window)) msg = ios && !standalone ? '📱 iPhone: กดปุ่ม "แชร์" → "เพิ่มไปยังหน้าจอโฮม" แล้วเปิดแอปจากไอคอนบนหน้าจอโฮม จึงจะเปิดแจ้งเตือนได้' : 'เครื่องนี้ไม่รองรับการแจ้งเตือน — ใช้ Pop Up ในแอปแทน';
+  else if (Notification.permission === 'granted') msg = '✅ เปิดแล้ว — ถ้าสลับไปแอปอื่นตอนยังเช็คอินไม่ครบ จะมีแจ้งเตือนเด้ง';
+  else if (Notification.permission === 'denied') msg = '🚫 ถูกปิดไว้ — เปิดได้ที่ ตั้งค่าเบราว์เซอร์ → การแจ้งเตือน → อนุญาตเว็บไซต์นี้';
+  else { msg = 'ยังไม่ได้เปิด — กดปุ่มด้านล่าง แล้วเลือก "อนุญาต"'; can = true; }
+  e.textContent = msg; const b = $('nxNotiOn'); if (b) b.style.display = can ? '' : 'none'; }
+window.nxTestNoti = async () => {
+  if (!('Notification' in window) || Notification.permission !== 'granted') { flash('ยังไม่ได้เปิดการแจ้งเตือน'); nxNotiState(); return; }
+  if (!SWR && navigator.serviceWorker) { try { SWR = await navigator.serviceWorker.ready; } catch(e){} }
+  flash('ส่งแจ้งเตือนทดสอบใน 5 วินาที — สลับไปแอปอื่นได้เลย');
+  setTimeout(() => { try { const opt = { body: 'ทดสอบแจ้งเตือน — ถ้าเห็นข้อความนี้ แปลว่าใช้งานได้ ✓', tag: 'upc-test', icon: 'logo.webp', data: { url: location.href } };
+    if (SWR && SWR.showNotification) SWR.showNotification('DHL Attendance · '+CODE, opt); else new Notification('DHL Attendance · '+CODE, opt); } catch(e){ flash('ส่งแจ้งเตือนไม่ได้ — '+e.message); } }, 5000);
+};
 function nxNotify(n){
   try {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -1031,7 +1052,7 @@ function renderManage(){
         +'<button class="nx-mb" onclick="editCourier('+c.id+')">✏️</button>'
         +'<button class="nx-mb '+(on?'':'go')+'" onclick="toggleActive('+c.id+')">'+(on?'พัก':'ใช้งาน')+'</button></div>'; }).join('')
     : '<div class="small">ยังไม่มีรายชื่อ</div>';
-  renderStaffNames(); badge();
+  renderStaffNames(); badge(); nxNotiState();
 }
 window.addCourier = () => {
   const code = $('fCode').value.trim().toUpperCase(), name = $('fName').value.trim(), vendor = $('fVendor').value.trim(), type = $('fType').value;
@@ -1101,6 +1122,18 @@ async function staffTx(fn, msg){   /* แก้ชื่อ Staff แบบ tran
   if (!navigator.onLine) { flash('ต้องต่ออินเทอร์เน็ตก่อน'); return false; }
   try { await fb.tx('pubstaff/'+CODE, d => { const L = fn(((d && d.names) || []).slice()); return L ? { names: L } : null; }); flash(msg); return true; }
   catch(e){ flash('บันทึกไม่สำเร็จ — ลองใหม่'); return false; }
+}
+
+/* ================= สวิตช์นำร่องหน้าตาใหม่ (ลิ้งเดิม) =================
+   ดีโป้ที่อยู่ใน config/app.pilotDepots (หรือ '*' = ทุกดีโป้) → เปิดหน้าใหม่อัตโนมัติ · ข้อมูล/PIN/การเข้าสู่ระบบเดิมทั้งหมด
+   Admin ปิดสวิตช์ได้ทันทีจากแอป Manager → ทุกเครื่องกลับหน้าเดิมเอง */
+function pilotGo(){
+  if (DEMO || !READY || !CODE) return;
+  const L = (CFG && CFG.pilotDepots) || [];
+  if (!(L.includes('*') || L.includes(CODE))) return;
+  if ($('camOverlay').classList.contains('show')) return;
+  try { const now = Date.now(), H = JSON.parse(sessionStorage.getItem('upcPilotHop')||'[]').filter(x => now - x < 60000); if (H.length >= 3) return; H.push(now); sessionStorage.setItem('upcPilotHop', JSON.stringify(H)); } catch(e){ return; }
+  const u = new URL('staff2.html', location.href); u.search = location.search; location.replace(u.toString());
 }
 
 /* ================= บังคับอัปเดต + ล้างรูปเก่า ================= */

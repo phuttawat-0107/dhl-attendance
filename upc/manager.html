@@ -465,7 +465,8 @@ function openDep(dep, refresh){
     + (ins.length ? '<div class="grp">✓ เช็คอินแล้ว '+ins.length+' คน</div>'+ins.map(row).join('') : '')
     + (abs.length ? '<div class="grp">🚫 ขาด / ลา '+abs.length+' คน</div>'+abs.map(row).join('') : '')
     + (!P.length ? '<div class="empty">ยังไม่มีรายชื่อพนักงานในสาขานี้</div>' : '')
-    + '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>');
+    + '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__staffN(\''+esc(dep)+'\')">👥 ชื่อผู้บันทึก (Staff) ของสาขานี้</button>'
+    + '<button class="btn btn-o btn-block" style="margin-top:8px" onclick="window.__close()">ปิด</button>');
   loadThumbs(dep, ins.map(p=>p.id));
 }
 async function loadThumbs(dep, ids){
@@ -486,6 +487,38 @@ async function loadThumb(dep, id){
   if (PH[k]) zoomSrc[k] = PH[k];
 }
 window.__reThumb = (dep, id) => { const el = document.getElementById('th_'+dep+'_'+id); if (el) el.innerHTML = '⏳'; loadThumb(dep, id); };
+
+/* ================= 👥 ชื่อผู้บันทึก (Staff) — จัดการโดย Manager เท่านั้น (ย้ายมาจากแอป Staff) =================
+   รายชื่อนี้แสดงในหน้าเข้าสู่ระบบของสาขา · แก้แบบ transaction (2 คนแก้พร้อมกันไม่ทับกัน) */
+let SNDEP = null, SNL = [];
+window.__staffN = async dep => {
+  OPENDEP = null; SNDEP = dep;
+  modal('<h3>👥 ชื่อผู้บันทึก — '+esc(dep)+'</h3><div class="sub">กำลังโหลด…</div>');
+  try { const d = await fb.get('pubstaff/'+dep); SNL = (d && d.names) || []; } catch(e){ SNL = []; }
+  snRender();
+};
+function snRender(){
+  const dep = SNDEP;
+  modal('<button class="btn btn-o" style="padding:7px 12px;margin-bottom:10px;" onclick="window.__dep(\''+esc(dep)+'\')">‹ กลับ</button>'
+    + '<h3>👥 ชื่อผู้บันทึก (Staff) — '+esc(dep)+'</h3><div class="sub">รายชื่อนี้จะแสดงในหน้าเข้าสู่ระบบของสาขา · Staff เพิ่ม/ลบเองไม่ได้</div>'
+    + (SNL.length ? SNL.map((n,i) => '<div class="row-c"><div class="info"><div class="nm">'+esc(n)+'</div></div><button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__snDel('+i+')">✕ ลบ</button></div>').join('')
+      : '<div class="empty">ยังไม่มีรายชื่อ — สาขานี้จะเข้าสู่ระบบไม่ได้จนกว่าจะเพิ่มชื่อ</div>')
+    + '<div style="display:flex;gap:6px;margin-top:8px;"><input id="snNew" placeholder="เพิ่มชื่อ Staff เช่น K.Somchai Jaidee" style="margin:0;flex:1;min-width:0;"><button class="btn btn-y" style="flex-shrink:0;" onclick="window.__snAdd()">+ เพิ่ม</button></div>'
+    + '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>');
+  const i = $('snNew'); if (i) i.addEventListener('keydown', e => { if (e.key === 'Enter') window.__snAdd(); });
+}
+async function snTx(fn, msg){
+  try { await fb.tx('pubstaff/'+SNDEP, d => { const L = fn(((d && d.names) || []).slice()); SNL = L || SNL; return L ? { names: L } : null; });
+    const d = await fb.get('pubstaff/'+SNDEP); SNL = (d && d.names) || SNL; feed('<b>'+esc(msg)+'</b>','ok'); snRender(); return true; }
+  catch(e){ feed('บันทึกไม่สำเร็จ — '+esc(e.code||e.message),'bad'); return false; }
+}
+window.__snAdd = () => { const n = ($('snNew').value||'').trim().replace(/\s+/g,' '); if (!n) return;
+  if (SNL.includes(n)) { feed('มีชื่อนี้แล้ว','bad'); return; }
+  snTx(L => L.includes(n) ? null : [...L, n], '+ เพิ่ม '+n); };
+window.__snDel = i => { const n = SNL[i]; if (!n) return;
+  if (SNL.length === 1 && !confirm('ลบชื่อสุดท้ายของสาขา '+SNDEP+'?\nสาขานี้จะเข้าสู่ระบบไม่ได้จนกว่าจะเพิ่มชื่อใหม่')) return;
+  if (SNL.length > 1 && !confirm('ลบชื่อ '+n+' ?\nเครื่องที่ใช้ชื่อนี้อยู่ยังใช้งานต่อได้จนกว่าจะออกจากระบบ')) return;
+  snTx(L => L.filter(x => x !== n), 'ลบ '+n+' แล้ว'); };
 
 /* ================= ⚙️ ผู้ดูแลระบบ (Admin) ================= */
 let ADM = 'dep', MGRS = [], STAFFN = {};

@@ -17,7 +17,13 @@
 #login.hide{display:none;}
 /* รูปย่อ: สัดส่วน 3:4 เท่ารูปจริง แสดงทั้งภาพ ไม่ครอปหัว/เท้า */
 .thumb{width:46px !important;height:62px !important;object-fit:contain !important;background:#f3f0e7 !important;}
-#feed{z-index:200 !important;}   /* แจ้งผลการกด (สำเร็จ/ไม่สำเร็จ) ให้ลอยเหนือหน้าต่างเสมอ */
+#feed{z-index:200 !important;}
+.mgbar{display:flex;gap:7px;overflow-x:auto;margin:0 0 8px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.mgbtn{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1px solid #e6e2d6;background:#fff;border-radius:12px;padding:6px 11px;font:inherit;cursor:pointer;text-align:left}
+.mgbtn b{font-size:12.5px;font-weight:800;white-space:nowrap}.mgbtn span{font-size:11px;color:#8a8270}
+.mgbtn.on{background:#1a1a1a;border-color:#1a1a1a;color:#fff}.mgbtn.on span{color:#FFCC00}
+.mgsel{font-size:12.5px;background:#fff8d9;border-radius:10px;padding:7px 10px;margin:0 0 9px;line-height:1.5}
+.mgsel a{color:#C62828;font-weight:800;cursor:pointer;margin-left:4px;white-space:nowrap}   /* แจ้งผลการกด (สำเร็จ/ไม่สำเร็จ) ให้ลอยเหนือหน้าต่างเสมอ */
 .fitem.bad{background:#C62828 !important;}
 .demoRib{position:fixed;left:12px;bottom:14px;z-index:70;background:#FFCC00;color:#1a1a1a;font-size:11px;font-weight:800;padding:8px 12px;border-radius:99px;box-shadow:0 3px 12px rgba(0,0,0,.2);}
 #updBar{display:none;background:#D40511;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:700;}
@@ -159,7 +165,7 @@ const DEP_PRESET = [
 ];
 const genPin = () => String(Math.floor(100000 + Math.random()*900000));
 
-let fb, PUB = {}, CFG = {}, ME = null, SCOPE = [], DEPS = {}, TODAY = {}, TKEY = todayKey(), TAB = 'live', REG = '';
+let fb, PUB = {}, CFG = {}, ME = null, SCOPE = [], DEPS = {}, TODAY = {}, TKEY = todayKey(), TAB = 'live', REG = '', MGRF = '';
 let UNS = [], TUNS = [], RT = null, OPENDEP = null;
 const PH = {};
 
@@ -232,7 +238,7 @@ function stopAll(){ UNS.forEach(u=>u&&u()); UNS=[]; TUNS.forEach(u=>u&&u()); TUN
 
 /* ================= START ================= */
 function start(){
-  stopAll(); TAB = 'live'; REG = '';
+  stopAll(); TAB = 'live'; REG = ''; MGRF = '';
   $('login').classList.add('hide');
   SCOPE = (ME.role==='admin' ? Object.keys(PUB) : (ME.depots||[])).slice().sort();
   $('teamTag').textContent = 'UPC · '+ME.name+' · '+SCOPE.length+' สาขา';
@@ -363,7 +369,7 @@ window.__hPurge = async () => {
 };
 
 /* ================= โมดูล On-time / ย้อนหลัง (ตัวเดียวกับต้นฉบับ) ================= */
-const depsInView = () => SCOPE.filter(d => !REG || ((DEPS[d]&&DEPS[d].region)===REG));
+const depsInView = () => SCOPE.filter(d => (!REG || ((DEPS[d]&&DEPS[d].region)===REG)) && (!MGRF || ((DEPS[d]&&DEPS[d].upc)||[]).includes(MGRF)));
 function ctx(){
   return {
     db: null,
@@ -408,7 +414,10 @@ function stat(dep, day){
   P.forEach(p => { if (p.ck) { s.inn++; if (isLate(p.ck)) s.late++; if (clockOff(p.ck)) s.flag++; s.last = Math.max(s.last, p.ck.ts); } else if (p.ab) s.ab++; else s.no++; });
   return s;
 }
-window.__reg = r => { REG = REG===r ? '' : r; renderLive(); };
+window.__reg = r => { REG = REG===r ? '' : r; MGRF = ''; renderLive(); };
+/* กรองตาม Manager (UPC) ที่ดูแลสาขา */
+window.__mgrf = m => { MGRF = MGRF===m ? '' : m; REG = ''; renderLive(); };
+let MGNAMES = []; window.__mgrfI = i => window.__mgrf(MGNAMES[i] || '');
 function renderLive(){
   if (!ME) return;
   $('dTitle').textContent = 'วันนี้ '+thDate(TKEY);
@@ -431,6 +440,17 @@ function renderLive(){
   $('depBar').innerHTML = regs.length > 1 ? '<div class="depbar" style="margin:0 0 9px;padding-top:0;border-top:0;">'
     + '<button class="dbtn all'+(REG?'':' on')+'" onclick="window.__reg(\'\')"><i style="background:#1a1a1a"></i>ทุกภาค</button>'
     + regs.map(r => '<button class="dbtn'+(REG===r?' on':'')+'" onclick="window.__reg(\''+esc(r)+'\')"><i style="background:#FFCC00"></i>'+esc(r)+'</button>').join('') + '</div>' : '';
+  /* แถว Manager + สาขาที่ดูแล (แสดงเมื่อเห็นมากกว่า 1 Manager เช่น Admin) */
+  const MG = {}; SCOPE.forEach(d => ((DEPS[d]&&DEPS[d].upc)||[]).forEach(n => { (MG[n] = MG[n] || []).push(d); }));
+  const mNames = Object.keys(MG).sort((a,b) => MG[b].length - MG[a].length || a.localeCompare(b));
+  MGNAMES = mNames;
+  if (mNames.length > 1) {
+    const sh = n => String(n).split(' ').slice(0,2).join(' ').replace(/^K\.(\S+)\s+(\S).*$/, 'K.$1 $2.');
+    $('depBar').innerHTML += '<div class="mgbar">'
+      + mNames.map((n,i) => '<button class="mgbtn'+(MGRF===n?' on':'')+'" onclick="window.__mgrfI('+i+')"><b>👤 '+esc(sh(n))+'</b><span>'+MG[n].length+' สาขา</span></button>').join('')
+      + '</div>'
+      + (MGRF && MG[MGRF] ? '<div class="mgsel">👤 <b>'+esc(MGRF)+'</b> ดูแล '+MG[MGRF].length+' สาขา: '+MG[MGRF].slice().sort().map(esc).join(' · ')+' <a onclick="window.__mgrf(\'\')">ดูทั้งหมด ✕</a></div>' : '');
+  }
   const cell = (dep, cls, b, sp) => '<td class="cell '+cls+'" onclick="window.__dep(\''+dep+'\')"><b>'+b+'</b><span>'+sp+'</span></td>';
   let h = '<colgroup><col class="c-dep"><col class="c-task"><col class="c-task"><col class="c-task"><col class="c-task"></colgroup><tbody>'
     + '<tr><th></th><th>Check-in<span class="tg">ตามเวลาสาขา</span></th><th>สาย</th><th>ขาด / ลา</th><th>ยังไม่ลง</th></tr>';

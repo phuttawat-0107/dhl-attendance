@@ -149,6 +149,23 @@
 .nx-tile.nx-pop{animation:nxtile .7s cubic-bezier(.2,1.5,.4,1);}
 .nx-ring.nx-beat{animation:nxbeat .6s 2;}
 @keyframes nxbeat{50%{transform:scale(1.08)}}
+.nx-trend{background:#fff;border-radius:20px;padding:14px 15px;margin:0 0 6px;box-shadow:0 4px 14px rgba(0,0,0,.06);}
+.nx-th{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;}
+.nx-th b{display:block;font-size:17px;font-weight:900;}.nx-th span{font-size:12px;color:#8a8270;}
+.nx-avg{font-size:24px;font-weight:900;text-align:right;line-height:1;padding:6px 10px;border-radius:14px;}
+.nx-avg small{display:block;font-size:10.5px;font-weight:700;margin-top:3px;}
+.nx-avg.ok{background:#e6f5eb;color:#2e7d32;}.nx-avg.mid{background:#fff4d6;color:#8a6100;}.nx-avg.bad{background:#fdeaea;color:#c62828;}
+.nx-tbars{display:flex;align-items:flex-end;gap:6px;height:130px;padding-top:4px;}
+.nx-tb{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;}
+.nx-tb i{display:block;width:70%;border-radius:7px 7px 3px 3px;min-height:4px;transition:height .5s;}
+.nx-tb .v{font-size:10.5px;font-weight:800;}.nx-tb .d{font-size:10.5px;color:#8a8270;}
+.nx-tb.today .d{color:#1a1a1a;font-weight:900;}.nx-tb.today i{box-shadow:0 0 0 2px #1a1a1a inset;}
+.nx-tleg{display:flex;gap:10px;font-size:10.5px;color:#8a8270;margin:6px 0 2px;}.nx-tleg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:3px;}
+.nx-tl{margin-top:10px;border-top:1px solid #f0ede4;padding-top:8px;}
+.nx-tt2{font-size:13px;font-weight:800;margin-bottom:4px;}
+.nx-tr{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:700;padding:5px 0;}
+.nx-tr small{color:#999;font-weight:600;}.nx-tr span{font-size:12px;font-weight:800;padding:2px 8px;border-radius:8px;background:#f6f3ea;white-space:nowrap;}
+.nx-tr.ok{color:#2e7d32;}
 @keyframes nxtile{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
 @media (prefers-reduced-motion: reduce){ #nxPop,.nx-box,.nx-medal,#nxCele *{animation:none!important;transition:none!important;} }
 </style>
@@ -818,7 +835,7 @@ async function renderHist(){
   try { L = (await fb.list(`depots/${CODE}/days`, 'date', '>=', ymd(d))).map(x=>x.data).filter(x=>x.date).sort((a,b)=>b.date.localeCompare(a.date)); } catch(e){}
   if (!L.length) { el.innerHTML = '<div class="hint">ยังไม่มีประวัติ</div>'; return; }
   HIST = {}; L.forEach(x => HIST[x.date] = x);
-  el.innerHTML = L.map(x => {
+  el.innerHTML = nxTrend(L) + '<div class="nx-sec"><span>🗓 รายวัน (แตะเพื่อดูรายชื่อ)</span></div>' + L.map(x => {
     const ck = Object.values(x.checkins||{}).filter(r=>r&&r.ts), late = ck.filter(r=>r.status==='late').length, ab = Object.keys(x.absent||{}).length;
     const sun = new Date(x.date+'T00:00:00').getDay()===0;
     return '<div class="row-c hrow" onclick="openDay(\''+x.date+'\')"><div class="info"><div class="nm">'+thDate(x.date)+(sun?' <span class="small">(อาทิตย์)</span>':'')+'</div><div class="sub">เช็คอิน '+ck.length+' คน'+(ab?' • ขาด/ลา '+ab:'')+'</div></div>'
@@ -826,6 +843,32 @@ async function renderHist(){
   }).join('');
 }
 let HIST = {};
+/* สรุปแนวโน้ม 7 วันทำงานล่าสุด (ไม่นับอาทิตย์) — Ontime % รายวัน + คนที่ Late ซ้ำ + ขาด/ลา */
+function nxTrend(L){
+  const days = L.filter(x => new Date(x.date+'T00:00:00').getDay() !== 0).slice(0, 7).reverse();
+  if (!days.length) return '';
+  const lateCnt = {}, abCnt = {}; let tOn = 0, tN = 0;
+  const bars = days.map(x => {
+    const ids = Object.keys(x.checkins||{}).filter(id => x.checkins[id] && x.checkins[id].ts);
+    const l = ids.filter(id => x.checkins[id].status === 'late'); l.forEach(id => lateCnt[id] = (lateCnt[id]||0)+1);
+    Object.keys(x.absent||{}).forEach(id => abCnt[id] = (abCnt[id]||0)+1);
+    tOn += ids.length - l.length; tN += ids.length;
+    const p = ids.length ? Math.round((ids.length - l.length)/ids.length*100) : null, [,m,d] = x.date.split('-'), today = x.date === todayKey();
+    const col = p == null ? '#ddd' : p >= 95 ? '#2e9e57' : p >= 80 ? '#e0a800' : '#d64545';
+    return '<div class="nx-tb'+(today?' today':'')+'"><span class="v">'+(p==null?'—':p+'%')+'</span><i style="height:'+(p==null?4:Math.max(6,p))+'%;background:'+col+'"></i><span class="d">'+(+d)+'/'+(+m)+'</span></div>';
+  }).join('');
+  const avg = tN ? Math.round(tOn/tN*100) : null;
+  const risk = Object.keys(lateCnt).filter(id => lateCnt[id] >= 2).sort((a,b) => lateCnt[b]-lateCnt[a]);
+  const abL = Object.keys(abCnt).sort((a,b) => abCnt[b]-abCnt[a]);
+  const nm = id => { const c = byId(id); return c ? escapeHtml(c.name)+' <small>'+escapeHtml(c.code)+'</small>' : '#'+escapeHtml(id); };
+  return '<div class="nx-trend"><div class="nx-th"><div><b>แนวโน้มทีม</b><span>'+days.length+' วันทำงานล่าสุด</span></div>'
+    + (avg == null ? '' : '<div class="nx-avg '+(avg>=95?'ok':avg>=80?'mid':'bad')+'">'+avg+'%<small>Ontime เฉลี่ย</small></div>') + '</div>'
+    + '<div class="nx-tbars">'+bars+'</div><div class="nx-tleg"><span><i style="background:#2e9e57"></i>≥95%</span><span><i style="background:#e0a800"></i>80–94%</span><span><i style="background:#d64545"></i>&lt;80%</span></div>'
+    + '<div class="nx-tl"><div class="nx-tt2">⚠ Late ซ้ำ (ตั้งแต่ 2 ครั้ง)</div>'
+    + (risk.length ? risk.map(id => '<div class="nx-tr">'+nm(id)+'<span class="c-late">Late '+lateCnt[id]+' ครั้ง</span></div>').join('') : '<div class="nx-tr ok">✓ ไม่มีคน Late ซ้ำ เยี่ยมมาก</div>') + '</div>'
+    + (abL.length ? '<div class="nx-tl"><div class="nx-tt2">🟣 ขาด / ลา</div>'+abL.map(id => '<div class="nx-tr">'+nm(id)+'<span class="c-ab">'+abCnt[id]+' วัน</span></div>').join('')+'</div>' : '')
+    + '</div>';
+}
 /* รายงานประจำวัน (ภาพเดียว มีรูปทุกคน) → ส่งผู้บังคับบัญชา */
 window.openReport = async k => {
   const m = await import('./upc-report.js?v=3');

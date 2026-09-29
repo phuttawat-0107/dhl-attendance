@@ -15,6 +15,8 @@
 #login .demo b{color:#1a1a1a;} #login .demo a{color:#D40511;font-weight:800;}
 #login .ver{font-size:10.5px;color:#c4bca6;text-align:center;margin-top:12px;}
 #login.hide{display:none;}
+#feed{z-index:200 !important;}   /* แจ้งผลการกด (สำเร็จ/ไม่สำเร็จ) ให้ลอยเหนือหน้าต่างเสมอ */
+.fitem.bad{background:#C62828 !important;}
 .demoRib{position:fixed;left:12px;bottom:14px;z-index:70;background:#FFCC00;color:#1a1a1a;font-size:11px;font-weight:800;padding:8px 12px;border-radius:99px;box-shadow:0 3px 12px rgba(0,0,0,.2);}
 #updBar{display:none;background:#D40511;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:700;}
 table.grid col.c-dep{width:24%;} table.grid col.c-task{width:19%;}
@@ -159,7 +161,8 @@ let fb, PUB = {}, CFG = {}, ME = null, SCOPE = [], DEPS = {}, TODAY = {}, TKEY =
 let UNS = [], TUNS = [], RT = null, OPENDEP = null;
 const PH = {};
 
-function feed(t, cls){ const f=$('feed'), d=document.createElement('div'); d.className='fitem '+(cls||''); d.innerHTML='<span class="ic">ℹ️</span><div class="tx">'+t+'</div>'; f.appendChild(d); setTimeout(()=>d.remove(), 3200); }
+function feed(t, cls){ const f=$('feed'), d=document.createElement('div'), ic = cls==='ok' ? '✅' : cls==='bad' ? '⚠️' : 'ℹ️';
+  d.className='fitem '+(cls==='ok' ? 'ok done' : (cls||'')); d.innerHTML='<span class="ic">'+ic+'</span><div class="tx">'+t+'</div>'; f.appendChild(d); setTimeout(()=>d.remove(), cls==='bad' ? 4500 : 3200); }
 window.__close = () => { $('mdl').classList.remove('show'); OPENDEP = null; };
 function modal(h){ $('mdlBody').innerHTML = h; $('mdl').classList.add('show'); $('mdlBody').scrollTop = 0; }
 const zoomSrc = {};
@@ -345,7 +348,7 @@ window.__hRefresh = async () => { $('mdl').classList.remove('show'); await healt
 window.__hKeep = async n => {
   if (n === keepDays()) return;
   if (!confirm('เปลี่ยนวันเก็บรูปเป็น '+n+' วัน?\nรูปที่เก่ากว่านี้จะถูกลบเมื่อแอปสาขาเปิดครั้งถัดไป (ลบแล้วกู้คืนไม่ได้)')) return;
-  try { await fb.set('config/app', { keepDays: n }); CFG.keepDays = n; await window.__hRefresh(); } catch(e){ alert('บันทึกไม่สำเร็จ: '+(e.code||e.message)); }
+  try { await fb.set('config/app', { keepDays: n }); CFG.keepDays = n; await window.__hRefresh(); feed('<b>ตั้งเก็บรูป '+n+' วันแล้ว</b>','ok'); } catch(e){ alert('บันทึกไม่สำเร็จ: '+(e.code||e.message)); }
 };
 window.__hPurge = async () => {
   const h = HEALTH; if (!h || !h.stale.length) return;
@@ -646,6 +649,7 @@ window.__aDepSave = async code => {
     $('dGo').style.display = 'none';
     $('dOut').innerHTML = credBox('ส่งให้หัวหน้าสาขา '+esc(c), ['ลิงก์: '+staffUrl(c), 'สาขา: '+c+' · '+name, 'PIN: '+pin, 'เวลาเข้างาน: '+hmCut(cut)+' น.'])
       + '<div class="small" style="margin-top:8px">👥 UPC ที่เห็นสาขานี้: '+(upc.length ? esc(upc.join(', ')) : 'ยังไม่ได้เลือก (Admin เห็นอย่างเดียว)')+'</div>';
+    feed('<b>สร้างสาขาสำเร็จ</b> — ส่งข้อมูลด้านล่างให้ผู้ใช้','ok');
   } catch(e){ err('ไม่สำเร็จ: '+(e.code||e.message)); }
 };
 window.__aPin = code => {
@@ -662,6 +666,7 @@ window.__aPinGo = async code => {
     await fb.set('pub/depots', { [code]: { ver, name: PUB[code].name||'' } }); PUB[code].ver = ver;
     $('pGo').style.display = 'none';
     $('pOut').innerHTML = credBox('PIN ใหม่ของสาขา '+esc(code), ['ลิงก์: '+staffUrl(code), 'สาขา: '+code, 'PIN: '+pin]);
+    feed('<b>ตั้ง PIN ใหม่ของสาขาสำเร็จ</b> — ส่งข้อมูลด้านล่างให้ผู้ใช้','ok');
   } catch(e){ $('pErr').textContent = 'ไม่สำเร็จ: '+(e.code||e.message); $('pGo').disabled = false; }
 };
 window.__aBulk = () => {
@@ -728,6 +733,7 @@ window.__aMgrSave = async uid => {
     await syncDepUpc(name, depots);
     $('mGo').style.display = 'none';
     $('mOut').innerHTML = credBox('ส่งให้ '+esc(name), ['ลิงก์: '+mgrUrl(), 'PIN ผู้จัดการ: '+pin, 'ภาค: '+regLabel(region), 'สาขา: '+(role==='admin'?'ทุกสาขา':(depots.join(', ')||'ยังไม่มี — เลือก UPC ตอนเพิ่มสาขา'))]);
+    feed('<b>เพิ่มผู้จัดการสำเร็จ</b> — ส่งข้อมูลด้านล่างให้ผู้ใช้','ok');
   } catch(e){ err('ไม่สำเร็จ: '+(e.code||e.message)); }
 };
 const regDeps = r => Object.keys(PUB).filter(d => (DEPS[d]&&DEPS[d].region) === r).sort();
@@ -794,6 +800,7 @@ window.__aMpinGo = async uid => {
     await fb.del('managers/'+uid);
     $('wGo').style.display = 'none';
     $('wOut').innerHTML = credBox('PIN ใหม่ของ '+esc(m.name), ['ลิงก์: '+mgrUrl(), 'PIN ผู้จัดการ: '+pin]);
+    feed('<b>ตั้ง PIN ใหม่ของผู้จัดการสำเร็จ</b> — ส่งข้อมูลด้านล่างให้ผู้ใช้','ok');
   } catch(e){ $('wErr').textContent = 'ไม่สำเร็จ: '+(e.code||e.message); $('wGo').disabled = false; }
 };
 window.__aMdel = async uid => {

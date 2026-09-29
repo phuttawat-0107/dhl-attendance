@@ -665,7 +665,8 @@ nxSndBtn();
 if (DEMO) $('nxDemoSnd').style.display = '';
 let DSN = 0; window.nxDemoSound = () => { const k = ['win','small'][DSN++ % 2]; const was = SND; SND = true; sfx(k); SND = was; flash(k === 'win' ? '🎺 เสียงฉลอง: Ontime ทุกคน' : '🎺 เสียงฉลอง: ครบแต่มีคน Late'); };
 /* เสียงคลิกเวลากดปุ่ม / การ์ด */
-document.addEventListener('pointerdown', e => { if (e.target.closest('button, .nx-todo, .nx-who, .nav button, label.btn, #dsDoneHdr, .hrow')) sfx('tap'); }, { passive: true });
+/* ปลุกระบบเสียงตอนแตะครั้งแรก (เบราว์เซอร์บังคับ) — ไม่มีเสียงคลิก */
+document.addEventListener('pointerdown', () => { if (SND) acx(); }, { passive: true, once: true });
 function nxPop(c, ts, status, photo){
   const ok = status !== 'late', e = $('nxPop');
   $('nxPopImg').src = photo || ''; $('nxPopT1').textContent = c.name;

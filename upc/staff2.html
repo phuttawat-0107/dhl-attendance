@@ -167,6 +167,31 @@
 .nx-tr small{color:#999;font-weight:600;}.nx-tr span{font-size:12px;font-weight:800;padding:2px 8px;border-radius:8px;background:#f6f3ea;white-space:nowrap;}
 .nx-tr.ok{color:#2e7d32;}
 @keyframes nxtile{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
+/* ปฏิทิน */
+.nx-cal{background:#fff;border-radius:20px;padding:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);}
+.nx-ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.nx-ch b{font-size:16px;font-weight:900;}
+.nx-ch button{width:40px;height:40px;border-radius:12px;border:1px solid #e6e2d6;background:#fff;font-size:20px;font-weight:900;cursor:pointer;}
+.nx-ch button:disabled{opacity:.3;cursor:default;}
+.nx-cg{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.nx-wd{text-align:center;font-size:11.5px;font-weight:800;color:#8a8270;padding:2px 0;}.nx-wd.sun{color:#c4bca6;}
+.nx-cd{position:relative;aspect-ratio:1/1.05;border-radius:12px;border:1.5px solid transparent;background:#f6f4ee;font:inherit;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;}
+.nx-cd b{font-size:14px;font-weight:800;line-height:1;}
+.nx-cd i{font-style:normal;font-size:10px;font-weight:900;line-height:1;}
+.nx-cd u{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#6A4FB3;}
+.nx-cd.ok{background:#E6F5EB;border-color:#bfe3cc;color:#2E7D32;}
+.nx-cd.late{background:#FDEAEA;border-color:#f3b4b4;color:#C62828;}
+.nx-cd.none{background:#faf9f5;color:#b8b2a2;cursor:default;}
+.nx-cd.off{background:transparent;color:#d9d4c7;cursor:default;}
+.nx-cd.sun{opacity:.55;}
+.nx-cd.today{box-shadow:0 0 0 2px #1a1a1a inset;}
+.nx-cd.sel{outline:3px solid #FFCC00;outline-offset:1px;transform:scale(1.06);z-index:1;}
+.nx-cl{display:flex;flex-wrap:wrap;gap:10px;font-size:10.5px;color:#8a8270;margin-top:9px;}
+.nx-cl i{display:inline-block;width:10px;height:10px;border-radius:3px;border:1.5px solid transparent;margin-right:3px;vertical-align:-1px;}
+.nx-dh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 2px 8px;}
+.nx-dh b{font-size:16px;font-weight:900;}
+#nxDayBox .nx-chips span{background:#f6f3ea;}
+#nxDayBox.nx-in{animation:fadeUp .3s ease;}
 /* สีสถานะมาตรฐาน (ทับค่าจาก theme.css ให้ตรงทุกแอป) */
 :root{--st-ok:#2E7D32;--st-ok-bg:#E6F5EB;--st-late:#C62828;--st-late-bg:#FDEAEA;--st-ab:#6A4FB3;--st-ab-bg:#EFE9FB;--st-wait:#B7791F;--st-wait-bg:#FFF4D6;--st-none:#D3D1C7;}
 .chip.ontime{background:var(--st-ok-bg)!important;color:var(--st-ok)!important;}
@@ -841,12 +866,56 @@ async function renderHist(){
   try { L = (await fb.list(`depots/${CODE}/days`, 'date', '>=', ymd(d))).map(x=>x.data).filter(x=>x.date).sort((a,b)=>b.date.localeCompare(a.date)); } catch(e){}
   if (!L.length) { el.innerHTML = '<div class="hint">ยังไม่มีประวัติ</div>'; return; }
   HIST = {}; L.forEach(x => HIST[x.date] = x);
-  el.innerHTML = nxTrend(L) + '<div class="nx-sec"><span>🗓 รายวัน (แตะเพื่อดูรายชื่อ)</span></div>' + L.map(x => {
-    const ck = Object.values(x.checkins||{}).filter(r=>r&&r.ts), late = ck.filter(r=>r.status==='late').length, ab = Object.keys(x.absent||{}).length;
-    const sun = new Date(x.date+'T00:00:00').getDay()===0;
-    return '<div class="row-c hrow" onclick="openDay(\''+x.date+'\')"><div class="info"><div class="nm">'+thDate(x.date)+(sun?' <span class="small">(อาทิตย์)</span>':'')+'</div><div class="sub">เช็คอิน '+ck.length+' คน'+(ab?' • ขาด/ลา '+ab:'')+'</div></div>'
-      +(late ? '<span class="chip late">Late '+late+'</span>' : '<span class="chip ontime">Ontime ทุกคน</span>')+'</div>';
-  }).join('');
+  if (!CALSEL || !HIST[CALSEL]) CALSEL = HIST[todayKey()] ? todayKey() : L[0].date;
+  CALM = CALSEL.slice(0,7);
+  el.innerHTML = nxTrend(L) + '<div class="nx-sec"><span>🗓 ปฏิทิน <em style="color:#8a8270;font-weight:700">แตะวันที่เพื่อดูรายชื่อ</em></span></div><div id="nxCalBox" class="nx-cal"></div><div id="nxDayBox"></div>';
+  nxCal(); $('nxDayBox').innerHTML = nxDayHTML(CALSEL);
+}
+/* ---- ปฏิทินรายเดือน ---- */
+let CALM = null, CALSEL = null;
+const TMON = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+function nxDayStat(x){ const ids = Object.keys(x.checkins||{}).filter(id => x.checkins[id] && x.checkins[id].ts);
+  return { n: ids.length, late: ids.filter(id => x.checkins[id].status === 'late').length, ab: Object.keys(x.absent||{}).length }; }
+function nxCal(){
+  const el = $('nxCalBox'); if (!el) return;
+  const today = todayKey(), minK = ymd(new Date(Date.now() - (KEEP_DAYS-1)*864e5));
+  const [y, m] = CALM.split('-').map(Number), days = new Date(y, m, 0).getDate(), lead = (new Date(y, m-1, 1).getDay() + 6) % 7;
+  const canPrev = CALM > minK.slice(0,7), canNext = CALM < today.slice(0,7);
+  let h = '<div class="nx-ch"><button '+(canPrev?'':'disabled ')+'onclick="nxCalMove(-1)">‹</button><b>'+TMON[m-1]+' '+(y+543)+'</b><button '+(canNext?'':'disabled ')+'onclick="nxCalMove(1)">›</button></div>'
+    + '<div class="nx-cg">' + ['จ','อ','พ','พฤ','ศ','ส','อา'].map((w,i) => '<span class="nx-wd'+(i===6?' sun':'')+'">'+w+'</span>').join('');
+  for (let i = 0; i < lead; i++) h += '<span></span>';
+  for (let d = 1; d <= days; d++) {
+    const k = y+'-'+pad(m)+'-'+pad(d), x = HIST[k], sun = new Date(k+'T00:00:00').getDay() === 0;
+    let cls = 'nx-cd', mark = '';
+    if (k > today || k < minK) cls += ' off';
+    else if (!x) cls += ' none';
+    else { const s = nxDayStat(x);
+      if (!s.n && !s.ab) cls += ' none';
+      else if (s.late) { cls += ' late'; mark = '<i>L'+s.late+'</i>'; }
+      else { cls += ' ok'; mark = '<i>✓</i>'; }
+      if (s.ab) mark += '<u></u>'; }
+    if (sun) cls += ' sun';
+    if (k === today) cls += ' today';
+    if (k === CALSEL) cls += ' sel';
+    h += '<button class="'+cls+'"'+(x ? ' onclick="nxPickDay(\''+k+'\')"' : ' disabled')+'><b>'+d+'</b>'+mark+'</button>';
+  }
+  h += '</div><div class="nx-cl"><span><i style="background:#E6F5EB;border-color:#2E7D32"></i>Ontime ทุกคน</span><span><i style="background:#FDEAEA;border-color:#C62828"></i>มี Late (L = จำนวน)</span><span><i style="background:#6A4FB3;border-radius:50%"></i>มีขาด/ลา</span></div>';
+  el.innerHTML = h;
+}
+window.nxCalMove = n => { const [y, m] = CALM.split('-').map(Number), d = new Date(y, m-1+n, 1); CALM = d.getFullYear()+'-'+pad(d.getMonth()+1); nxCal(); };
+window.nxPickDay = k => { CALSEL = k; nxCal(); $('nxDayBox').innerHTML = nxDayHTML(k); const b = $('nxDayBox'); b.classList.remove('nx-in'); void b.offsetWidth; b.classList.add('nx-in'); b.scrollIntoView({ behavior:'smooth', block:'start' }); };
+function nxDayHTML(k){
+  const x = HIST[k]; if (!x) return '';
+  const s = nxDayStat(x), sun = new Date(k+'T00:00:00').getDay() === 0;
+  const rows = Object.keys(x.checkins||{}).filter(id=>x.checkins[id]&&x.checkins[id].ts).sort((a,b)=>x.checkins[a].ts-x.checkins[b].ts).map(id => {
+    const c = byId(id) || { code:'#'+id, name:'(ไม่อยู่ในรายชื่อ)' }, r = x.checkins[id], ok = r.status!=='late';
+    return '<div class="row-c"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • โดย '+escapeHtml(r.staff||'-')+'</div></div>'
+      +(ok ? '<span class="chip ontime">✔ '+fmtTime(r.ts)+'</span>' : '<span class="chip late">✖ Late '+fmtTime(r.ts)+'</span>')+'</div>'; }).join('');
+  const abs = Object.keys(x.absent||{}).map(id => { const c = byId(id)||{code:'#'+id,name:''};
+    return '<div class="row-c dsAbsRow"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+'</div><span class="dsAbsTag">'+escapeHtml(x.absent[id].note||'ขาด')+'</span></div></div>'; }).join('');
+  return '<div class="nx-dh"><div><b>'+thDate(k)+'</b>'+(sun?' <span class="small">(อาทิตย์)</span>':'')+'</div><div class="nx-chips"><span class="c-ok">เช็คอิน '+s.n+'</span>'+(s.late?'<span class="c-late">Late '+s.late+'</span>':'<span class="c-ok">Ontime ทุกคน</span>')+(s.ab?'<span class="c-ab">ขาด/ลา '+s.ab+'</span>':'')+'</div></div>'
+    + (rows || '<div class="hint">ไม่มีการเช็คอิน</div>') + (abs ? '<div class="nx-sec"><span>🟣 ขาด / ลา</span></div>'+abs : '')
+    + '<button class="nx-rep" style="margin-top:10px" onclick="openReport(\''+k+'\')">📄 สร้างรายงานของวันนี้ (ส่งหัวหน้า)</button>';
 }
 let HIST = {};
 /* สรุปแนวโน้ม 7 วันทำงานล่าสุด (ไม่นับอาทิตย์) — Ontime % รายวัน + คนที่ Late ซ้ำ + ขาด/ลา */

@@ -555,11 +555,28 @@ window.__settings = async sec => {
   } else {
     h += '<div class="card" style="margin-top:4px">เวอร์ชันแอปนี้: <b>'+APP_VER+'</b><br><span class="small">บังคับใช้ Staff: '+esc(CFG.staffVer||'-')+' · Manager: '+esc(CFG.managerVer||'-')+'</span>'
       + '<button class="btn btn-y btn-block" style="margin-top:10px" onclick="window.__aVer()">🔄 บังคับทุกเครื่องใช้เวอร์ชันล่าสุด</button></div>'
+      + (() => { const L = CFG.pilotDepots || [], all = L.includes('*');
+          return '<div class="card"><b>🧪 หน้าตาใหม่แอป Staff (นำร่อง)</b><div class="small" style="margin:4px 0 8px">ใช้ลิ้งเดิม · ดีโป้ในรายการจะเห็นหน้าใหม่อัตโนมัติ · ปิดได้ทันที ทุกเครื่องกลับหน้าเดิมเอง</div>'
+            + '<div style="margin-bottom:8px">สถานะ: <b>'+(all ? 'เปิดทุกดีโป้' : L.length ? 'นำร่อง '+esc(L.join(', ')) : 'ปิด (ทุกดีโป้ใช้หน้าเดิม)')+'</b></div>'
+            + '<input id="pilotIn" placeholder="รหัสดีโป้ คั่นด้วย , เช่น NMA, CCI" value="'+esc(all ? '' : L.join(', '))+'" style="margin:0 0 8px">'
+            + '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-y" style="padding:9px 12px" onclick="window.__pilot()">บันทึกรายการนำร่อง</button>'
+            + '<button class="btn btn-o" style="padding:9px 12px" onclick="window.__pilot(\'*\')">เปิดทุกดีโป้</button>'
+            + '<button class="btn btn-o" style="padding:9px 12px;color:#C62828;border-color:#C62828" onclick="window.__pilot(\'off\')">ปิดนำร่อง</button></div></div>'; })()
       + '<div class="card"><b>ลิงก์แอปสาขา (Staff)</b><div class="lnk">'+esc(staffUrl())+'</div><button class="btn btn-o" style="margin-top:6px;padding:8px 12px;" onclick="window.__copy(\''+esc(staffUrl())+'\')">คัดลอก</button>'
       + '<div style="height:10px"></div><b>ลิงก์ Manager</b><div class="lnk">'+esc(mgrUrl())+'</div><button class="btn btn-o" style="margin-top:6px;padding:8px 12px;" onclick="window.__copy(\''+esc(mgrUrl())+'\')">คัดลอก</button></div>';
   }
   h += '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>';
   modal(h);
+};
+window.__pilot = async mode => {
+  let L;
+  if (mode === 'off') L = [];
+  else if (mode === '*') { if (!confirm('เปิดหน้าตาใหม่ให้ทุกดีโป้?')) return; L = ['*']; }
+  else { L = [...new Set(($('pilotIn').value||'').toUpperCase().split(/[\s,]+/).filter(Boolean))];
+    const bad = L.filter(c => !PUB[c]); if (bad.length) { feed('ไม่พบรหัสดีโป้: '+esc(bad.join(', ')),'bad'); return; } }
+  try { await fb.set('config/app', { pilotDepots: L, updatedAt: NOW }); CFG.pilotDepots = L;
+    feed('<b>'+(L.length ? (L[0]==='*' ? 'เปิดหน้าใหม่ทุกดีโป้แล้ว' : 'นำร่อง: '+esc(L.join(', '))) : 'ปิดนำร่องแล้ว — ทุกดีโป้กลับหน้าเดิม')+'</b>','ok'); window.__settings('sys'); }
+  catch(e){ feed('บันทึกไม่สำเร็จ — '+esc(e.code||e.message),'bad'); }
 };
 window.__aVer = async () => { if (!confirm('บังคับทุกเครื่องให้ใช้เวอร์ชัน '+APP_VER+' ?')) return; await fb.set('config/app', { staffVer: APP_VER, managerVer: APP_VER, updatedAt: NOW }); feed('<b>ตั้งค่าแล้ว</b> — ทุกเครื่องจะรีโหลดเอง','ok'); window.__settings('sys'); };
 const back = s => '<button class="btn btn-o" style="padding:7px 12px;margin-bottom:10px;" onclick="window.__settings(\''+s+'\')">‹ กลับ</button>';

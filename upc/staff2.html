@@ -192,6 +192,20 @@
 .nx-dh b{font-size:16px;font-weight:900;}
 #nxDayBox .nx-chips span{background:#f6f3ea;}
 #nxDayBox.nx-in{animation:fadeUp .3s ease;}
+/* แท็บจัดการ */
+.nx-mh{background:linear-gradient(135deg,#fff6d1,#ffe98a);border-radius:20px;padding:14px 16px;margin:0 0 12px;}
+.nx-mh b{display:block;font-size:18px;font-weight:900;}.nx-mh span{font-size:12.5px;color:#6b6250;}
+#view-manage .card{border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,.06);border:0;}
+#view-manage .card h2{font-size:16px;font-weight:900;}
+.nx-mnote{font-size:12px;color:#8a8270;margin:0 2px 8px;}
+.nx-mr{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid #f0ede4;}
+.nx-mr:last-child{border-bottom:0;}
+.nx-mr.off{opacity:.5;}
+.nx-av{width:38px;height:38px;border-radius:12px;background:#fff6d1;display:grid;place-items:center;font-size:19px;flex:none;}
+.nx-mr .info{flex:1;min-width:0;}.nx-mr .nm{font-weight:800;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nx-mr .sub{font-size:12px;color:#8a8270;}
+.nx-mb{min-height:38px;min-width:44px;border:1px solid #e6e2d6;background:#fff;border-radius:12px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;padding:0 10px;flex:none;}
+.nx-mb.go{background:#FFCC00;border-color:#FFCC00;}
 /* สีสถานะมาตรฐาน (ทับค่าจาก theme.css ให้ตรงทุกแอป) */
 :root{--st-ok:#2E7D32;--st-ok-bg:#E6F5EB;--st-late:#C62828;--st-late-bg:#FDEAEA;--st-ab:#6A4FB3;--st-ab-bg:#EFE9FB;--st-wait:#B7791F;--st-wait-bg:#FFF4D6;--st-none:#D3D1C7;}
 .chip.ontime{background:var(--st-ok-bg)!important;color:var(--st-ok)!important;}
@@ -229,7 +243,7 @@
   </div>
   <div id="nxRemBar"></div>
   <button class="nx-rep" id="nxRepBtn" onclick="tryReport()">📄 สร้างรายงานวันนี้ (ส่งหัวหน้า)</button>
-  <div id="nxTools"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" title="ซ่อน/แสดงรูป" onclick="dsTogglePhoto()">📷</button><button id="nxSnd" type="button" title="เปิด/ปิดเสียง" onclick="nxToggleSnd()">🔊</button><button id="nxDemoSnd" type="button" title="ฟังเสียงฉลอง" style="display:none" onclick="nxDemoSound()">🎺</button></div>
+  <div id="nxTools"><input type="search" id="ciSearch" placeholder="🔍 ค้นหาชื่อ / รหัส / Vendor"><button id="dsPhoto" type="button" title="ซ่อน/แสดงรูป" onclick="dsTogglePhoto()">📷</button></div>
   <div id="ciList"></div>
 </div>
 
@@ -241,8 +255,9 @@
 
 <!-- ============ MANAGE ============ -->
 <div class="view" id="view-manage">
+  <div class="nx-mh"><b>👥 จัดการรายชื่อ Courier</b><span>เพิ่ม / แก้ไข / พัก · นำเข้าจาก Excel</span></div>
   <div class="card">
-    <h2>เพิ่มพนักงาน Courier</h2>
+    <h2>➕ เพิ่มพนักงาน Courier</h2>
     <input id="fCode" placeholder="รหัสพนักงาน เช่น CNX001">
     <input id="fName" placeholder="ชื่อ-นามสกุล">
     <input id="fVendor" placeholder="ชื่อ Vendor" list="dlVendor"><datalist id="dlVendor"></datalist>
@@ -258,7 +273,7 @@
     <div class="small" id="impPrev" style="margin-bottom:8px;"></div>
     <button class="btn btn-y btn-block" id="impGo" disabled onclick="impSave()">นำเข้า</button>
   </div>
-  <div class="card"><h2>รายชื่อพนักงาน (<span id="mCount">0</span>)</h2>
+  <div class="card"><h2>📋 รายชื่อพนักงาน (<span id="mCount">0</span>)</h2>
     <div style="display:flex;gap:6px;margin-bottom:8px;"><button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="exportCsv()">⬇ ส่งออก CSV</button></div>
     <div id="mList"></div></div>
   <div class="card" id="dsLogoutCard">
@@ -458,7 +473,7 @@ function afterLogin(){
     DEP = d; $('hdDepot').textContent = d.name || CODE; renderAll();
   }));
   UNS.push(fb.listen('pubstaff/'+CODE, d => { STAFFNAMES = (d && d.names) || []; renderStaffNames(); }));
-  UNS.push(fb.listen('config/app', d => { CFG = d || {}; KEEP_DAYS = Math.max(7, Math.min(30, +CFG.keepDays || 30)); checkVer(); }));
+  UNS.push(fb.listen('config/app', d => { CFG = d || {}; KEEP_DAYS = Math.max(7, Math.min(30, +CFG.keepDays || 30)); checkVer(); nxPilotBack(); }));
   listenDay();
   setTimeout(purge, 5000);
 }
@@ -687,6 +702,15 @@ function save(ts, photo){
   }).catch(() => { putPhoto(); return fb.set(path, patch); }));
 }
 
+/* สวิตช์นำร่อง: หน้าใหม่แสดงเฉพาะดีโป้ใน config/app.pilotDepots (หรือ '*') — ไม่อยู่ในรายการ = กลับหน้าเดิมอัตโนมัติ */
+function nxPilotOn(){ const L = (CFG && CFG.pilotDepots) || []; return L.includes('*') || L.includes(CODE); }
+function nxPilotBack(){
+  if (DEMO || !READY || !CODE) return;
+  if (!nxPilotOn() && !$('camOverlay').classList.contains('show') && nxHopOk()) { const u = new URL('staff.html', location.href); u.search = location.search; location.replace(u.toString()); }
+}
+/* กันสลับไป-กลับวนไม่จบ (เช่น ข้อมูลตั้งค่ายังไม่อัปเดตทั้ง 2 หน้า) — สลับได้ไม่เกิน 3 ครั้งใน 1 นาที */
+function nxHopOk(){ try { const now = Date.now(), L = JSON.parse(sessionStorage.getItem('upcPilotHop')||'[]').filter(x => now - x < 60000); if (L.length >= 3) return false; L.push(now); sessionStorage.setItem('upcPilotHop', JSON.stringify(L)); return true; } catch(e){ return false; }
+}
 /* ================= UI ใหม่: การ์ดเด้ง · ฉลอง · เตือน ================= */
 const NX = { mine:false, lastTodo:null, lastDone:0, remSlot:null, notiSlot:null };
 const secNow = () => { const s = new Date(); return s.getHours()*3600+s.getMinutes()*60+s.getSeconds(); };
@@ -699,7 +723,7 @@ setInterval(nxCutTick, 15000);
 const firstName = n => String(n||'').replace(/^K\./,'').split(' ')[0];
 let popT = null;
 /* ---- เสียง: สร้างด้วย Web Audio (ไม่โหลดไฟล์ ไม่กินเน็ต) · เปิด/ปิดได้ · จำค่าในเครื่อง ---- */
-let ACX = null, SND = lsGet('nxSnd') !== '0';
+let ACX = null; const SND = true;   /* บังคับมีเสียงเสมอ (ไม่มีปุ่มปิด) */
 function acx(){ try { if (!ACX) ACX = new (window.AudioContext || window.webkitAudioContext)(); if (ACX.state === 'suspended') ACX.resume(); } catch(e){ ACX = null; } return ACX; }
 function tone(f, t0, dur, type, vol, f2){ const c = acx(); if (!c) return; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + t0;
   o.type = type || 'triangle'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
@@ -748,12 +772,6 @@ function fanfare(full){
   if (full) { [523,659,784,1047].forEach(f => brass(f, top + 1.6, .9, .08)); noise(top + 1.6, .9, .12, 'highpass', 7000); }
 }
 function sfx(k){ if (!SND) return; try { SFX[k] && SFX[k](); } catch(e){} }
-window.nxToggleSnd = () => { SND = !SND; lsSet('nxSnd', SND ? '1' : '0'); nxSndBtn(); if (SND) sfx('ok'); };
-function nxSndBtn(){ const b = $('nxSnd'); if (b) { b.textContent = SND ? '🔊' : '🔇'; b.classList.toggle('on', SND); } }
-nxSndBtn();
-if (DEMO) $('nxDemoSnd').style.display = '';
-let DSN = 0; window.nxDemoSound = () => { const k = ['win','small'][DSN++ % 2]; const was = SND; SND = true; sfx(k); SND = was; flash(k === 'win' ? '🎺 เสียงฉลอง: Ontime ทุกคน' : '🎺 เสียงฉลอง: ครบแต่มีคน Late'); };
-/* เสียงคลิกเวลากดปุ่ม / การ์ด */
 /* ปลุกระบบเสียงตอนแตะครั้งแรก (เบราว์เซอร์บังคับ) — ไม่มีเสียงคลิก */
 document.addEventListener('pointerdown', () => { if (SND) acx(); }, { passive: true, once: true });
 function nxPop(c, ts, status, photo){
@@ -1005,12 +1023,14 @@ function renderManage(){
   const R = couriers();
   $('mCount').textContent = R.filter(c=>c.active!==false).length;
   $('dlVendor').innerHTML = [...new Set(R.map(c=>c.vendor).filter(Boolean))].map(v=>'<option value="'+escapeHtml(v)+'">').join('');
-  $('mList').innerHTML = R.length ? R.slice().sort((a,b)=>(a.active===false)-(b.active===false)||String(a.code).localeCompare(String(b.code))).map(c =>
-    '<div class="row-c" style="box-shadow:none;border:1px solid #eee;opacity:'+(c.active!==false?1:.45)+'">'
-    +'<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.type||'-')+' • '+escapeHtml(c.vendor||'-')+'</div></div>'
-    +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="editCourier('+c.id+')">✏️ แก้ไข</button>'
-    +'<button class="btn '+(c.active!==false?'btn-o':'btn-y')+'" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="toggleActive('+c.id+')">'+(c.active!==false?'พัก':'ใช้งาน')+'</button></div>'
-  ).join('') : '<div class="small">ยังไม่มีรายชื่อ</div>';
+  const ph = R.filter(c=>c.active===false).length;
+  $('mList').innerHTML = R.length ? (ph ? '<div class="nx-mnote">ใช้งาน '+(R.length-ph)+' คน · พักอยู่ '+ph+' คน (ไม่แสดงในหน้าเช็คอิน)</div>' : '')
+    + R.slice().sort((a,b)=>(a.active===false)-(b.active===false)||String(a.code).localeCompare(String(b.code))).map(c => { const on = c.active!==false;
+      return '<div class="nx-mr'+(on?'':' off')+'"><div class="nx-av">'+escapeHtml((c.type||'2W')==='4W'?'🚚':'🛵')+'</div>'
+        +'<div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+' • '+escapeHtml(c.vendor||'-')+(on?'':' • <b style="color:#B7791F">พักอยู่</b>')+'</div></div>'
+        +'<button class="nx-mb" onclick="editCourier('+c.id+')">✏️</button>'
+        +'<button class="nx-mb '+(on?'':'go')+'" onclick="toggleActive('+c.id+')">'+(on?'พัก':'ใช้งาน')+'</button></div>'; }).join('')
+    : '<div class="small">ยังไม่มีรายชื่อ</div>';
   renderStaffNames(); badge();
 }
 window.addCourier = () => {

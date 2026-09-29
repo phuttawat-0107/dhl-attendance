@@ -113,13 +113,6 @@
       <div class="m" id="bigMsg">เวลาเข้างาน 07:00 น.</div>
     </div>
   </div>
-  <div class="card" style="padding:10px 14px;">
-    <div class="small" style="margin-bottom:6px;font-weight:700;">โหมดลงเวลา</div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-block btn-y" id="modeCam" type="button">📷 ถ่ายทันที</button>
-    </div>
-    <div class="small" style="margin-top:6px;">ถ่ายภาพแล้วบันทึกเวลาทันที (มาตรฐาน)</div>
-  </div>
   <div class="card">
     <h2>เช็คอินเข้างานวันนี้ <span class="small" id="ciDate"></span></h2>
     <div class="small">Staff เป็นผู้ถ่ายภาพและบันทึกเวลา</div>
@@ -412,7 +405,6 @@ function renderAll(){ renderCheckin(); if ($('view-manage').classList.contains('
 const couriers = () => (DEP && DEP.roster) || [];
 const byId = id => couriers().find(c => String(c.id) === String(id));
 $('ciSearch').addEventListener('input', () => renderCheckin());
-$('modeCam').onclick = () => flash('📷 แตะ "เช็คอิน" ที่ชื่อพนักงานเพื่อถ่ายภาพ');
 
 window.dsTogglePhoto = () => { document.body.classList.toggle('dsNoPh'); const on = !document.body.classList.contains('dsNoPh'); $('dsPhoto').classList.toggle('on', on); $('dsPhoto').textContent = on ? '📷 ซ่อนรูป' : '📷 แสดงรูป'; lsSet('dsNoPh', on?'0':'1'); };
 if (lsGet('dsNoPh')==='1') { document.body.classList.add('dsNoPh'); $('dsPhoto').textContent='📷 แสดงรูป'; } else $('dsPhoto').classList.add('on');

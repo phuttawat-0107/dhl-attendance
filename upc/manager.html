@@ -122,7 +122,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
 <div id="feed"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.30-e';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.30-f';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 /* ภาคตามโครงสร้าง UPC: Central / East / North / North-East / South */
@@ -199,6 +199,14 @@ const PH = {};
 
 function feed(t, cls){ const f=$('feed'), d=document.createElement('div'), ic = cls==='ok' ? '✅' : cls==='bad' ? '⚠️' : 'ℹ️';
   d.className='fitem '+(cls==='ok' ? 'ok done' : (cls||'')); d.innerHTML='<span class="ic">'+ic+'</span><div class="tx">'+t+'</div>'; f.appendChild(d); setTimeout(()=>d.remove(), cls==='bad' ? 4500 : 3200); }
+/* ข้ามข้อมูลวันทดลองในสถิติ/ประวัติ/รายงาน (config/app.skipDays = { DEP:[วันที่] }) — ไม่ลบข้อมูลจริง · ข้อมูลวันนี้ไม่ถูกกระทบ */
+function skipDay(dep, k){ const s = (CFG && CFG.skipDays) || {}; return !!k && (((s[dep]||[]).includes(k)) || ((s['*']||[]).includes(k))); }
+function skipWrap(){
+  if (!fb || fb.__skipW) return; fb.__skipW = true;
+  const g = fb.get, l = fb.list;
+  fb.get = async p => { const m = /^depots\/([^/]+)\/days\/(\d{4}-\d{2}-\d{2})$/.exec(p); if (m && skipDay(m[1], m[2])) return null; return g.call(fb, p); };
+  if (l) fb.list = async (p, ...a) => { const L = await l.call(fb, p, ...a); const m = /^depots\/([^/]+)\/days$/.exec(p); return m ? L.filter(x => !skipDay(m[1], (x.data && x.data.date) || x.id)) : L; };
+}
 window.__close = () => { $('mdl').classList.remove('show'); OPENDEP = null; };
 function modal(h){ $('mdlBody').innerHTML = h; $('mdl').classList.add('show'); $('mdlBody').scrollTop = 0; }
 const zoomSrc = {};
@@ -215,7 +223,7 @@ window.__zoomImg = async k => {
 /* ================= LOGIN (PIN อย่างเดียว เหมือนต้นฉบับ) ================= */
 (async function boot(){
   $('lgVer').textContent = 'v'+APP_VER+' · Design By Winnie';
-  try { fb = await initFB('upc-mgr'); }
+  try { fb = await initFB('upc-mgr'); skipWrap(); }
   catch(e){ $('lgBody').innerHTML = '<h3>DHL Manager</h3><div class="err">'+esc(e.message)+'</div>'; return; }
   if (DEMO) document.body.insertAdjacentHTML('beforeend','<div class="demoRib">🧪 โหมดทดลอง</div>');
   await loadPub();

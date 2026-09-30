@@ -374,7 +374,7 @@
 <div class="flash" id="flash"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.30-e';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.30-f';
 
 const APP_VER = FB_VER; let KEEP_DAYS = 30;
 const $ = id => document.getElementById(id);
@@ -399,7 +399,7 @@ function track(p){ PENDING++; badge(); return p.then(()=>{ PENDING--; badge(); }
 /* ================= LOGIN ================= */
 (async function boot(){
   $('dsVer').textContent = 'v'+APP_VER+' · Design By Winnie';
-  try { fb = await initFB('upc-staff'); }
+  try { fb = await initFB('upc-staff'); skipWrap(); }
   catch(e){ $('dsErr').textContent = e.message; $('dsLogin').classList.add('show'); return; }
   if (DEMO) {
     document.body.insertAdjacentHTML('beforeend','<div class="demoRib" style="cursor:pointer" onclick="window.__resetDemo()">🧪 โหมดทดลอง · แตะเพื่อล้างข้อมูล</div>');
@@ -643,6 +643,14 @@ window.viewPhoto = id => {
 function sheet(h){ $('sheetBody').innerHTML = h; $('sheetModal').classList.add('show'); }
 window.closeSheet = () => $('sheetModal').classList.remove('show');
 
+/* ข้ามข้อมูลวันทดลองในสถิติ/ประวัติ/รายงาน (config/app.skipDays = { DEP:[วันที่] }) — ไม่ลบข้อมูลจริง · ข้อมูลวันนี้ไม่ถูกกระทบ */
+function skipDay(dep, k){ const s = (CFG && CFG.skipDays) || {}; return !!k && (((s[dep]||[]).includes(k)) || ((s['*']||[]).includes(k))); }
+function skipWrap(){
+  if (!fb || fb.__skipW) return; fb.__skipW = true;
+  const g = fb.get, l = fb.list;
+  fb.get = async p => { const m = /^depots\/([^/]+)\/days\/(\d{4}-\d{2}-\d{2})$/.exec(p); if (m && skipDay(m[1], m[2])) return null; return g.call(fb, p); };
+  if (l) fb.list = async (p, ...a) => { const L = await l.call(fb, p, ...a); const m = /^depots\/([^/]+)\/days$/.exec(p); return m ? L.filter(x => !skipDay(m[1], (x.data && x.data.date) || x.id)) : L; };
+}
 const dayPath = () => `depots/${CODE}/days/${DAYKEY}`;
 const phPath = id => `depots/${CODE}/photos/ci_${id}_${DAYKEY}`;
 window.redo = id => {

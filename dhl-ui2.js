@@ -6,7 +6,7 @@
    ============================================================ */
 (function(){
 'use strict';
-const UI2_VER = '2026.10.01-g';
+const UI2_VER = '2026.10.01-h';
 const UI2 = ['TEST'];                                   /* สาขาที่เห็นหน้าใหม่ (นำร่อง) */
 const G = n => { try { return (0,eval)(n); } catch(e){ return undefined; } };
 const $ = id => document.getElementById(id);
@@ -314,7 +314,10 @@ function rpCheck(q, k, v){ if (v == null){ const an = RS.slice(RS.indexOf(k)+1).
   if (v > Date.now() + 60000) return 'เวลาต้องไม่เกินเวลาปัจจุบัน ('+hm(Date.now())+')';
   const i = RS.indexOf(k), bp = RS.slice(0,i).find(x => q[x] && +q[x] > v); if (bp) return 'เวลา '+RN[k]+' ต้องไม่ก่อน '+RN[bp]+' ('+hm(q[bp])+')';
   const an = RS.slice(i+1).find(x => q[x] && +q[x] < v); if (an) return 'เวลา '+RN[k]+' ต้องไม่หลัง '+RN[an]+' ('+hm(q[an])+')'; return ''; }
-async function saveRp(cid, k, v, isNew){
+/* บันทึกทีละรายการตามคิว — กันกดหลายคนติดกันเร็วๆ แล้วข้อมูลทับกันหาย (อ่าน-แก้-เขียน ทั้งก้อน) */
+let SAVEQ = Promise.resolve();
+function saveRp(cid, k, v, isNew){ const run = () => saveRpNow(cid, k, v, isNew); const p = SAVEQ.then(run, run); SAVEQ = p.catch(() => {}); return p; }
+async function saveRpNow(cid, k, v, isNew){
   let P = null; try { P = await G('getPPH')(today()); } catch(x){} P = P || G('pphRec'); if (!P) return 'ยังไม่มีข้อมูล PPH วันนี้';
   P.rp = P.rp || {}; const q = P.rp[cid] = P.rp[cid] || {};
   if (isNew && q[k]) return RN[k]+' ถูกบันทึกไปแล้ว ('+hm(q[k])+') จากอีกเครื่อง';

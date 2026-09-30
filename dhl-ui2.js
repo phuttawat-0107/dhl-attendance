@@ -6,7 +6,7 @@
    ============================================================ */
 (function(){
 'use strict';
-const UI2_VER = '2026.10.01-e';
+const UI2_VER = '2026.10.01-f';
 const UI2 = ['TEST'];                                   /* สาขาที่เห็นหน้าใหม่ (นำร่อง) */
 const G = n => { try { return (0,eval)(n); } catch(e){ return undefined; } };
 const $ = id => document.getElementById(id);
@@ -85,6 +85,7 @@ body.ui2.u2sun{background:#fff} body.ui2.u2sun .card,body.ui2.u2sun #u2ci .todo,
 body.ui2.u2sun #u2ci .todo .nm{font-size:17px} body.ui2.u2sun #u2ci .sb{padding:13px 14px;font-size:15px} body.ui2.u2sun #u2ci .hh{font-size:22px}
 body.ui2.u2sun .u-ok{background:#1b5e20;color:#fff} body.ui2.u2sun .u-late{background:#b71c1c;color:#fff} body.ui2.u2sun .u-ab{background:#4a2f9a;color:#fff}
 body.ui2.u2sun #u2tl .nx{background:#1a1a1a;color:#FFCC00}
+body.ui2.u2pdok #pdCard{display:none!important}
 body.ui2 #rpList,body.ui2 #rpSearch,body.ui2 #fdList,body.ui2 #fdSearch{display:none!important}
 .u2rp{margin:10px 0 4px}
 .u2rp .sum{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
@@ -242,19 +243,31 @@ function openTile(c, r){ if (!c || !r) return; const L = r.status === 'late';
   b.querySelector('[data-x]').onclick = closeSheet; }
 
 /* ---------- แท็บ PD: นับถอยหลัง ---------- */
+let PDSIG = '';
 async function renderPD(){ const v = $('view-pd'); if (!v) return; let el = $('u2pd');
-  if (!el){ el = document.createElement('div'); el.id = 'u2pd'; el.className = 'card'; v.insertBefore(el, v.firstChild); }
-  const p = (await pphOf(today())) || {}, s = secNow();
-  if (p.pd && p.pd.ts){ el.style.display = 'none'; return; } el.style.display = '';
+  if (!el){ el = document.createElement('div'); el.id = 'u2pd'; el.className = 'card'; v.insertBefore(el, v.firstChild); PDSIG = ''; }
+  const p = (await pphOf(today())) || {}, s = secNow(), pd = p.pd && p.pd.ts ? p.pd : null;
+  document.body.classList.toggle('u2pdok', !!pd);
+  if (pd){ /* ถ่ายแล้ว → แสดงสัญลักษณ์ชัดเจน: ✔ + รูป + เวลา + ในช่วง/นอกช่วง */
+    const inW = secOf(pd.ts) >= PD_A && secOf(pd.ts) <= PD_B, sg = pd.ts+':'+(pd.photo ? pd.photo.length : 0);
+    if (sg === PDSIG) return; PDSIG = sg;
+    el.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div style="width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:24px;font-weight:900;color:#fff;background:'+(inW?'#2E7D32':'#C62828')+'">'+(inW?'✓':'!')+'</div>'
+      + '<div style="flex:1"><div style="font-weight:800;font-size:16px">📸 ถ่าย PD แล้ว '+hm(pd.ts)+'</div><span class="ch '+(inW?'u-ok':'u-late')+'">'+(inW?'✔ ในช่วง 07:00–07:15':'✖ นอกช่วง 07:00–07:15')+'</span></div></div>'
+      + (pd.photo ? '<img src="'+pd.photo+'" alt="" style="width:100%;display:block;margin-top:10px;border-radius:12px;border:1.5px solid var(--u-line)">'
+                  : '<div style="margin-top:10px;background:#f3f0e7;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:var(--u-mut)">📷 รูปถ่ายจากอีกเครื่อง — กำลังโหลดมาเครื่องนี้</div>')
+      + '<button id="u2pdre" style="display:block;width:100%;margin-top:10px;border:1.5px solid var(--u-line);background:#fff;border-radius:12px;padding:11px;font:inherit;font-weight:800">↺ ถ่ายใหม่</button>';
+    const rb = $('u2pdre'); if (rb) rb.onclick = () => call('retakePD');
+    return; }
+  PDSIG = '';
   const inW = s >= PD_A && s <= PD_B;
   el.innerHTML = '<div style="font-weight:800">📸 ประชุมเช้า PD · 07:00–07:15</div><div class="big" style="color:'+(inW?'#2E7D32':s<PD_A?'#B7791F':'#C62828')+'">'
     + (s < PD_A ? 'อีก '+Math.ceil((PD_A-s)/60)+' นาที' : inW ? 'เหลือ '+Math.ceil((PD_B-s)/60)+' นาที' : 'เลย '+Math.floor((s-PD_B)/60)+' นาที')+'</div>'
     + '<div style="text-align:center;font-size:12.5px;color:var(--u-mut)">'+(s<PD_A?'ยังไม่ถึงเวลาประชุม':inW?'อยู่ในช่วงเวลาถ่าย PD':'เลยช่วงเวลาแล้ว — ถ่ายได้ แต่นับว่านอกช่วง')+' · 🔒 เวลา = เวลาถ่ายจริง</div>'; }
 
-/* ---------- PPH Route prep + First Del: FS → ออกรถ → ส่งชิ้นแรก (รายคน · ยืนยันทุกขั้น) ----------
+/* ---------- PPH Route prep + First Del: FS → Depart → 1st Del (รายคน · ยืนยันทุกขั้น) ----------
    ใช้ rpStamp(cid,k) เดิมของแอป (มีตรวจลำดับเวลาอยู่แล้ว) · ไม่มีการแก้เวลา · กดแล้วต้องยืนยันใน Pop Up
    กันกดรัว: ปุ่มยืนยันเปิดหลัง 1 วินาที + พัก 1.5 วินาทีหลังบันทึกทุกครั้ง + เตือนถ้าห่างจากขั้นก่อนน้อยผิดปกติ */
-const RS = ['fs','dep','fdel'], RN = { fs:'FS', dep:'ออกรถ', fdel:'ส่งชิ้นแรก' }, RL = { fs:'จัดรถเสร็จ (First Scan)', dep:'ออกรถ (Departure)', fdel:'ส่งชิ้นแรก (First Del)' };
+const RS = ['fs','dep','fdel'], RN = { fs:'FS', dep:'Depart', fdel:'1st Del' }, RL = { fs:'FS (First Scan)', dep:'Depart', fdel:'1st Del' };
 const RMIN = { dep:3, fdel:3 };                       /* ห่างจากขั้นก่อนน้อยกว่านี้ (นาที) → เตือนเพิ่ม */
 let RPSIG = '', RPQ = '', BUSY = 0, CFOPEN = false, LAST = null, BOX = null; const BUSYC = {};
 const nextStep = q => RS.find(k => !q[k]) || null;
@@ -280,7 +293,7 @@ function paintRP(){ if (!LAST) return; const host = placeBox(); if (!host) retur
   box.innerHTML = '<div class="sum">'+RS.map(k => '<div><b>'+cnt(k)+'/'+n+'</b>'+RN[k]+'</div>').join('')+'</div>'
     + '<input class="srch" id="u2rq" inputmode="search" placeholder="🔍 เลขท้ายรหัส / ชื่อ" value="'+esc(RPQ)+'">'
     + L.map(c => rpRow(c, rp[c.id]||{}, inb)).join('')
-    + '<div class="lock" style="font-size:11.5px;color:var(--u-mut);background:#f3f0e7;border-radius:8px;padding:5px 8px">🔒 กดทีละขั้นตามจริง FS → ออกรถ → ส่งชิ้นแรก · ทุกครั้งต้องกดยืนยัน · แก้เวลา ออกรถ/ส่งชิ้นแรก แตะป้ายเวลา ✏️</div>';
+    + '<div class="lock" style="font-size:11.5px;color:var(--u-mut);background:#f3f0e7;border-radius:8px;padding:5px 8px">🔒 กดทีละขั้นตามจริง FS → Depart → 1st Del · ทุกครั้งต้องกดยืนยัน · แก้เวลา Depart/1st Del แตะป้ายเวลา ✏️</div>';
   const qi = $('u2rq'), flt = () => { const v = RPQ.trim().toLowerCase(); box.querySelectorAll('.rw').forEach(r => r.style.display = !v || r.dataset.q.includes(v) ? '' : 'none'); };
   qi.oninput = () => { RPQ = qi.value; flt(); }; flt();
   box.querySelectorAll('[data-rk]').forEach(b => b.onclick = () => { const c = L.find(x => String(x.id) === b.dataset.rc); if (c) confirmStep(c, b.dataset.rk); });
@@ -295,7 +308,7 @@ async function renderRP(){
   if (s2 === RPSIG && BOX.firstChild) return;
   paintRP();
 }
-/* บันทึกเวลา ออกรถ / ส่งชิ้นแรก แบบระบุเวลาเอง (หรือเวลาปัจจุบัน) · v=null = ล้าง · ตรวจลำดับเหมือน rpStamp เดิม */
+/* บันทึกเวลา Depart / 1st Del แบบระบุเวลาเอง (หรือเวลาปัจจุบัน) · v=null = ล้าง · ตรวจลำดับเหมือน rpStamp เดิม */
 function tsOfHM(s){ const m = /^(\d{1,2}):(\d{2})$/.exec(String(s||'').trim()); if (!m || +m[1] > 23 || +m[2] > 59) return null; const d = new Date(); d.setHours(+m[1], +m[2], 0, 0); return d.getTime(); }
 function rpCheck(q, k, v){ if (v == null){ const an = RS.slice(RS.indexOf(k)+1).find(x => q[x]); return an ? 'ล้าง '+RN[an]+' ก่อน แล้วค่อยล้าง '+RN[k] : ''; }
   if (v > Date.now() + 60000) return 'เวลาต้องไม่เกินเวลาปัจจุบัน ('+hm(Date.now())+')';
@@ -353,7 +366,7 @@ async function confirmStep(c, k){
     if (err){ (G('flash')||alert)('⚠ '+err); bust(); RPSIG = ''; renderRP(); }
     TLSIG = ''; renderTL(); };
 }
-/* แก้เวลาที่บันทึกแล้ว (เฉพาะ ออกรถ / ส่งชิ้นแรก) */
+/* แก้เวลาที่บันทึกแล้ว (เฉพาะ Depart / 1st Del) */
 async function editStep(c, k){
   if (performance.now() < BUSY || k === 'fs') return;
   const { rp } = LAST || await rpData(), q = rp[c.id] || {}; if (!q[k]) return;
@@ -371,7 +384,7 @@ async function editStep(c, k){
   const fin = async (v, msg) => { BUSY = performance.now() + 350; done(); opt(v); (G('flash')||alert)(msg);
     const err = await saveRp(c.id, k, v); if (err){ (G('flash')||alert)('⚠ '+err); bust(); RPSIG = ''; renderRP(); } };
   y.onclick = () => { const { v, e } = upd(); if (e) return; y.disabled = true; fin(v, '✓ แก้ '+RN[k]+' เป็น '+hm(v)+' · '+String(c.name).split(' ')[0]); };
-  $('u2cfc').onclick = () => { if (q.fdel && k === 'dep'){ $('u2er').innerHTML = '<div class="err">✖ ล้าง ส่งชิ้นแรก ก่อน แล้วค่อยล้าง ออกรถ</div>'; return; }
+  $('u2cfc').onclick = () => { if (q.fdel && k === 'dep'){ $('u2er').innerHTML = '<div class="err">✖ ล้าง 1st Del ก่อน แล้วค่อยล้าง Depart</div>'; return; }
     if (!confirm('ล้างเวลา '+RN[k]+' ของ '+c.name+' ?')) return; fin(null, '🗑 ล้าง '+RN[k]+' แล้ว · '+String(c.name).split(' ')[0]); };
 }
 function hookRP(){ ['pphBody','fdelBody'].forEach(id => { const el = $(id); if (!el || el._u2) return; el._u2 = true;
@@ -413,7 +426,7 @@ async function showDone(force){
   sheet('<div class="u2dn"><div class="cf">🎉</div><h3>เยี่ยมมาก! ครบทุกขั้นตอนแล้ว</h3><div class="sb2">'+esc(depot())+' · ไม่มีงานค้าง · ส่งรายงานให้หัวหน้าได้เลย</div>'
     + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:12px 0">'
     + kp(pc+'%','Ontime ('+on+'/'+d.n+')', pc===100?'var(--u-okb)':'#f3f0e7') + kp(d.pd?hm(d.pd):'—','PD', '#f3f0e7')
-    + kp(d.dep?hm(d.dep):'—','ออกรถเฉลี่ย', d.dep&&secOf(d.dep)<DEP_T?'var(--u-okb)':'var(--u-lateb)') + kp(d.fd?hm(d.fd):'—','First Del เฉลี่ย', d.fd&&secOf(d.fd)<FDEL_T?'var(--u-okb)':'var(--u-lateb)') + '</div>'
+    + kp(d.dep?hm(d.dep):'—','Depart เฉลี่ย', d.dep&&secOf(d.dep)<DEP_T?'var(--u-okb)':'var(--u-lateb)') + kp(d.fd?hm(d.fd):'—','1st Del เฉลี่ย', d.fd&&secOf(d.fd)<FDEL_T?'var(--u-okb)':'var(--u-lateb)') + '</div>'
     + '<button class="bt ln" data-all="1">📤 ส่ง Report ทั้งหมดทาง LINE<small>Report 1 · Report 2 · Route prep (3 รูป)</small></button>'
     + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px">'+[['Report1','Report 1'],['Report2','Report 2'],['RoutePrep','Route prep']].map(x => '<button class="bt o" style="margin:0;font-size:12.5px;padding:10px 4px" data-one="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>'
     + '<button class="bt o" data-x="1">ปิด</button></div>');
@@ -449,9 +462,9 @@ function mount(){
   document.body.insertAdjacentHTML('beforeend', '<div id="u2nav"></div><div id="u2sh"><div class="bx" id="u2shb"></div></div>');
   $('u2sh').onclick = e => { if (e.target.id === 'u2sh') closeSheet(); };
   const act = document.querySelector('.view.active'); TAB = act ? act.id.replace('view-','') : 'checkin';
-  hookReport(); hookRP(); renderNav(); TLSIG=''; renderTL(); loadUsual().then(renderCI); renderPD();
+  hookReport(); hookRP(); { const pc = $('pdCard'); if (pc && !pc._u2){ pc._u2 = true; new MutationObserver(() => { if (ON){ bust(); PDSIG = ''; renderPD(); } }).observe(pc, { childList:true }); } } renderNav(); TLSIG=''; renderTL(); loadUsual().then(renderCI); renderPD();
 }
-function unmount(){ if (!ON) return; ON = false; ['u2css','u2tl','u2ci','u2nav','u2sh','u2pd','u2rp'].forEach(i => { const e = $(i); if (e) e.remove(); }); BOX = null; LAST = null; document.body.classList.remove('ui2','u2sun'); }
+function unmount(){ if (!ON) return; ON = false; ['u2css','u2tl','u2ci','u2nav','u2sh','u2pd','u2rp'].forEach(i => { const e = $(i); if (e) e.remove(); }); BOX = null; LAST = null; document.body.classList.remove('ui2','u2sun','u2pdok'); }
 async function tick(){
   try {
     const want = ready() && UI2.includes(depot());

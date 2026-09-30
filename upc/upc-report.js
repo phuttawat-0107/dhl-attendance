@@ -2,7 +2,7 @@
    อ้างอิงรูปแบบ Report 1 ของระบบเดิม (DHL_Courier_Attendance.html)
    ⭐ ภาพถ่ายคือหัวใจของรายงาน — ใช้รูปต้นฉบับ 640px วาดบนผืนภาพความละเอียด 2 เท่า ให้คมชัดที่สุด
    จำนวนรูปต่อแถวปรับตามจำนวนพนักงาน: ≤6 คน = 3 · ≤16 = 4 · ≤30 = 5 · มากกว่า = 6  */
-export const REPORT_VER = 1;
+export const REPORT_VER = 2;
 
 const W = 1080, P = 40;
 const C = { y: '#FFCC00', r: '#D40511', k: '#1a1a1a', g: '#2e7d32', gbg: '#f2fbf6', rbg: '#fff5f5', mute: '#777', line: '#eee', am: '#b7791f', ambg: '#fff8e6' };
@@ -36,7 +36,10 @@ async function collect(ctx) {
   /* ลองใหม่สูงสุด 3 ครั้งต่อรูป เผื่อเน็ตสะดุด — รายงานที่ส่งหัวหน้าต้องมีรูปครบ */
   const getPh = async id => { for (let a = 0; a < 3; a++) { try { const p = await fb.get(`depots/${code}/photos/ci_${id}_${key}`); return p && p.d || null; } catch (e) { await new Promise(r => setTimeout(r, 1200 * (a + 1))); } } return null; };
   const imgs = await Promise.all(recs.map(async r => { try { return await loadImg(await getPh(r.id)); } catch (e) { return null; } }));
-  return { recs, imgs, absent, none, late, on, need: act.length - absent.length, act: act.length, trend, risk };
+  /* 💬 หมายเหตุจาก Staff (เหตุผล Late / งานพิเศษ) — Late ขึ้นก่อน */
+  const cm = day.cmt || {};
+  const notes = recs.filter(r => cm[r.id] && cm[r.id].t).map(r => ({ r, t: String(cm[r.id].t) })).sort((a, b) => (a.r.status === 'late' ? 0 : 1) - (b.r.status === 'late' ? 0 : 1) || a.r.ts - b.r.ts);
+  return { recs, imgs, absent, none, late, on, need: act.length - absent.length, act: act.length, trend, risk, notes };
 }
 
 /* ---------- วาดรายงาน ---------- */
@@ -51,7 +54,8 @@ export async function drawReport(ctx) {
   const listN = S.absent.length + S.none.length;
   const listH = listN ? 70 + Math.ceil(listN / 2) * 34 : 0;
   const gridH = n ? 70 + rows * (CELLH + 16) : 110;
-  const H = 180 + 150 + 300 + riskH + gridH + listH + 70;
+  const noteH = S.notes.length ? 70 + S.notes.length * 34 : 0;
+  const H = 180 + 150 + 300 + riskH + gridH + noteH + listH + 70;
   /* ความละเอียด 2 เท่าเพื่อความคมชัด — ลดลงอัตโนมัติถ้าภาพสูงมาก (iPhone รับผืนภาพได้ไม่เกิน ~16 ล้านพิกเซล) */
   const SCALE = Math.max(1, Math.min(2, Math.sqrt(15.5e6 / (W * H))));
   const cv = document.createElement('canvas'); cv.width = Math.round(W * SCALE); cv.height = Math.round(H * SCALE);
@@ -127,6 +131,16 @@ export async function drawReport(ctx) {
     x.fillText(trunc(x, r.c.code + '  ' + fmtTime(r.ts) + (ok ? '  ✔' : '  Late'), CELL - 18), cx + 14, cy + IH + 46);
   });
   y = gy + (n ? rows * (CELLH + 16) + 40 : 110);
+
+  /* 💬 หมายเหตุจากสาขา */
+  if (S.notes.length) {
+    x.fillStyle = C.k; x.font = F('700', 25); x.fillText('💬 หมายเหตุจากสาขา (' + S.notes.length + ')', P, y);
+    S.notes.forEach((o, i) => { const yy = y + 40 + i * 34, lt = o.r.status === 'late';
+      x.fillStyle = lt ? C.r : C.g; x.font = F('700', 18); const hd = o.r.c.code + '  ' + fmtTime(o.r.ts) + (lt ? ' Late' : '') + '  ';
+      x.fillText(hd, P + 10, yy); const w = x.measureText(hd).width;
+      x.fillStyle = C.k; x.font = F('400', 18); x.fillText(trunc(x, o.r.c.name + ' — ' + o.t, W - P * 2 - 20 - w), P + 10 + w, yy); });
+    y += noteH;
+  }
 
   /* ขาด/ลา + ยังไม่ลงเวลา */
   if (listN) {

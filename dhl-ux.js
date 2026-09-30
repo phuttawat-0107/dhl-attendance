@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 const UX_VER = '2026.10.01-a';
-const TEAM = ['PHI','BPE','PWT','PKS','DST','BPL','PWN'];          /* เปิดเฉพาะทีม BKK */
+const TEAM = ['PHI','BPE','PWT','PKS','DST','BPL','PWN','TEST'];   /* เปิดเฉพาะทีม BKK (+ สาขาทดสอบ TEST) */
 const G = n => { try { return (0,eval)(n); } catch(e){ return undefined; } };
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

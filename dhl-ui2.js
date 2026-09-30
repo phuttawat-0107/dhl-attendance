@@ -6,7 +6,7 @@
    ============================================================ */
 (function(){
 'use strict';
-const UI2_VER = '2026.10.01-b';
+const UI2_VER = '2026.10.01-d';
 const UI2 = ['TEST'];                                   /* สาขาที่เห็นหน้าใหม่ (นำร่อง) */
 const G = n => { try { return (0,eval)(n); } catch(e){ return undefined; } };
 const $ = id => document.getElementById(id);
@@ -109,6 +109,16 @@ body.ui2 #rpList,body.ui2 #rpSearch,body.ui2 #fdList,body.ui2 #fdSearch{display:
 .u2cf .flow b{color:#c9c3b3}
 .u2cf .when{text-align:center;font-size:13px;color:var(--u-mut)} .u2cf .when b{display:block;font-size:34px;color:#1a1a1a;font-variant-numeric:tabular-nums}
 .u2cf .warn{background:var(--u-waitb);color:#6b4d00;border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700;margin-top:10px}
+.u2rp .ps i.ed{cursor:pointer;box-shadow:inset 0 0 0 1px currentColor}
+.u2cf .opt{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.u2cf .opt label{display:flex;align-items:center;gap:8px;border:2px solid var(--u-line);border-radius:12px;padding:10px 12px;font-weight:800;font-size:15px;cursor:pointer}
+.u2cf .opt label.on{border-color:#1a1a1a;background:#fffbe6} .u2cf .opt label b{margin-left:auto;font-size:22px;font-variant-numeric:tabular-nums}
+.u2cf .opt input[type=time]{margin-left:auto;min-width:0;max-width:62%;font:inherit;font-size:19px;font-weight:800;border:1.5px solid var(--u-line);border-radius:10px;padding:4px 8px;background:#fff}
+.u2cf .opt input[type=time]:disabled{opacity:.4}
+.u2cf .err{background:var(--u-lateb);color:var(--u-late);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:800;margin-top:8px}
+.u2dn{text-align:center} .u2dn h3{margin:2px 0 0;font-size:21px} .u2dn .sb2{font-size:12.5px;color:var(--u-mut)}
+.u2dn .cf{font-size:58px;line-height:1;animation:u2pop .7s cubic-bezier(.2,1.6,.4,1)} @keyframes u2pop{0%{transform:scale(.2) rotate(-20deg);opacity:0}100%{transform:none;opacity:1}}
+#u2sh .bt.ln{background:#06C755;color:#fff;font-size:16px;padding:14px} #u2sh .bt.ln small{display:block;font-weight:600;font-size:11.5px;opacity:.9}
 .u2cf .bt.ok{background:#1a1a1a;color:#FFCC00;font-size:17px;padding:15px} .u2cf .bt.ok[disabled]{opacity:.45}`;
 
 /* ---------- ข้อมูลของวัน (อ่านจากแอปเดิม) ---------- */
@@ -149,10 +159,10 @@ let TLSIG = '';
 async function renderTL(){ const el = $('u2tl'); if (!el) return; const { S, nx } = await stepData();
   const q = (window.dsPhotoQueue && window.dsPhotoQueue()) || 0, off = !navigator.onLine;
   const h = '<div class="bx"><div class="steps">' + S.map((x,i) => '<div class="st '+x.st+'" data-v="'+x.v+'"><i>'+(x.st==='ok'?'✓':x.st==='late'?'!':i+1)+'</i><div class="l">'+x.l+'</div><div class="v">'+(x.val?hm(x.val):(x.txt||'—'))+'</div></div>').join('') + '</div>'
-    + (nx ? '<div class="nx"><span>ถัดไป: '+nx.l+'</span><button data-v="'+nx.v+'">'+ACT[nx.v]+' ›</button></div>' : '<div class="nx done">✅ ครบทุกขั้นตอนของวันนี้แล้ว</div>') + '</div>'
+    + (nx ? '<div class="nx"><span>ถัดไป: '+nx.l+'</span><button data-v="'+nx.v+'">'+ACT[nx.v]+' ›</button></div>' : '<div class="nx done"><span>✅ ครบทุกขั้นตอนของวันนี้แล้ว</span><button data-done="1">📤 ส่ง Report ›</button></div>') + '</div>'
     + (off||q ? '<div id="u2off">'+(off?'📴 ไม่มีสัญญาณ — ทำงานต่อได้ ข้อมูลเก็บในเครื่อง แล้วส่งเองเมื่อมีสัญญาณ':'')+(q?(off?' · ':'')+'📤 รูปรอส่ง '+q+' รูป':'')+'</div>' : '');
   if (h === TLSIG) return; TLSIG = h; el.innerHTML = h;
-  el.querySelectorAll('[data-v]').forEach(b => b.onclick = () => go(b.dataset.v)); }
+  el.querySelectorAll('[data-v]').forEach(b => b.onclick = () => go(b.dataset.v)); const db = el.querySelector('[data-done]'); if (db) db.onclick = () => showDone(true); }
 
 /* ---------- เมนูล่าง ---------- */
 function renderNav(){ const el = $('u2nav'); if (!el) return;
@@ -250,7 +260,7 @@ async function rpData(){
   const L = recs.map(r => cs.find(c => c.id === r.courierId)).filter(Boolean);
   return { L, rp: p.rp || {}, inb: p.inboundTs || null }; }
 function rpRow(c, q, inb){ const nx = nextStep(q), dq = esc((c.name+' '+c.code+' '+(c.vendor||'')).toLowerCase());
-  const pills = RS.map(k => '<i class="'+(q[k] ? (stLate(k,q[k])?'late':'ok') : '')+'">'+RN[k]+' '+(q[k]?hm(q[k]):'—')+'</i>').join('');
+  const pills = RS.map(k => { const ed = q[k] && k !== 'fs'; return '<i class="'+(q[k] ? (stLate(k,q[k])?'late':'ok') : '')+(ed?' ed':'')+'"'+(ed?' data-ed="'+k+'" data-rc="'+esc(c.id)+'"':'')+'>'+RN[k]+' '+(q[k]?hm(q[k]):'—')+(ed?' ✏️':'')+'</i>'; }).join('');
   const lock = nx === 'fs' && !inb;
   const btn = !nx ? '<button class="go fin" disabled>✓ ครบ'+(q.dep&&q.fdel?'<small>Stem '+Math.round((q.fdel-q.dep)/60000)+' น.</small>':'')+'</button>'
     : lock ? '<button class="go dis" disabled>รอ First IB</button>'
@@ -269,40 +279,133 @@ async function renderRP(){
   box.innerHTML = '<div class="sum">'+RS.map(k => '<div><b>'+cnt(k)+'/'+n+'</b>'+RN[k]+'</div>').join('')+'</div>'
     + '<input class="srch" id="u2rq" inputmode="search" placeholder="🔍 เลขท้ายรหัส / ชื่อ" value="'+esc(RPQ)+'">'
     + L.map(c => rpRow(c, rp[c.id]||{}, inb)).join('')
-    + '<div class="lock" style="font-size:11.5px;color:var(--u-mut);background:#f3f0e7;border-radius:8px;padding:5px 8px">🔒 กดทีละขั้นตามจริง FS → ออกรถ → ส่งชิ้นแรก · ทุกครั้งต้องกดยืนยัน · ไม่มีการแก้เวลา</div>';
+    + '<div class="lock" style="font-size:11.5px;color:var(--u-mut);background:#f3f0e7;border-radius:8px;padding:5px 8px">🔒 กดทีละขั้นตามจริง FS → ออกรถ → ส่งชิ้นแรก · ทุกครั้งต้องกดยืนยัน · แก้เวลา ออกรถ/ส่งชิ้นแรก แตะป้ายเวลา ✏️</div>';
   const qi = $('u2rq'), flt = () => { const v = RPQ.trim().toLowerCase(); box.querySelectorAll('.rw').forEach(r => r.style.display = !v || r.dataset.q.includes(v) ? '' : 'none'); };
   qi.oninput = () => { RPQ = qi.value; flt(); }; flt();
   box.querySelectorAll('[data-rk]').forEach(b => b.onclick = () => { const c = L.find(x => String(x.id) === b.dataset.rc); if (c) confirmStep(c, b.dataset.rk); });
+  box.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { const c = L.find(x => String(x.id) === b.dataset.rc); if (c) editStep(c, b.dataset.ed); });
 }
+/* บันทึกเวลา ออกรถ / ส่งชิ้นแรก แบบระบุเวลาเอง (หรือเวลาปัจจุบัน) · v=null = ล้าง · ตรวจลำดับเหมือน rpStamp เดิม */
+function tsOfHM(s){ const m = /^(\d{1,2}):(\d{2})$/.exec(String(s||'').trim()); if (!m || +m[1] > 23 || +m[2] > 59) return null; const d = new Date(); d.setHours(+m[1], +m[2], 0, 0); return d.getTime(); }
+function rpCheck(q, k, v){ if (v == null){ const an = RS.slice(RS.indexOf(k)+1).find(x => q[x]); return an ? 'ล้าง '+RN[an]+' ก่อน แล้วค่อยล้าง '+RN[k] : ''; }
+  if (v > Date.now() + 60000) return 'เวลาต้องไม่เกินเวลาปัจจุบัน ('+hm(Date.now())+')';
+  const i = RS.indexOf(k), bp = RS.slice(0,i).find(x => q[x] && +q[x] > v); if (bp) return 'เวลา '+RN[k]+' ต้องไม่ก่อน '+RN[bp]+' ('+hm(q[bp])+')';
+  const an = RS.slice(i+1).find(x => q[x] && +q[x] < v); if (an) return 'เวลา '+RN[k]+' ต้องไม่หลัง '+RN[an]+' ('+hm(q[an])+')'; return ''; }
+async function saveRp(cid, k, v){
+  const P = (await pphOf(today())) || G('pphRec'); if (!P) return 'ยังไม่มีข้อมูล PPH วันนี้';
+  P.rp = P.rp || {}; const q = P.rp[cid] = P.rp[cid] || {}; const e = rpCheck(q, k, v); if (e) return e;
+  if (v == null) delete q[k]; else q[k] = v;
+  try { (0,eval)('pphRec = ' + JSON.stringify(P)); } catch(x){}
+  const put = G('putPPH'); if (typeof put !== 'function') return 'บันทึกไม่ได้'; await put(G('pphRec') || P);
+  const fdOn = $('view-fdel') && $('view-fdel').classList.contains('active'); await call(fdOn ? 'renderFDel' : 'renderPPH'); return ''; }
 async function confirmStep(c, k){
   if (performance.now() < BUSY) return;
   const { rp, inb } = await rpData(), q = rp[c.id] || {};
   if (nextStep(q) !== k){ RPSIG = ''; renderRP(); return; }          /* อีกเครื่องกดไปแล้ว → วาดใหม่ */
   if (k === 'fs' && !inb){ (G('flash')||alert)('กด 📥 First Inbound ก่อน'); return; }
-  const i = RS.indexOf(k), prev = i ? q[RS[i-1]] : null, gap = prev ? (Date.now() - prev)/60000 : null;
-  const warn = prev && gap < RMIN[k] ? '⚠ เพิ่งกด '+RN[RS[i-1]]+' เมื่อ '+(gap < 1 ? 'ไม่ถึง 1 นาที' : Math.floor(gap)+' นาที')+'ที่แล้ว — แน่ใจว่า "'+esc(c.name)+'" '+RL[k]+' จริงแล้ว?' : '';
-  const tag = k === 'dep' && secNow() >= DEP_T ? ' <span class="ch u-late">เลย 08:30</span>' : k === 'fdel' && secNow() >= FDEL_T ? ' <span class="ch u-late">เลย 09:00</span>' : '';
+  const i = RS.indexOf(k), prev = i ? q[RS[i-1]] : null, canEdit = k !== 'fs';
+  const warnOf = v => { const gap = prev ? (v - prev)/60000 : null; return prev && gap < RMIN[k] ? '⚠ ห่างจาก '+RN[RS[i-1]]+' ('+hm(prev)+') แค่ '+(gap < 1 ? 'ไม่ถึง 1 นาที' : Math.floor(gap)+' นาที')+' — แน่ใจว่า "'+esc(c.name)+'" '+RL[k]+' จริงแล้ว?' : ''; };
+  const tagOf = v => k === 'dep' && secOf(v) >= DEP_T ? '<span class="ch u-late">เลย 08:30</span>' : k === 'fdel' && secOf(v) >= FDEL_T ? '<span class="ch u-late">เลย 09:00</span>' : '';
   CFOPEN = true;
   sheet('<div class="u2cf"><h3 style="margin:0">ยืนยัน: '+RL[k]+'</h3><div style="font-size:15px;font-weight:800;margin-top:4px">'+esc(c.name)+'</div><div style="font-size:12.5px;color:var(--u-mut)">'+esc(c.code)+' · '+esc(c.type||'')+' · '+esc(c.vendor||'')+'</div>'
     + '<div class="flow">'+RS.map((x,j) => (j?'<b>›</b>':'')+'<div class="'+(x===k?'cur':q[x]?'ok':'')+'">'+RN[x]+'<small>'+(q[x]?hm(q[x]):x===k?'ตอนนี้':'—')+'</small></div>').join('')+'</div>'
-    + '<div class="when">เวลาที่จะบันทึก<b id="u2cft">'+hm(Date.now())+'</b>'+tag+'</div>'
-    + (warn ? '<div class="warn">'+warn+'</div>' : '')
-    + '<div style="font-size:12px;color:var(--u-mut);text-align:center;margin-top:8px">บันทึกแล้วแก้ไม่ได้ — ตรวจชื่อให้ถูกคนก่อนกด</div>'
+    + (canEdit ? '<div class="opt"><label class="on" id="u2o1"><input type="radio" name="u2t" checked> <span style="white-space:nowrap">✓ เวลาปัจจุบัน</span> <b id="u2cft">'+hm(Date.now())+'</b></label>'
+        + '<label id="u2o2"><input type="radio" name="u2t"> <span style="white-space:nowrap">✏️ ระบุเอง</span> <input type="time" id="u2ti" value="'+hm(Date.now())+'" disabled></label></div>'
+      : '<div class="when">เวลาที่จะบันทึก<b id="u2cft">'+hm(Date.now())+'</b></div>')
+    + '<div id="u2tg" style="text-align:center;margin-top:6px"></div><div id="u2wn"></div><div id="u2er"></div>'
+    + '<div style="font-size:12px;color:var(--u-mut);text-align:center;margin-top:8px">'+(canEdit ? 'ถ้ากดช้ากว่าเวลาจริง เลือก "ระบุเอง" · แก้ภายหลังได้ที่ป้ายเวลา ✏️' : 'FS ใช้เวลาจริงตอนกด — ตรวจชื่อให้ถูกคนก่อนกด')+'</div>'
     + '<button class="bt ok" id="u2cfy" disabled>รอสักครู่…</button><button class="bt o" id="u2cfn">ยกเลิก</button></div>');
-  const y = $('u2cfy'), n = $('u2cfn'), wait = warn ? 2000 : 1000;
-  const tm = setInterval(() => { const t = $('u2cft'); if (t) t.textContent = hm(Date.now()); }, 1000);
+  const y = $('u2cfy'), n = $('u2cfn'), ti = $('u2ti');
+  let manual = false, armed = false;
+  const val = () => manual ? tsOfHM(ti.value) : Date.now();
+  const upd = () => { const v = val(); $('u2tg').innerHTML = v ? tagOf(v) : ''; const w = v ? warnOf(v) : ''; $('u2wn').innerHTML = w ? '<div class="warn">'+w+'</div>' : '';
+    const e = v == null ? 'ใส่เวลาให้ถูก (ชม:นาที)' : rpCheck(q, k, v); $('u2er').innerHTML = e ? '<div class="err">✖ '+esc(e)+'</div>' : '';
+    if (armed){ y.disabled = !!e; y.textContent = '✓ ยืนยัน '+RN[k]+(v?' '+hm(v):''); } return { v, e, w }; };
+  if (canEdit){ const o1 = $('u2o1'), o2 = $('u2o2');
+    const pick = m => { manual = m; o1.classList.toggle('on', !m); o2.classList.toggle('on', m); o1.querySelector('input').checked = !m; o2.querySelector('input').checked = m; ti.disabled = !m; if (m) try { ti.focus(); } catch(x){} upd(); };
+    o1.onclick = e => { if (e.target !== ti) pick(false); }; o2.onclick = e => { if (!manual) pick(true); }; ti.oninput = upd; ti.onchange = upd; }
+  const first = upd();
+  const tm = setInterval(() => { const t = $('u2cft'); if (t) t.textContent = hm(Date.now()); if (!manual) upd(); }, 1000);
   const done = () => { clearInterval(tm); CFOPEN = false; closeSheet(); };
-  setTimeout(() => { if (y){ y.disabled = false; y.textContent = '✓ ยืนยัน '+RN[k]; } }, wait);
+  setTimeout(() => { if (y && $('u2cfy') === y){ armed = true; upd(); } }, first.w ? 2000 : 1000);
   n.onclick = () => { done(); RPSIG = ''; renderRP(); };
   $('u2sh').onclick = e => { if (e.target.id === 'u2sh'){ done(); RPSIG = ''; renderRP(); } };
-  y.onclick = async () => { if (y.disabled) return; y.disabled = true; BUSY = performance.now() + 1500; done();
-    await call('rpStamp', c.id, k);
+  y.onclick = async () => { if (y.disabled || !armed) return; const { v, e } = upd(); if (e || v == null) return;
+    y.disabled = true; BUSY = performance.now() + 1500; done();
+    let err = '';
+    if (k === 'fs') await call('rpStamp', c.id, k); else err = await saveRp(c.id, k, manual ? v : Date.now());
     const p2 = (await pphOf(today())) || {}, ok = ((p2.rp||{})[c.id]||{})[k];
-    if (ok) (G('flash')||(()=>{}))('✓ '+RN[k]+' '+hm(ok)+' · '+String(c.name).split(' ')[0]);
+    if (err) (G('flash')||alert)('⚠ '+err); else if (ok) (G('flash')||(()=>{}))('✓ '+RN[k]+' '+hm(ok)+(manual?' (ระบุเอง)':'')+' · '+String(c.name).split(' ')[0]);
     RPSIG = ''; setTimeout(renderRP, 150); TLSIG = ''; renderTL(); };
+}
+/* แก้เวลาที่บันทึกแล้ว (เฉพาะ ออกรถ / ส่งชิ้นแรก) */
+async function editStep(c, k){
+  if (performance.now() < BUSY || k === 'fs') return;
+  const { rp } = await rpData(), q = rp[c.id] || {}; if (!q[k]) return;
+  CFOPEN = true;
+  sheet('<div class="u2cf"><h3 style="margin:0">✏️ แก้เวลา '+RL[k]+'</h3><div style="font-size:15px;font-weight:800;margin-top:4px">'+esc(c.name)+'</div><div style="font-size:12.5px;color:var(--u-mut)">'+esc(c.code)+' · บันทึกไว้ '+hm(q[k])+'</div>'
+    + '<div class="flow">'+RS.map((x,j) => (j?'<b>›</b>':'')+'<div class="'+(x===k?'cur':q[x]?'ok':'')+'">'+RN[x]+'<small>'+(q[x]?hm(q[x]):'—')+'</small></div>').join('')+'</div>'
+    + '<div class="opt"><label class="on">เวลาใหม่ <input type="time" id="u2ti" value="'+hm(q[k])+'"></label></div><div id="u2er"></div>'
+    + '<button class="bt ok" id="u2cfy">💾 บันทึกเวลาใหม่</button><button class="bt o" id="u2cfc" style="color:var(--u-late)">🗑 ล้างเวลา '+RN[k]+' (กดผิดคน)</button><button class="bt o" id="u2cfn">ยกเลิก</button></div>');
+  const ti = $('u2ti'), y = $('u2cfy');
+  const upd = () => { const v = tsOfHM(ti.value), e = v == null ? 'ใส่เวลาให้ถูก (ชม:นาที)' : rpCheck(q, k, v); $('u2er').innerHTML = e ? '<div class="err">✖ '+esc(e)+'</div>' : ''; y.disabled = !!e; return { v, e }; };
+  ti.oninput = upd; ti.onchange = upd; upd();
+  const done = () => { CFOPEN = false; closeSheet(); RPSIG = ''; setTimeout(renderRP, 150); TLSIG = ''; renderTL(); };
+  $('u2cfn').onclick = done; $('u2sh').onclick = e => { if (e.target.id === 'u2sh') done(); };
+  y.onclick = async () => { const { v, e } = upd(); if (e) return; y.disabled = true; BUSY = performance.now() + 1500;
+    const err = await saveRp(c.id, k, v); (G('flash')||alert)(err ? '⚠ '+err : '✓ แก้ '+RN[k]+' เป็น '+hm(v)+' · '+String(c.name).split(' ')[0]); done(); };
+  $('u2cfc').onclick = async () => { if (!confirm('ล้างเวลา '+RN[k]+' ของ '+c.name+' ?')) return; BUSY = performance.now() + 1500;
+    const err = await saveRp(c.id, k, null); (G('flash')||alert)(err ? '⚠ '+err : '🗑 ล้าง '+RN[k]+' แล้ว · '+String(c.name).split(' ')[0]); done(); };
 }
 function hookRP(){ ['pphBody','fdelBody'].forEach(id => { const el = $(id); if (!el || el._u2) return; el._u2 = true;
   new MutationObserver(() => { if (ON){ RPSIG = ''; renderRP(); } }).observe(el, { childList:true }); }); }
+
+/* ---------- ครบทุกขั้นตอน (ไม่มีค้าง) → Pop Up แสดงความยินดี + ส่ง Report ทั้งหมดทาง LINE ---------- */
+async function dayStatus(){
+  const k = today(), recs = await recsOf(k), p = (await pphOf(k)) || {}, ab = absMap(), act = actCouriers(), rp = p.rp || {};
+  const ids = new Set(recs.map(r => Number(r.courierId))), need = act.filter(c => !ab[String(c.id)]);
+  const pend = [];
+  const miss = need.filter(c => !ids.has(Number(c.id))).length; if (miss) pend.push('ยังไม่ลงเวลา '+miss+' คน');
+  const noPh = recs.filter(r => !r.photo).length; if (noPh) pend.push('รอถ่ายรูป '+noPh+' คน');
+  if (!(p.pd && p.pd.ts)) pend.push('ยังไม่ถ่าย PD');
+  if (!p.inboundTs) pend.push('ยังไม่กด First IB'); if (!p.lastInboundTs) pend.push('ยังไม่กด Last IB');
+  RS.forEach(x => { const m = recs.filter(r => !(rp[r.courierId]||{})[x]).length; if (m) pend.push(RN[x]+' ค้าง '+m+' คน'); });
+  const ok = need.length > 0 && recs.length > 0 && !pend.length;
+  const lt = recs.filter(r => r.status === 'late').length, avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+  const dep = avg(recs.map(r => (rp[r.courierId]||{}).dep).filter(Boolean)), fd = avg(recs.map(r => (rp[r.courierId]||{}).fdel).filter(Boolean));
+  return { ok, pend, n: recs.length, lt, pd: p.pd && p.pd.ts, dep, fd, abs: act.length - need.length }; }
+const DONEKEY = () => 'u2done_'+depot()+'_'+today();
+async function shareReports(which){
+  const k = today(), dep = depot(), fl = G('flash') || alert;
+  const all = [['drawReport','Report1'],['drawSummary','Report2'],['drawRoutePrep','RoutePrep']].filter(x => !which || which === x[1]);
+  try { fl('กำลังสร้าง Report…'); const files = [];
+    for (const [fn, nm] of all){ const f = G(fn); if (typeof f !== 'function') continue; const cv = await f(k); if (!cv || !cv.toBlob) continue;
+      const b = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', .9)); if (b) files.push(new File([b], dep+'_'+nm+'_'+k+'.jpg', { type:'image/jpeg' })); }
+    if (!files.length){ fl('สร้าง Report ไม่สำเร็จ'); return; }
+    if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files, title:'รายงาน '+dep+' '+k }); return; }
+    files.forEach(f => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); });
+    fl('เครื่องนี้ส่งตรงไม่ได้ — โหลดรูปลงเครื่องแล้ว ส่งใน LINE ได้เลย');
+  } catch(e){ if (!e || e.name !== 'AbortError') fl('ส่งไม่สำเร็จ — ลองใหม่ หรือโหลดทีละไฟล์'); } }
+async function showDone(force){
+  if (CFOPEN || ($('u2sh') && $('u2sh').classList.contains('on'))) return;
+  const d = await dayStatus();
+  if (!d.ok){ if (force) sheet('<h3 style="margin:0 0 6px">⏳ ยังมีงานค้าง</h3>'+d.pend.map(x => '<div style="padding:6px 0;border-top:1px solid var(--u-line);font-weight:700">• '+esc(x)+'</div>').join('')+'<button class="bt o" data-x="1">ปิด</button>'), $('u2shb').querySelector('[data-x]').onclick = closeSheet; return; }
+  if (!force){ try { if (localStorage.getItem(DONEKEY())) return; localStorage.setItem(DONEKEY(), '1'); } catch(e){} }
+  const on = d.n - d.lt, pc = d.n ? Math.round(on/d.n*100) : 0;
+  const kp = (v, l, c) => '<div style="background:'+c+';border-radius:12px;padding:8px 4px;text-align:center"><b style="display:block;font-size:19px">'+v+'</b><span style="font-size:11px;font-weight:700;opacity:.8">'+l+'</span></div>';
+  sheet('<div class="u2dn"><div class="cf">🎉</div><h3>เยี่ยมมาก! ครบทุกขั้นตอนแล้ว</h3><div class="sb2">'+esc(depot())+' · ไม่มีงานค้าง · ส่งรายงานให้หัวหน้าได้เลย</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:12px 0">'
+    + kp(pc+'%','Ontime ('+on+'/'+d.n+')', pc===100?'var(--u-okb)':'#f3f0e7') + kp(d.pd?hm(d.pd):'—','PD', '#f3f0e7')
+    + kp(d.dep?hm(d.dep):'—','ออกรถเฉลี่ย', d.dep&&secOf(d.dep)<DEP_T?'var(--u-okb)':'var(--u-lateb)') + kp(d.fd?hm(d.fd):'—','First Del เฉลี่ย', d.fd&&secOf(d.fd)<FDEL_T?'var(--u-okb)':'var(--u-lateb)') + '</div>'
+    + '<button class="bt ln" data-all="1">📤 ส่ง Report ทั้งหมดทาง LINE<small>Report 1 · Report 2 · Route prep (3 รูป)</small></button>'
+    + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px">'+[['Report1','Report 1'],['Report2','Report 2'],['RoutePrep','Route prep']].map(x => '<button class="bt o" style="margin:0;font-size:12.5px;padding:10px 4px" data-one="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>'
+    + '<button class="bt o" data-x="1">ปิด</button></div>');
+  const b = $('u2shb');
+  b.querySelector('[data-all]').onclick = () => shareReports();
+  b.querySelectorAll('[data-one]').forEach(x => x.onclick = () => shareReports(x.dataset.one));
+  b.querySelector('[data-x]').onclick = closeSheet;
+  try { const s = G('uxCelebrate') || (window.DHLUX && window.DHLUX.celebrate); if (typeof s === 'function') s(); } catch(e){}
+}
 
 /* ---------- รายงาน: ปุ่มส่ง Report 1 + 2 พร้อมกัน ---------- */
 function hookReport(){ const m = $('repModal'); if (!m || m._u2) return; m._u2 = true;
@@ -342,6 +445,7 @@ async function tick(){
     await renderTL();
     if (TAB === 'checkin'){ const s = await sig(); const typing = performance.now() - LASTTYPE < 4000;   /* กำลังพิมพ์ค้นหา — รอพิมพ์เสร็จก่อนค่อยวาดใหม่ */ if (s !== SIG && !typing) await renderCI(); }
     if (TAB === 'pd') await renderPD();
+    if (!CFOPEN && performance.now() > BUSY) { let seen = false; try { seen = !!localStorage.getItem(DONEKEY()); } catch(e){} if (!seen && (await dayStatus()).ok) await showDone(false); }
     if ((TAB === 'pph' || TAB === 'fdel') && !(document.activeElement && document.activeElement.id === 'u2rq')) await renderRP();
   } catch(e){ console.warn('[ui2] ถอดหน้าตาใหม่ชั่วคราว', e); try { unmount(); } catch(x){} }
 }

@@ -219,6 +219,17 @@
 .chip.late{background:var(--st-late-bg)!important;color:var(--st-late)!important;}
 .dsAbsTag{background:var(--st-ab-bg)!important;color:var(--st-ab)!important;}
 .dsAbsRow{border-left-color:var(--st-ab)!important;}
+/* 💬 หมายเหตุ */
+.nx-cmb{position:absolute;right:4px;top:4px;background:#fff;border-radius:999px;padding:2px 7px;font-size:12px;font-weight:800;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;line-height:1.4;}
+.nx-cmb.add{background:#C62828;color:#fff;}
+.nx-cmq{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
+.nx-cmq button{border:1.5px solid #e6e2d6;background:#fff;border-radius:999px;padding:7px 12px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;}
+.nx-cmq button:active{background:#FFF4D6;border-color:#B7791F;}
+#nxCmtT{width:100%;box-sizing:border-box;border:1.5px solid #e6e2d6;border-radius:12px;padding:10px;font:inherit;font-size:15px;margin:0 0 10px;resize:vertical;}
+.nx-cmhint{background:#FDEAEA;color:#C62828;border-radius:10px;padding:8px 10px;font-weight:700;font-size:13.5px;margin-top:8px;}
+.nx-cmbox{background:#FFF4D6;border-radius:12px;padding:9px 11px;margin:0 0 10px;font-size:14px;line-height:1.45;}
+.nx-cmbox small{display:block;color:#8a6d2b;font-size:12px;margin-top:2px;}
+.nx-cmline{font-size:12.5px;color:#8a5a00;background:#FFF4D6;border-radius:8px;padding:3px 7px;margin-top:3px;display:inline-block;}
 @media (prefers-reduced-motion: reduce){ #nxPop,.nx-box,.nx-medal,#nxCele *{animation:none!important;transition:none!important;} }
 </style>
 </head>
@@ -584,10 +595,12 @@ function renderCheckin(){
     if (SHOWDONE) {
       const D = done.filter(f).sort((a,b)=>ck[b.id].ts-ck[a.id].ts);
       if (noPh) h += '<div id="dsDone">' + D.map(c => { const r = ck[c.id], ok = r.status !== 'late';
-          return '<div class="row-c" id="dn_'+c.id+'" onclick="viewPhoto('+c.id+')" style="cursor:pointer">'+info(c)+(ok?'<span class="chip ontime">✔ '+fmtTime(r.ts)+'</span>':'<span class="chip late">✖ Late '+fmtTime(r.ts)+'</span>')+'</div>'; }).join('') + '</div>';
+          const cm = cmtOf(DAY, c.id);
+          return '<div class="row-c" id="dn_'+c.id+'" onclick="viewPhoto('+c.id+')" style="cursor:pointer">'+info(c)+(cm?'<span class="nx-cmb" style="position:static;margin-right:6px">💬</span>':'')+(ok?'<span class="chip ontime">✔ '+fmtTime(r.ts)+'</span>':'<span class="chip late">✖ Late '+fmtTime(r.ts)+'</span>')+'</div>'; }).join('') + '</div>';
       else h += '<div id="dsDone" class="nx-grid">' + D.map(c => { const r = ck[c.id], ok = r.status !== 'late', k = 'ci_'+c.id+'_'+DAYKEY;
           const ph = PH[k] ? '<img class="photo-thumb" src="'+PH[k]+'" alt="">' : '<span class="photo-thumb" id="ph_'+c.id+'">⏳</span>';
-          return '<div class="nx-tile '+(ok?'ok':'late')+'" id="dn_'+c.id+'" onclick="viewPhoto('+c.id+')"><div class="nx-ph">'+ph+'<span class="nx-tt">'+(ok?'✔ ':'Late ')+fmtTime(r.ts)+'</span></div>'
+          const cm = cmtOf(DAY, c.id), cb = cm ? '<span class="nx-cmb" onclick="event.stopPropagation();nxCmt(\''+c.id+'\')">💬</span>' : (!ok ? '<span class="nx-cmb add" onclick="event.stopPropagation();nxCmt(\''+c.id+'\')">💬+</span>' : '');
+          return '<div class="nx-tile '+(ok?'ok':'late')+'" id="dn_'+c.id+'" onclick="viewPhoto('+c.id+')"><div class="nx-ph">'+ph+cb+'<span class="nx-tt">'+(ok?'✔ ':'Late ')+fmtTime(r.ts)+'</span></div>'
             +'<div class="nx-tn">'+escapeHtml(firstName(c.name))+'</div><div class="nx-tc">'+escapeHtml(c.code)+'</div></div>'; }).join('') + '</div>';
     }
   }
@@ -621,8 +634,10 @@ window.loadThumbs = loadThumbs;
 window.viewPhoto = id => {
   const c = byId(id), r = (DAY.checkins||{})[id], src = PH['ci_'+id+'_'+DAYKEY];
   sheet('<h2>'+escapeHtml(c?c.name:'#'+id)+'</h2><div class="small" style="margin-bottom:10px;">'+escapeHtml(c?c.code:'')+' • '+(r?fmtSec(r.ts):'')+' • โดย '+escapeHtml(r&&r.staff||'-')+'</div>'
+    + (cmtOf(DAY, id) ? '<div class="nx-cmbox">💬 '+escapeHtml(cmtOf(DAY, id).t)+'<small>โดย '+escapeHtml(cmtOf(DAY, id).by||'-')+'</small></div>' : '')
     + (src ? '<img src="'+src+'" style="width:100%;border-radius:14px;">' : '<div class="hint">ไม่พบรูป</div>')
-    + '<div style="height:10px"></div><button class="btn btn-o btn-block" onclick="closeSheet();redo('+id+')">↺ ถ่ายใหม่ (ลบรูปนี้)</button>'
+    + '<div style="height:10px"></div><button class="btn btn-y btn-block" onclick="nxCmt(\''+id+'\')">💬 '+(cmtOf(DAY, id)?'แก้หมายเหตุ':'เพิ่มหมายเหตุ (เหตุผล Late / งานพิเศษ)')+'</button>'
+    + '<div style="height:8px"></div><button class="btn btn-o btn-block" onclick="closeSheet();redo('+id+')">↺ ถ่ายใหม่ (ลบรูปนี้)</button>'
     + '<div style="height:8px"></div><button class="btn btn-y btn-block" onclick="closeSheet()">ปิด</button>');
 };
 function sheet(h){ $('sheetBody').innerHTML = h; $('sheetModal').classList.add('show'); }
@@ -633,7 +648,7 @@ const phPath = id => `depots/${CODE}/photos/ci_${id}_${DAYKEY}`;
 window.redo = id => {
   const c = byId(id);
   if (!confirm('ลบการเช็คอินของ '+c.name+' เพื่อบันทึกใหม่?\nรูปถ่ายจะถูกลบด้วย')) return;
-  track(fb.set(dayPath(), { checkins: { [id]: DEL } })); track(fb.del(phPath(id)));
+  track(fb.set(dayPath(), { checkins: { [id]: DEL }, cmt: { [id]: DEL } })); track(fb.del(phPath(id)));
   delete PH['ci_'+id+'_'+DAYKEY]; flash('↺ ลบแล้ว — เช็คอินใหม่ได้เลย');
 };
 
@@ -648,9 +663,34 @@ window.nxCloseAbs = () => $('nxAbs').classList.remove('show');
 window.nxSaveAbs = () => {
   if (ABS_K == null) { $('nxAbsErr').textContent = 'เลือกสาเหตุก่อนบันทึก'; return; }
   const [type, note] = ABT[ABS_K], id = ABS_ID;
-  track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, absent: { [id]: { note, type, by: STAFF, at: NOW } }, checkins: { [id]: DEL } }));
+  track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, absent: { [id]: { note, type, by: STAFF, at: NOW } }, checkins: { [id]: DEL }, cmt: { [id]: DEL } }));
   track(fb.del(phPath(id)));
   nxCloseAbs(); NX.mine = true; flash('บันทึก '+byId(id).code+' : '+note);
+};
+/* ===== 💬 หมายเหตุ: เหตุผลที่มา Late / จัดการงานพิเศษหน้างาน (ไม่บังคับ) — เก็บแยกใน day.cmt ===== */
+const CMT_Q = ['ติดธุระส่วนตัว','รถเสีย / ยางแตก','ฝนตก / รถติด','จัดการงานพิเศษหน้างาน','แจ้งหัวหน้าแล้ว'];
+const cmtOf = (x, id) => { const m = x && x.cmt && x.cmt[id]; return m && m.t ? m : null; };
+window.nxCmt = (id, auto) => {
+  id = String(id); const c = byId(id) || { code:'#'+id, name:'' }, r = (DAY.checkins||{})[id], m = cmtOf(DAY, id);
+  sheet('<h2>💬 หมายเหตุ</h2><div class="small">'+escapeHtml(c.code)+' · '+escapeHtml(c.name)+(r&&r.ts?' · '+(r.status==='late'?'Late ':'Ontime ')+fmtTime(r.ts):'')+'</div>'
+    + (auto ? '<div class="nx-cmhint">มา Late — มีธุระหรือจัดการงานพิเศษไหม? (ไม่บังคับ กด "ข้าม" ได้)</div>' : '')
+    + '<div class="nx-cmq">'+CMT_Q.map((q,i)=>'<button type="button" onclick="nxCmtQ('+i+')">'+q+'</button>').join('')+'</div>'
+    + '<textarea id="nxCmtT" maxlength="150" rows="3" placeholder="พิมพ์รายละเอียดเพิ่มได้ เช่น ไปส่งพัสดุด่วนให้ลูกค้าก่อนเข้างาน">'+escapeHtml(m?m.t:'')+'</textarea>'
+    + '<button class="btn btn-y btn-block" onclick="nxCmtSave(\''+id+'\')">💾 บันทึกหมายเหตุ</button>'
+    + (m ? '<div style="height:8px"></div><button class="btn btn-o btn-block" onclick="nxCmtDel(\''+id+'\')">🗑 ลบหมายเหตุ</button>' : '')
+    + '<div style="height:8px"></div><button class="btn btn-o btn-block" onclick="closeSheet()">'+(auto?'ข้าม':'ปิด')+'</button>');
+};
+window.nxCmtQ = i => { const e = $('nxCmtT'); if (!e) return; const q = CMT_Q[i], v = e.value.trim(); if (v.includes(q)) return; e.value = v ? v+' · '+q : q; e.focus(); };
+window.nxCmtSave = id => {
+  const v = (($('nxCmtT')||{}).value || '').trim().slice(0,150);
+  if (!v) { flash('เลือกหรือพิมพ์เหตุผลก่อนบันทึก'); return; }
+  DAY.cmt = Object.assign({}, DAY.cmt, { [id]: { t: v, by: STAFF } });
+  track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, cmt: { [id]: { t: v, by: STAFF, at: NOW } } }));
+  closeSheet(); flash('💬 บันทึกหมายเหตุแล้ว'); try { renderCheckin(); } catch(e){}
+};
+window.nxCmtDel = id => {
+  if (DAY.cmt) delete DAY.cmt[id];
+  track(fb.set(dayPath(), { cmt: { [id]: DEL } })); closeSheet(); flash('ลบหมายเหตุแล้ว'); try { renderCheckin(); } catch(e){}
 };
 window.clearAbsent = id => { track(fb.set(dayPath(), { absent: { [id]: DEL } })); flash('ยกเลิกสถานะแล้ว'); };
 
@@ -704,6 +744,7 @@ function save(ts, photo){
   const putPhoto = () => track(fb.set(phPath(id), { d: photo, kind: 'ci', cid: id, date: DAYKEY, at: NOW, by: STAFF, expireAt: new Date(Date.now()+(KEEP_DAYS+1)*864e5) }, false));
   closeCamera();
   NX.mine = true; nxPop(c, ts, st.status, photo);
+  if (st.status === 'late') setTimeout(() => { if (!['camOverlay','sheetModal','editModal'].some(i => $(i) && $(i).classList.contains('show')) && !$('nxAbs').classList.contains('show') && !$('nxCele').classList.contains('show')) nxCmt(id, true); }, 1200);
   if (!navigator.onLine) { putPhoto(); track(fb.set(path, patch)); return; }   /* ออฟไลน์: เก็บในเครื่องแล้วส่งเองเมื่อกลับมาออนไลน์ */
   /* ออนไลน์: ใช้ transaction กัน 2 เครื่องเช็คอินคนเดียวกันพร้อมกัน (เก็บรายการแรกไว้ ไม่ทับ) */
   let dup = null;
@@ -974,6 +1015,7 @@ window.nxViewDayPh = (k, id) => {
   const x = HIST[k], r = x && x.checkins && x.checkins[id], c = byId(id) || { code:'#'+id, name:'' }, src = PH['ci_'+id+'_'+k];
   if (!src) { nxLoadDayPh(k); return; }
   sheet('<h2>'+escapeHtml(c.name)+'</h2><div class="small" style="margin-bottom:10px;">'+escapeHtml(c.code)+' • '+thDate(k)+' • '+(r?fmtSec(r.ts):'')+' • '+(r&&r.status==='late'?'Late':'Ontime')+' • โดย '+escapeHtml(r&&r.staff||'-')+'</div>'
+    + (cmtOf(x, id) ? '<div class="nx-cmbox">💬 '+escapeHtml(cmtOf(x, id).t)+'<small>โดย '+escapeHtml(cmtOf(x, id).by||'-')+'</small></div>' : '')
     + '<img src="'+src+'" style="width:100%;border-radius:14px;">'
     + '<div style="height:10px"></div><button class="btn btn-y btn-block" onclick="closeSheet()">ปิด</button>');
 };
@@ -984,7 +1026,7 @@ function nxDayHTML(k){
   const rows = Object.keys(x.checkins||{}).filter(id=>x.checkins[id]&&x.checkins[id].ts).sort((a,b)=>x.checkins[a].ts-x.checkins[b].ts).map(id => {
     const c = byId(id) || { code:'#'+id, name:'(ไม่อยู่ในรายชื่อ)' }, r = x.checkins[id], ok = r.status!=='late', pk = 'ci_'+id+'_'+k;
     const ph = PH[pk] ? '<img class="photo-thumb" src="'+PH[pk]+'" alt="">' : '<span class="photo-thumb" id="hp_'+id+'">⏳</span>';
-    return '<div class="nx-tile '+(ok?'ok':'late')+'" onclick="nxViewDayPh(\''+k+'\',\''+id+'\')"><div class="nx-ph">'+ph+'<span class="nx-tt">'+(ok?'✔ ':'Late ')+fmtTime(r.ts)+'</span></div>'
+    return '<div class="nx-tile '+(ok?'ok':'late')+'" onclick="nxViewDayPh(\''+k+'\',\''+id+'\')"><div class="nx-ph">'+ph+(cmtOf(x, id)?'<span class="nx-cmb">💬</span>':'')+'<span class="nx-tt">'+(ok?'✔ ':'Late ')+fmtTime(r.ts)+'</span></div>'
       +'<div class="nx-tn">'+escapeHtml(firstName(c.name))+'</div><div class="nx-tc">'+escapeHtml(c.code)+'</div></div>'; }).join('');
   const abs = Object.keys(x.absent||{}).map(id => { const c = byId(id)||{code:'#'+id,name:''};
     return '<div class="row-c dsAbsRow"><div class="info"><div class="nm">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.code)+'</div><span class="dsAbsTag">'+escapeHtml(x.absent[id].note||'ขาด')+'</span></div></div>'; }).join('');
@@ -1021,7 +1063,7 @@ function nxTrend(L){
 }
 /* รายงานประจำวัน (ภาพเดียว มีรูปทุกคน) → ส่งผู้บังคับบัญชา */
 window.openReport = async k => {
-  const m = await import('./upc-report.js?v=4');
+  const m = await import('./upc-report.js?v=5');
   m.openReport({ fb, code: CODE, key: k || DAYKEY, dep: DEP, roster: couriers(), staff: STAFF, sheet, flash, thDate, fmtTime, hmCut, cutOf, ymd });
 };
 window.openDay = k => {

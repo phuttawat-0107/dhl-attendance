@@ -22,6 +22,8 @@
 .mgbtn{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1px solid #e6e2d6;background:#fff;border-radius:12px;padding:6px 11px;font:inherit;cursor:pointer;text-align:left}
 .mgbtn b{font-size:12.5px;font-weight:800;white-space:nowrap}.mgbtn span{font-size:11px;color:#8a8270}
 .mgbtn.on{background:#1a1a1a;border-color:#1a1a1a;color:#fff}.mgbtn.on span{color:#FFCC00}
+.row-c .cmt{font-size:12.5px;color:#7a4f00;background:#FFF4D6;border-radius:8px;padding:4px 8px;margin-top:4px;line-height:1.45;word-break:break-word}
+.row-c .cmt i{color:#9a8350;font-style:normal;font-size:11.5px}
 .mgsel{font-size:12.5px;background:#fff8d9;border-radius:10px;padding:7px 10px;margin:0 0 9px;line-height:1.5}
 .mgsel a{color:#C62828;font-weight:800;cursor:pointer;margin-left:4px;white-space:nowrap}   /* แจ้งผลการกด (สำเร็จ/ไม่สำเร็จ) ให้ลอยเหนือหน้าต่างเสมอ */
 .fitem.bad{background:#C62828 !important;}
@@ -485,9 +487,11 @@ function openDep(dep, refresh){
     return '<div class="row-c">'+img+'<div class="info"><div class="nm">'+esc(p.c.name)+'</div><div class="sub2">'+esc(p.c.code)+' • '+esc(p.c.vendor||'-')
       + (p.ck ? ' • โดย '+esc(p.ck.staff||'-') : p.ab ? ' • โดย '+esc(p.ab.by||'-') : '')
       + (off ? ' • <b style="color:#b3121d">⏱ เวลาเครื่องต่าง '+Math.abs(off)+' นาที</b>' : '')
-      + (p.ck && p.ck.off ? ' • 📴 ลงตอนออฟไลน์' : '') + '</div></div>'+chip+'</div>';
+      + (p.ck && p.ck.off ? ' • 📴 ลงตอนออฟไลน์' : '') + '</div>'
+      + (p.ck && day.cmt && day.cmt[p.id] && day.cmt[p.id].t ? '<div class="cmt">💬 '+esc(day.cmt[p.id].t)+' <i>— '+esc(day.cmt[p.id].by||'-')+'</i></div>' : '')   /* หมายเหตุจาก Staff (เหตุผล Late / งานพิเศษ) */
+      + '</div>'+chip+'</div>';
   };
-  modal('<h3>'+esc(dep)+' · '+esc(D.name||'')+'</h3><div class="sub">'+thDate(TKEY)+' • เช็คอิน '+s.inn+'/'+(s.n-s.ab)+' • สาย '+s.late+' • ขาด/ลา '+s.ab+' • ยังไม่ลง '+s.no+'</div>'
+  modal('<h3>'+esc(dep)+' · '+esc(D.name||'')+'</h3><div class="sub">'+thDate(TKEY)+' • เช็คอิน '+s.inn+'/'+(s.n-s.ab)+' • สาย '+s.late+' • ขาด/ลา '+s.ab+' • ยังไม่ลง '+s.no+(ins.filter(p=>day.cmt&&day.cmt[p.id]&&day.cmt[p.id].t).length?' • 💬 หมายเหตุ '+ins.filter(p=>day.cmt&&day.cmt[p.id]&&day.cmt[p.id].t).length:'')+'</div>'
     + (no.length ? '<div class="grp">⏳ ยังไม่ลงเวลา '+no.length+' คน</div>'+no.map(row).join('') : '')
     + (ins.length ? '<div class="grp">✓ เช็คอินแล้ว '+ins.length+' คน</div>'+ins.map(row).join('') : '')
     + (abs.length ? '<div class="grp">🚫 ขาด / ลา '+abs.length+' คน</div>'+abs.map(row).join('') : '')

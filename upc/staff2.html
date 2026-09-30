@@ -374,7 +374,7 @@
 <div class="flash" id="flash"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.30-c';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.30-d';
 
 const APP_VER = FB_VER; let KEEP_DAYS = 30;
 const $ = id => document.getElementById(id);
@@ -1122,6 +1122,10 @@ window.editCourier = id => { const c = byId(id); EDIT_ID = id; $('eCode').value=
 window.saveEdit = () => {
   const code = $('eCode').value.trim().toUpperCase(), name = $('eName').value.trim(), vendor = $('eVendor').value.trim(), type = $('eType').value, id = EDIT_ID;
   if (!code || !name) { flash('กรอกรหัสและชื่อ'); return; }
+  { const o = byId(id) || {}, fn = s => String(s||'').replace(/^(K\.|นาย|นางสาว|นาง)\s*/i,'').trim().split(/\s+/)[0].toLowerCase();
+    if ((o.code && o.code !== code) || (o.name && fn(o.name) !== fn(name))) {
+      if (!confirm('⚠️ กำลังเปลี่ยน '+(o.code!==code?'รหัส '+o.code+' → '+code:'')+(o.code!==code&&fn(o.name)!==fn(name)?' และ ':'')+(fn(o.name)!==fn(name)?'ชื่อ "'+o.name+'" → "'+name+'"':'')
+        +'\n\nถ้าเป็น "คนใหม่" ที่มาแทนคนเดิม ให้กด ยกเลิก แล้ว:\n1) กด "พัก" คนเดิม\n2) กด "เพิ่มพนักงาน" คนใหม่\n(ไม่เช่นนั้นประวัติ Late/ขาด/ลา ของคนเดิมจะติดไปกับคนใหม่)\n\nกด ตกลง ถ้าเป็นคนเดิม แค่แก้ให้ถูกต้อง')) return; } }
   saveRoster(R => { const c = R.find(x=>String(x.id)===String(id)); if (!c) return 'ไม่พบพนักงานคนนี้แล้ว (อาจถูกแก้จากเครื่องอื่น)';
       if (R.some(x=>x.code===code && x!==c)) return 'รหัส '+code+' มีอยู่แล้ว'; Object.assign(c, { code, name, vendor, type }); },
     '💾 บันทึกแล้ว').then(ok => { if (ok) $('editModal').classList.remove('show'); });

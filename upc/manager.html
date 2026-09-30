@@ -30,6 +30,23 @@
 #mZoom .zc{color:#fff;text-align:center;font-size:15px;line-height:1.5;max-width:520px}
 #mZoom .zm{margin-top:6px;background:#FFF4D6;color:#5c4000;border-radius:10px;padding:6px 10px;font-size:14px;text-align:left}
 #mZoom .zx{color:#bbb;font-size:13px}
+/* 🟩 ตารางมาทำงาน */
+.ag{overflow-x:auto;margin:10px -4px 0;padding-bottom:4px}
+.ag table{border-collapse:separate;border-spacing:3px;font-size:11px}
+.ag th{font-weight:700;font-size:10.5px;color:#8a8474;min-width:22px}
+.ag th.td{color:#1a1a1a;background:#FFCC00;border-radius:6px}
+.ag td.nm{position:sticky;left:0;background:#fff;font-weight:700;font-size:12px;white-space:nowrap;padding-right:6px;z-index:1;max-width:84px;overflow:hidden;text-overflow:ellipsis}
+.ag td.c{width:22px;min-width:22px;height:22px;border-radius:6px;text-align:center;font-weight:800;font-size:11px;color:#fff;cursor:pointer;padding:0}
+.ag td.c.w{background:#2E7D32}.ag td.c.l{background:#C62828}.ag td.c.o{background:#6A4FB3}
+.ag td.c.x{background:#fff;border:1.5px dashed #B7791F;color:#B7791F}.ag td.c.x2{background:#FFF4D6;color:#B7791F;border:1.5px dashed #B7791F}
+.ag td.c.n{background:#f1efe8}
+.ag td.sm{font-size:11px;white-space:nowrap;padding-left:4px}
+.attR{display:flex;gap:6px;margin-top:8px}
+.attR button{border:1.5px solid #e6e2d6;background:#fff;border-radius:999px;padding:5px 11px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.attR button.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.attTip{margin-top:6px;background:#FFF4D6;border-radius:8px;padding:6px 9px;font-size:12.5px;color:#5c4000;min-height:30px}
+.leg{display:flex;flex-wrap:wrap;gap:8px 12px;font-size:11.5px;color:#8a8474;margin-top:8px}
+.leg i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
 .mgsel{font-size:12.5px;background:#fff8d9;border-radius:10px;padding:7px 10px;margin:0 0 9px;line-height:1.5}
 .mgsel a{color:#C62828;font-weight:800;cursor:pointer;margin-left:4px;white-space:nowrap}   /* แจ้งผลการกด (สำเร็จ/ไม่สำเร็จ) ให้ลอยเหนือหน้าต่างเสมอ */
 .fitem.bad{background:#C62828 !important;}
@@ -102,7 +119,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
 <div id="feed"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.30-c';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.30-d';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 /* ภาคตามโครงสร้าง UPC: Central / East / North / North-East / South */
@@ -512,7 +529,8 @@ function openDep(dep, refresh){
     + (ins.length ? '<div class="grp">✓ เช็คอินแล้ว '+ins.length+' คน</div>'+ins.map(row).join('') : '')
     + (abs.length ? '<div class="grp">🚫 ขาด / ลา '+abs.length+' คน</div>'+abs.map(row).join('') : '')
     + (!P.length ? '<div class="empty">ยังไม่มีรายชื่อพนักงานในสาขานี้</div>' : '')
-    + '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__staffN(\''+esc(dep)+'\')">👥 ชื่อผู้บันทึก (Staff) ของสาขานี้</button>'
+    + '<button class="btn btn-y btn-block" style="margin-top:12px" onclick="window.__att(\''+esc(dep)+'\')">🟩 ตารางมาทำงานรายคน (ย้อนหลัง)</button>'
+    + '<button class="btn btn-o btn-block" style="margin-top:8px" onclick="window.__staffN(\''+esc(dep)+'\')">👥 ชื่อผู้บันทึก (Staff) ของสาขานี้</button>'
     + '<button class="btn btn-o btn-block" style="margin-top:8px" onclick="window.__close()">ปิด</button>');
   loadThumbs(dep, ins.map(p=>p.id));
 }
@@ -534,6 +552,61 @@ async function loadThumb(dep, id){
   if (PH[k]) zoomSrc[k] = PH[k];
 }
 window.__reThumb = (dep, id) => { const el = document.getElementById('th_'+dep+'_'+id); if (el) el.innerHTML = '⏳'; loadThumb(dep, id); };
+
+/* ================= 🟩 ตารางมาทำงานรายคน (ต่อสาขา) =================
+   ดึงข้อมูลวันทำงานย้อนหลัง (ไม่นับอาทิตย์) + วันนี้แบบสด · อ่านอย่างเดียว ไม่แก้ข้อมูล */
+let ATTDEP = null, ATTN = 15, ATTC = {};
+const attKeys = n => { const L = []; const d = new Date(TKEY+'T00:00:00'); let g = 0; while (L.length < n && g++ < n*2+7) { if (d.getDay() !== 0) L.unshift(ymd(d)); d.setDate(d.getDate()-1); } return L; };
+const abCode = a => { const ty = a && a.type, n = String(a && a.note || ''); if (ty==='off' || /หยุด/.test(n)) return 'ห'; if (ty==='absent' || /ขาด/.test(n)) return 'ข'; return 'ล'; };
+window.__att = async (dep, n) => {
+  OPENDEP = null; ATTDEP = dep; if (n) ATTN = n;
+  const keys = attKeys(ATTN), need = keys.filter(k => k !== TKEY && !ATTC[dep+'|'+k]);
+  if (need.length) { modal('<h3>🟩 ตารางมาทำงาน — '+esc(dep)+'</h3><div class="sub">กำลังโหลดข้อมูล '+ATTN+' วันทำงาน…</div>');
+    await Promise.all(need.map(async k => { try { ATTC[dep+'|'+k] = (await fb.get(`depots/${dep}/days/${k}`)) || {}; } catch(e){ ATTC[dep+'|'+k] = null; } })); }
+  if (ATTDEP !== dep) return;
+  attRender();
+};
+function attRender(){
+  const dep = ATTDEP, D = DEPS[dep] || {}, keys = attKeys(ATTN);
+  const since = toMs(D.createdAt) ? ymd(new Date(toMs(D.createdAt))) : '';
+  const days = keys.map(k => k === TKEY ? (TODAY[dep] || {}) : (ATTC[dep+'|'+k] || {}));
+  const R = (D.roster || []).filter(c => c.active !== false || days.some(x => (x.checkins||{})[c.id] || (x.absent||{})[c.id]));
+  const cell = (c, x, k) => {
+    const ck = (x.checkins||{})[c.id], ab = (x.absent||{})[c.id], cm = x.cmt && x.cmt[c.id] && x.cmt[c.id].t;
+    if (ck && ck.ts) { const L = isLate(ck); return [L?'l':'w', cm?'💬':'', (L?'Late ':'Ontime ')+hm(ck.ts)+(cm?' · 💬 '+cm:'')]; }
+    if (ab) { const a = abCode(ab); return ['o', a, ab.note||'ลา']; }
+    if (k === TKEY) return [pastOf(dep)?'x2':'x', '', 'ยังไม่ลง'];
+    if ((since && k < since) || !Object.keys(x.checkins||{}).length) return ['n', '', 'ไม่มีข้อมูล'];
+    return ['x2', '–', 'ไม่มีการลงเวลา'];
+  };
+  const rows = R.map(c => { const hs = days.map((x,i) => cell(c, x, keys[i]));
+    /* คนเข้าใหม่ / พักงาน-ออก: ช่วงก่อนมีข้อมูลครั้งแรก และหลังพักงาน = เทา (ไม่นับว่าขาด) */
+    const has = hs.map(h => h[0]==='w' || h[0]==='l' || h[0]==='o'), f = has.indexOf(true), l = has.lastIndexOf(true);
+    hs.forEach((h,i) => { if (h[0]!=='x2' && h[0]!=='x') return;
+      if (f < 0 || i < f) hs[i] = ['n','', f < 0 ? 'ยังไม่มีข้อมูลของคนนี้' : 'ก่อนเริ่มลงเวลาครั้งแรก'];
+      else if (c.active === false && i > l) hs[i] = ['n','','พักงาน / ออกแล้ว']; });
+    const cnt = { l: hs.filter(h=>h[0]==='l').length, 'ล': hs.filter(h=>h[1]==='ล').length, 'ข': hs.filter(h=>h[1]==='ข').length, 'ห': hs.filter(h=>h[1]==='ห').length };
+    return { c, hs, cnt, score: cnt['ข']*3 + cnt['ล']*2 + cnt.l }; });
+  const tot = rows.reduce((a,r) => { ['l','ล','ข','ห'].forEach(k => a[k] += r.cnt[k]); return a; }, { l:0, 'ล':0, 'ข':0, 'ห':0 });
+  const top = rows.filter(r => r.score).sort((a,b) => b.score - a.score).slice(0, 8);
+  const dd = k => { const d = new Date(k+'T00:00:00'); return d.getDate(); };
+  const nm = s => esc(String(s||'').replace(/^(K\.|นาย|นางสาว|นาง)\s*/,'').split(' ')[0]);
+  modal('<button class="btn btn-o" style="padding:7px 12px;margin-bottom:10px;" onclick="window.__dep(\''+esc(dep)+'\')">‹ กลับ</button>'
+    + '<h3>🟩 ตารางมาทำงาน — '+esc(dep)+' · '+esc(D.name||'')+'</h3><div class="sub">'+thDate(keys[0])+' – '+thDate(TKEY)+' · ไม่นับอาทิตย์ · คอลัมน์เหลือง = วันนี้ (สด) · แตะช่องเพื่อดูรายละเอียด</div>'
+    + '<div class="attR">'+[7,15,30].map(n => '<button class="'+(ATTN===n?'on':'')+'" onclick="window.__att(\''+esc(dep)+'\','+n+')">'+n+' วันทำงาน</button>').join('')+'</div>'
+    + (R.length ? '<div class="ag" id="attGrid"><table><tr><th></th>'+keys.map(k => '<th class="'+(k===TKEY?'td':'')+'">'+dd(k)+'</th>').join('')+'<th></th></tr>'
+      + rows.map(r => '<tr><td class="nm" title="'+esc(r.c.name)+'"'+(r.c.active===false?' style="color:#aaa"':'')+'>'+nm(r.c.name)+(r.c.active===false?' <span style="font-weight:400;font-size:10px">(พัก)</span>':'')+'</td>'+r.hs.map((h,i) => '<td class="c '+h[0]+'" onclick="window.__attTip(this)" data-t="'+esc(nm(r.c.name)+' · '+thDate(keys[i])+' · '+h[2])+'">'+h[1]+'</td>').join('')
+        + '<td class="sm">'+[r.cnt.l ? '<b style="color:#C62828">L'+r.cnt.l+'</b>' : '', (r.cnt['ล']+r.cnt['ข']) ? '<b style="color:#6A4FB3">ข/ล'+(r.cnt['ล']+r.cnt['ข'])+'</b>' : ''].filter(Boolean).join(' ')+'</td></tr>').join('')
+      + '</table></div><div class="attTip" id="attTip">แตะช่องสีเพื่อดูรายละเอียด</div>'
+      + '<div class="leg"><span><i style="background:#2E7D32"></i>Ontime</span><span><i style="background:#C62828"></i>Late</span><span><i style="background:#6A4FB3"></i>ขาด/ลา/หยุด</span><span><i style="border:1.5px dashed #B7791F"></i>ยังไม่ลง</span><span><i style="background:#f1efe8;border:1px solid #ddd"></i>ไม่มีข้อมูล</span><span>ล=ลา · ข=ขาดงาน · ห=วันหยุดตามกะ · 💬=มีหมายเหตุ</span></div>'
+      + '<div class="grp">สรุปทั้งสาขา ('+ATTN+' วันทำงาน)</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span class="chip no">Late '+tot.l+' ครั้ง</span><span class="chip" style="background:#EFE9FB;color:#6A4FB3">ลา '+tot['ล']+'</span><span class="chip" style="background:#EFE9FB;color:#6A4FB3">ขาดงาน '+tot['ข']+'</span><span class="chip" style="background:#eee;color:#666">วันหยุดตามกะ '+tot['ห']+'</span></div>'
+      + '<div class="grp">👀 ควรติดตาม <span style="font-weight:400;font-size:11.5px;color:#888">(ขาด×3 · ลา×2 · Late×1 · ไม่นับวันหยุดตามกะ)</span></div>'
+      + (top.length ? top.map(r => '<div class="row-c"><div class="info"><div class="nm">'+esc(r.c.name)+'</div><div class="sub2">'+esc(r.c.code||'')+' • '+esc(r.c.vendor||'-')+'</div></div>'+(r.cnt['ข']?'<span class="chip" style="background:#EFE9FB;color:#6A4FB3">ขาด '+r.cnt['ข']+'</span>':'')+(r.cnt['ล']?'<span class="chip" style="background:#EFE9FB;color:#6A4FB3">ลา '+r.cnt['ล']+'</span>':'')+(r.cnt.l?'<span class="chip no">Late '+r.cnt.l+'</span>':'')+'</div>').join('') : '<div class="empty">ไม่มีคนที่ต้องติดตาม 🎉</div>')
+      : '<div class="empty">ยังไม่มีรายชื่อพนักงานในสาขานี้</div>')
+    + '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>');
+  const g = document.getElementById('attGrid'); if (g) g.scrollLeft = g.scrollWidth;
+}
+window.__attTip = el => { const t = document.getElementById('attTip'); if (t) t.textContent = el.getAttribute('data-t'); };
 
 /* ================= 👥 ชื่อผู้บันทึก (Staff) — จัดการโดย Manager เท่านั้น (ย้ายมาจากแอป Staff) =================
    รายชื่อนี้แสดงในหน้าเข้าสู่ระบบของสาขา · แก้แบบ transaction (2 คนแก้พร้อมกันไม่ทับกัน) */

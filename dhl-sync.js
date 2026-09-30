@@ -430,6 +430,9 @@ async function pushAll(){
        ยกเว้นแก้เวลาด้วยมือ (manualEdit) · ปุ่มบันทึกใหม่/ลบ จะลบของเดิมบนคลาวด์ก่อนอยู่แล้ว */
     const keepFirst=(cloudCk)=>{ const o=Object.assign({},up);
       recs.forEach(r=>{ const c=cloudCk&&cloudCk[r.courierId];
+        const _k='checkins.'+r.courierId;
+        /* 📷 ไม่ลดสถานะรูป (30 ก.ย.): เครื่องที่ยังไม่มีรูป ห้ามเขียน hasPhoto:false ทับเครื่องที่ถ่ายรูปไว้แล้ว (เวลาเดียวกัน) */
+        if(o[_k] && c && c.hasPhoto && !o[_k].hasPhoto && Number(c.ts)===Number(r.ts)) o[_k]=Object.assign({},o[_k],{hasPhoto:true});
         if(c && c.ts && r.ts && Number(c.ts)<Number(r.ts) && !r.manualEdit && !isDeleted(ckDel, r.courierId, c.ts)) delete o['checkins.'+r.courierId]; });
       return o; };
     if(pph){
@@ -465,7 +468,7 @@ async function pushAll(){
     }
 
     if(Object.keys(up).length){
-      try{ await runTransaction(dbF, async t=>{ const cs=await t.get(ref); const o=keepFirst(cs.exists()?(cs.data().checkins||{}):{}); if(Object.keys(o).length) t.update(ref,o); }); }
+      try{ await runTransaction(dbF, async t=>{ const cs=await t.get(ref); const o=keepFirst(cs.exists()?(cs.data().checkins||{}):{}); const _cp=cs.exists()&&cs.data().pph&&cs.data().pph.pd; if(o['pph.pd'] && _cp && _cp.hasPhoto && !o['pph.pd'].hasPhoto && Number(_cp.ts)===Number(o['pph.pd'].ts)) o['pph.pd']=Object.assign({},o['pph.pd'],{hasPhoto:true}); if(Object.keys(o).length) t.update(ref,o); }); }
       catch(e){ console.warn('keepFirst tx → ส่งแบบเดิม',e); await updateDoc(ref,up); }
     }
     H.lastPush=Date.now(); H.saves++; H.err=''; H.ok=true;
@@ -545,12 +548,14 @@ function isDeleted(ckDel, cid, ts){
 }
 
 /* ============ 📷 ดึงรูปจากคลาวด์ลงเครื่อง (ให้ทุกเครื่องเห็นรูปเหมือนกัน) ============ */
-const photoQ=[]; let photoBusy=false, photoDone={};
-function queuePhotoPull(cid,date){
+const photoQ=[]; let photoBusy=false, photoDone={}, photoProbe={};
+function queuePhotoPull(cid,date,probe){
   const key=cid+'_'+date;
   if(photoDone[key]) return;
+  /* probe = ตรวจรูปบนคลาวด์ 1 ครั้ง แม้สถานะบอกว่าไม่มีรูป (กันรูปไม่ขึ้นเพราะสถานะถูกเครื่องอื่นเขียนทับ) */
+  if(probe){ if(photoProbe[key]) return; photoProbe[key]=1; }
   if(photoQ.some(x=>x.key===key)) return;
-  photoQ.push({cid,date,key});
+  photoQ.push({cid,date,key,probe:!!probe});
   runPhotoQ();
 }
 async function runPhotoQ(){
@@ -577,7 +582,7 @@ async function runPhotoQ(){
     }catch(e){ console.warn('photo pull',e); }
     /* 🛡 ลองใหม่ถ้ายังไม่ได้ — กันกรณีเครื่องอื่นยังอัปโหลดรูปไม่เสร็จ */
     if(ok){ photoDone[j.key]=1; }
-    else {
+    else if(!j.probe){
       j.tries=(j.tries||0)+1;
       if(j.tries<=8){
         (function(job){ setTimeout(function(){
@@ -821,10 +826,10 @@ async function mergeRemote(d){
       if(!cur){
         await putCk({ courierId:id, date, ts:rc.ts, status:rc.status, buffer:!!rc.buffer,
           photo:null, uniform:rc.uniform!==false, manualEdit:!!rc.manualEdit, staff:rc.staff||'' });
-        if(rc.hasPhoto) queuePhotoPull(id,date);      // 📷 ดึงรูปจากคลาวด์มาแสดงด้วย
+        queuePhotoPull(id,date,!rc.hasPhoto);      // 📷 ดึงรูปจากคลาวด์มาแสดงด้วย
         changed=true;
-      } else if(cur.ts===rc.ts && rc.hasPhoto && !cur.photo){
-        queuePhotoPull(id,date);                      // มีรูปบนคลาวด์ แต่เครื่องนี้ยังไม่มี
+      } else if(cur.ts===rc.ts && !cur.photo){
+        queuePhotoPull(id,date,!rc.hasPhoto);                      // มีรูปบนคลาวด์ แต่เครื่องนี้ยังไม่มี
       }
       if(cur && (cur.ts!==rc.ts || cur.status!==rc.status || (!!cur.manualEdit)!==(!!rc.manualEdit))){
         cur.ts=rc.ts; cur.status=rc.status; cur.buffer=!!rc.buffer;

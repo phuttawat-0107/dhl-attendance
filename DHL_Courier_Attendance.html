@@ -939,8 +939,13 @@ async function pphStamp(k){
 }
 async function rpStamp(cid,k){
   pphRec.rp = pphRec.rp||{}; pphRec.rp[cid] = pphRec.rp[cid]||{};
-  if(!pphRec.rp[cid][k]) pphRec.rp[cid][k]=Date.now();
-  else { const v=editTs(pphRec.rp[cid][k]); if(v===undefined) return; pphRec.rp[cid][k]=v; }
+  /* 2026.10.01 — กันเวลาสลับลำดับ: FS ≤ ออกรถ (DEP) ≤ ส่งชิ้นแรก (เจอ DEP ก่อน FS ในข้อมูลจริง) */
+  const q=pphRec.rp[cid], ORD=['fs','dep','fdel'], NM={fs:'FS',dep:'ออกรถ',fdel:'ส่งชิ้นแรก'};
+  let v; if(!q[k]) v=Date.now(); else { v=editTs(q[k]); if(v===undefined) return; }
+  if(v!=null && ORD.includes(k)){ const i=ORD.indexOf(k);
+    const bp=ORD.slice(0,i).find(x=>q[x] && +q[x]>v); if(bp){ flash('⚠ เวลา '+NM[k]+' ต้องไม่ก่อน '+NM[bp]+' ('+fmtTime(q[bp])+') — ตรวจลำดับการกด'); return; }
+    const an=ORD.slice(i+1).find(x=>q[x] && +q[x]<v); if(an){ flash('⚠ เวลา '+NM[k]+' ต้องไม่หลัง '+NM[an]+' ('+fmtTime(q[an])+') — ตรวจลำดับการกด'); return; } }
+  q[k]=v;
   await putPPH(pphRec);
   if(document.getElementById('view-fdel').classList.contains('active')) renderFDel(); else renderPPH();
 }

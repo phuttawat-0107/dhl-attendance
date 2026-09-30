@@ -6,7 +6,7 @@
    ============================================================ */
 (function(){
 'use strict';
-const UI2_VER = '2026.10.01-a';
+const UI2_VER = '2026.10.01-b';
 const UI2 = ['TEST'];                                   /* สาขาที่เห็นหน้าใหม่ (นำร่อง) */
 const G = n => { try { return (0,eval)(n); } catch(e){ return undefined; } };
 const $ = id => document.getElementById(id);
@@ -48,8 +48,9 @@ body.ui2 .chip.ontime{background:var(--u-okb);color:var(--u-ok)} body.ui2 .chip.
 #u2nav button{border:0;background:none;padding:7px 0 9px;font-size:11.5px;font-weight:700;color:#9a9484;display:flex;flex-direction:column;align-items:center;gap:1px;position:relative;font-family:inherit}
 #u2nav button i{font-style:normal;font-size:20px;filter:grayscale(1);opacity:.55} #u2nav button.on{color:#1a1a1a} #u2nav button.on i{filter:none;opacity:1}
 #u2ci .hero{display:flex;gap:12px;align-items:center}
-#u2ci .ring{position:relative;width:86px;height:86px;flex:none} #u2ci .ring b{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:20px;line-height:1.05;text-align:center}
-#u2ci .ring b small{display:block;font-size:11px;color:var(--u-mut);font-weight:600}
+#u2ci .ring{position:relative;width:86px;height:86px;flex:none} #u2ci .ring b{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;line-height:1;text-align:center;font-variant-numeric:tabular-nums}
+#u2ci .ring b i{font-style:normal;font-size:26px;letter-spacing:-.5px} #u2ci .ring b i.d3{font-size:20px}
+#u2ci .ring b small{display:block;margin-top:3px;font-size:11px;color:var(--u-mut);font-weight:700;white-space:nowrap}
 #u2ci .hh{font-weight:800;font-size:18px} #u2ci .ch{display:inline-block;border-radius:999px;padding:3px 9px;font-weight:700;font-size:12px;margin:3px 4px 0 0}
 .u-ok{background:var(--u-okb);color:var(--u-ok)} .u-late{background:var(--u-lateb);color:var(--u-late)} .u-ab{background:var(--u-abb);color:var(--u-ab)} .u-wait{background:var(--u-waitb);color:var(--u-wait)}
 #u2ci .lock{font-size:11.5px;color:var(--u-mut);background:#f3f0e7;border-radius:8px;padding:5px 8px;margin-top:8px}
@@ -83,7 +84,32 @@ body.ui2 .chip.ontime{background:var(--u-okb);color:var(--u-ok)} body.ui2 .chip.
 body.ui2.u2sun{background:#fff} body.ui2.u2sun .card,body.ui2.u2sun #u2ci .todo,body.ui2.u2sun #u2ci .tile,body.ui2.u2sun #u2tl .bx{border:2.5px solid #1a1a1a}
 body.ui2.u2sun #u2ci .todo .nm{font-size:17px} body.ui2.u2sun #u2ci .sb{padding:13px 14px;font-size:15px} body.ui2.u2sun #u2ci .hh{font-size:22px}
 body.ui2.u2sun .u-ok{background:#1b5e20;color:#fff} body.ui2.u2sun .u-late{background:#b71c1c;color:#fff} body.ui2.u2sun .u-ab{background:#4a2f9a;color:#fff}
-body.ui2.u2sun #u2tl .nx{background:#1a1a1a;color:#FFCC00}`;
+body.ui2.u2sun #u2tl .nx{background:#1a1a1a;color:#FFCC00}
+body.ui2 #rpList,body.ui2 #rpSearch,body.ui2 #fdList,body.ui2 #fdSearch{display:none!important}
+.u2rp{margin:10px 0 4px}
+.u2rp .sum{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.u2rp .sum div{background:#f6f4ee;border-radius:10px;padding:6px 4px;text-align:center;font-size:11px;color:var(--u-mut);font-weight:700}
+.u2rp .sum b{display:block;font-size:17px;color:#1a1a1a}
+.u2rp .srch{width:100%;box-sizing:border-box;border:1.5px solid var(--u-line);border-radius:12px;padding:9px 12px;font:inherit;font-size:15px;margin-bottom:8px;background:#fff}
+.u2rp .rw{display:flex;align-items:center;gap:8px;border:1.5px solid var(--u-line);border-radius:14px;padding:8px 9px;margin-bottom:7px;background:#fff}
+.u2rp .rw.fin{background:#f7fbf8;border-color:#cfe7d6}
+.u2rp .nm{flex:1;min-width:0;font-weight:700;font-size:14px;line-height:1.25}
+.u2rp .nm>span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u2rp .ps{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.u2rp .ps i{font-style:normal;font-size:11px;font-weight:700;border-radius:7px;padding:1px 6px;background:#f1eee5;color:#9a9484;white-space:nowrap}
+.u2rp .ps i.ok{background:var(--u-okb);color:var(--u-ok)} .u2rp .ps i.late{background:var(--u-lateb);color:var(--u-late)}
+.u2rp .go{flex:none;border:0;border-radius:12px;min-width:92px;padding:11px 8px;font-weight:800;font-size:13.5px;font-family:inherit;line-height:1.15}
+.u2rp .go.fs{background:#FFCC00;color:#1a1a1a} .u2rp .go.dep{background:#1a1a1a;color:#FFCC00} .u2rp .go.fdel{background:var(--u-ok);color:#fff}
+.u2rp .go.dis{background:#eee;color:#aaa} .u2rp .go.fin{background:none;color:var(--u-ok);min-width:0;padding:6px 4px}
+.u2rp .go small{display:block;font-weight:600;font-size:10.5px;opacity:.8}
+.u2cf .flow{display:flex;align-items:center;gap:4px;margin:12px 0}
+.u2cf .flow div{flex:1;text-align:center;border-radius:12px;padding:8px 2px;background:#f3f0e7;color:#9a9484;font-weight:800;font-size:12.5px}
+.u2cf .flow div small{display:block;font-weight:700;font-size:13px;margin-top:2px}
+.u2cf .flow div.ok{background:var(--u-okb);color:var(--u-ok)} .u2cf .flow div.cur{background:#FFCC00;color:#1a1a1a;box-shadow:0 0 0 3px #1a1a1a inset}
+.u2cf .flow b{color:#c9c3b3}
+.u2cf .when{text-align:center;font-size:13px;color:var(--u-mut)} .u2cf .when b{display:block;font-size:34px;color:#1a1a1a;font-variant-numeric:tabular-nums}
+.u2cf .warn{background:var(--u-waitb);color:#6b4d00;border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700;margin-top:10px}
+.u2cf .bt.ok{background:#1a1a1a;color:#FFCC00;font-size:17px;padding:15px} .u2cf .bt.ok[disabled]{opacity:.45}`;
 
 /* ---------- ข้อมูลของวัน (อ่านจากแอปเดิม) ---------- */
 function actCouriers(){ const L = G('couriers') || [], rm = ((window.dsRemovedIds && window.dsRemovedIds()) || []).map(Number); return L.filter(c => c && c.active !== false && !rm.includes(Number(c.id))); }
@@ -134,7 +160,7 @@ function renderNav(){ const el = $('u2nav'); if (!el) return;
   const more = ['dash','insight','hist','manage'].includes(TAB);
   el.innerHTML = T.map(t => '<button data-v="'+t[0]+'" class="'+(TAB===t[0]||(t[0]==='more'&&more)?'on':'')+'"><i>'+t[1]+'</i>'+t[2]+'</button>').join('');
   el.querySelectorAll('button').forEach(b => b.onclick = () => b.dataset.v === 'more' ? openMore() : go(b.dataset.v)); }
-function go(v){ closeSheet(); call('nav', v); setTimeout(() => { const act = document.querySelector('.view.active'); TAB = act ? act.id.replace('view-','') : v; renderNav(); if (TAB === 'checkin') renderCI(); if (TAB === 'pd') renderPD(); TLSIG=''; renderTL(); try { window.scrollTo(0,0); } catch(e){} }, 60); }
+function go(v){ closeSheet(); call('nav', v); setTimeout(() => { const act = document.querySelector('.view.active'); TAB = act ? act.id.replace('view-','') : v; renderNav(); if (TAB === 'checkin') renderCI(); if (TAB === 'pd') renderPD(); if (TAB === 'pph' || TAB === 'fdel'){ RPSIG=''; setTimeout(renderRP, 300); } TLSIG=''; renderTL(); try { window.scrollTo(0,0); } catch(e){} }, 60); }
 function openMore(){ sheet('<h3 style="margin:0 0 6px">☰ เพิ่มเติม</h3>'
   + [['📊','สรุปผล','KPI ทั้งวัน · สร้างรายงาน Report 1+2','dash'],['📈','อินไซต์','เทรนด์ · คนสายบ่อย','insight'],['🗓','ประวัติ','ย้อนหลังรายวัน + รายงานย้อนหลัง','hist'],['👥','จัดการ','รายชื่อ Courier · ตั้งค่า','manage']].map(m => '<div class="mi" data-v="'+m[3]+'"><i>'+m[0]+'</i><div>'+m[1]+'<small>'+m[2]+'</small></div></div>').join('')
   + '<div class="mi" data-sun="1"><i>☀️</i><div>โหมดกลางแดด: '+(SUN?'เปิดอยู่':'ปิดอยู่')+'<small>ตัวใหญ่ ตัดกันชัด มองกลางแจ้งง่าย</small></div></div>'
@@ -143,7 +169,7 @@ function openMore(){ sheet('<h3 style="margin:0 0 6px">☰ เพิ่มเต
   b.querySelector('[data-sun]').onclick = () => { SUN = !SUN; try { localStorage.setItem('ui2Sun', SUN?'1':'0'); } catch(e){} document.body.classList.toggle('u2sun', SUN); closeSheet(); };
   b.querySelector('[data-x]').onclick = closeSheet; }
 function sheet(h){ $('u2shb').innerHTML = h; $('u2sh').classList.add('on'); }
-function closeSheet(){ const s = $('u2sh'); if (s) s.classList.remove('on'); }
+function closeSheet(){ const s = $('u2sh'); if (s){ s.classList.remove('on'); s.onclick = e => { if (e.target.id === 'u2sh') closeSheet(); }; } CFOPEN = false; }
 
 /* ---------- แท็บเช็คอิน ---------- */
 let SRCH = '', SIG = '', LASTTYPE = 0;
@@ -157,7 +183,7 @@ async function renderCI(){ const box = $('u2ci'); if (!box) return;
   const R = 36, C = 2*Math.PI*R, n = act.length || 1; let off = 0;
   const seg = [[done.length,'#2E7D32'],[abs.length,'#6A4FB3']].map(([v,c]) => { if (!v) return ''; const L = v/n*C, s = '<circle cx="43" cy="43" r="'+R+'" fill="none" stroke="'+c+'" stroke-width="10" stroke-dasharray="'+L+' '+C+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 43 43)"/>'; off += L; return s; }).join('');
   const s = secNow(), rlv = G('riskLevel') || (() => null);
-  let h = '<div class="card"><div class="hero"><div class="ring"><svg width="86" height="86"><circle cx="43" cy="43" r="'+R+'" fill="none" stroke="#ece9df" stroke-width="10"/>'+seg+'</svg><b>'+done.length+'/'+need+'<small>คน</small></b></div>'
+  let h = '<div class="card"><div class="hero"><div class="ring"><svg width="86" height="86"><circle cx="43" cy="43" r="'+R+'" fill="none" stroke="#ece9df" stroke-width="10"/>'+seg+'</svg><b><i'+(done.length>99?' class="d3"':'')+'>'+done.length+'</i><small>/ '+need+' คน</small></b></div>'
     + '<div><div class="hh">'+(!act.length ? 'ยังไม่มีรายชื่อ' : todo.length ? 'เหลืออีก '+todo.length+' คน' : lt ? 'ครบแล้ว ✓' : 'Ontime ทุกคน! 🎉')+'</div>'
     + '<div><span class="ch u-ok">Ontime '+(done.length-lt)+'</span>'+(lt?'<span class="ch u-late">Late '+lt+'</span>':'')+(abs.length?'<span class="ch u-ab">ขาด/ลา '+abs.length+'</span>':'')+(noPh?'<span class="ch u-late">📷 รอถ่าย '+noPh+'</span>':'')+'</div>'
     + '<div style="font-size:12.5px;color:var(--u-mut);margin-top:3px">เข้างาน 07:00 · '+(s > CUT ? '<b style="color:var(--u-late)">เลยเวลาแล้ว</b>' : 'อีก '+Math.ceil((CUT-s)/60)+' นาที')+'</div></div></div>'
@@ -211,6 +237,73 @@ async function renderPD(){ const v = $('view-pd'); if (!v) return; let el = $('u
     + (s < PD_A ? 'อีก '+Math.ceil((PD_A-s)/60)+' นาที' : inW ? 'เหลือ '+Math.ceil((PD_B-s)/60)+' นาที' : 'เลย '+Math.floor((s-PD_B)/60)+' นาที')+'</div>'
     + '<div style="text-align:center;font-size:12.5px;color:var(--u-mut)">'+(s<PD_A?'ยังไม่ถึงเวลาประชุม':inW?'อยู่ในช่วงเวลาถ่าย PD':'เลยช่วงเวลาแล้ว — ถ่ายได้ แต่นับว่านอกช่วง')+' · 🔒 เวลา = เวลาถ่ายจริง</div>'; }
 
+/* ---------- PPH Route prep + First Del: FS → ออกรถ → ส่งชิ้นแรก (รายคน · ยืนยันทุกขั้น) ----------
+   ใช้ rpStamp(cid,k) เดิมของแอป (มีตรวจลำดับเวลาอยู่แล้ว) · ไม่มีการแก้เวลา · กดแล้วต้องยืนยันใน Pop Up
+   กันกดรัว: ปุ่มยืนยันเปิดหลัง 1 วินาที + พัก 1.5 วินาทีหลังบันทึกทุกครั้ง + เตือนถ้าห่างจากขั้นก่อนน้อยผิดปกติ */
+const RS = ['fs','dep','fdel'], RN = { fs:'FS', dep:'ออกรถ', fdel:'ส่งชิ้นแรก' }, RL = { fs:'จัดรถเสร็จ (First Scan)', dep:'ออกรถ (Departure)', fdel:'ส่งชิ้นแรก (First Del)' };
+const RMIN = { dep:3, fdel:3 };                       /* ห่างจากขั้นก่อนน้อยกว่านี้ (นาที) → เตือนเพิ่ม */
+let RPSIG = '', RPQ = '', BUSY = 0, CFOPEN = false;
+const nextStep = q => RS.find(k => !q[k]) || null;
+const stLate = (k, ts) => k === 'dep' ? secOf(ts) >= DEP_T : k === 'fdel' ? secOf(ts) >= FDEL_T : false;
+async function rpData(){
+  const recs = (await recsOf(today())).slice().sort((a,b) => a.ts - b.ts), p = (await pphOf(today())) || {}, cs = G('couriers') || [];
+  const L = recs.map(r => cs.find(c => c.id === r.courierId)).filter(Boolean);
+  return { L, rp: p.rp || {}, inb: p.inboundTs || null }; }
+function rpRow(c, q, inb){ const nx = nextStep(q), dq = esc((c.name+' '+c.code+' '+(c.vendor||'')).toLowerCase());
+  const pills = RS.map(k => '<i class="'+(q[k] ? (stLate(k,q[k])?'late':'ok') : '')+'">'+RN[k]+' '+(q[k]?hm(q[k]):'—')+'</i>').join('');
+  const lock = nx === 'fs' && !inb;
+  const btn = !nx ? '<button class="go fin" disabled>✓ ครบ'+(q.dep&&q.fdel?'<small>Stem '+Math.round((q.fdel-q.dep)/60000)+' น.</small>':'')+'</button>'
+    : lock ? '<button class="go dis" disabled>รอ First IB</button>'
+    : '<button class="go '+nx+'" data-rk="'+nx+'" data-rc="'+esc(c.id)+'">'+RN[nx]+'<small>กดตอนนี้</small></button>';
+  return '<div class="rw'+(nx?'':' fin')+'" data-q="'+dq+'"><div class="nm"><span>'+esc(c.name)+'</span><div class="ps">'+pills+'</div></div>'+btn+'</div>'; }
+async function renderRP(){
+  if (CFOPEN) return;
+  const host = TAB === 'fdel' ? $('fdList') : TAB === 'pph' ? $('rpList') : null; if (!host || !host.parentNode) { RPSIG = ''; return; }
+  const { L, rp, inb } = await rpData();
+  const s = L.map(c => c.id+':'+JSON.stringify(rp[c.id]||{})).join('|')+'#'+inb+'#'+host.id;
+  let box = $('u2rp');
+  if (box && box.nextSibling === host && s === RPSIG) return;
+  RPSIG = s; if (!box){ box = document.createElement('div'); box.id = 'u2rp'; box.className = 'u2rp'; }
+  if (box.nextSibling !== host) host.parentNode.insertBefore(box, host);
+  const n = L.length, cnt = k => L.filter(c => (rp[c.id]||{})[k]).length;
+  box.innerHTML = '<div class="sum">'+RS.map(k => '<div><b>'+cnt(k)+'/'+n+'</b>'+RN[k]+'</div>').join('')+'</div>'
+    + '<input class="srch" id="u2rq" inputmode="search" placeholder="🔍 เลขท้ายรหัส / ชื่อ" value="'+esc(RPQ)+'">'
+    + L.map(c => rpRow(c, rp[c.id]||{}, inb)).join('')
+    + '<div class="lock" style="font-size:11.5px;color:var(--u-mut);background:#f3f0e7;border-radius:8px;padding:5px 8px">🔒 กดทีละขั้นตามจริง FS → ออกรถ → ส่งชิ้นแรก · ทุกครั้งต้องกดยืนยัน · ไม่มีการแก้เวลา</div>';
+  const qi = $('u2rq'), flt = () => { const v = RPQ.trim().toLowerCase(); box.querySelectorAll('.rw').forEach(r => r.style.display = !v || r.dataset.q.includes(v) ? '' : 'none'); };
+  qi.oninput = () => { RPQ = qi.value; flt(); }; flt();
+  box.querySelectorAll('[data-rk]').forEach(b => b.onclick = () => { const c = L.find(x => String(x.id) === b.dataset.rc); if (c) confirmStep(c, b.dataset.rk); });
+}
+async function confirmStep(c, k){
+  if (performance.now() < BUSY) return;
+  const { rp, inb } = await rpData(), q = rp[c.id] || {};
+  if (nextStep(q) !== k){ RPSIG = ''; renderRP(); return; }          /* อีกเครื่องกดไปแล้ว → วาดใหม่ */
+  if (k === 'fs' && !inb){ (G('flash')||alert)('กด 📥 First Inbound ก่อน'); return; }
+  const i = RS.indexOf(k), prev = i ? q[RS[i-1]] : null, gap = prev ? (Date.now() - prev)/60000 : null;
+  const warn = prev && gap < RMIN[k] ? '⚠ เพิ่งกด '+RN[RS[i-1]]+' เมื่อ '+(gap < 1 ? 'ไม่ถึง 1 นาที' : Math.floor(gap)+' นาที')+'ที่แล้ว — แน่ใจว่า "'+esc(c.name)+'" '+RL[k]+' จริงแล้ว?' : '';
+  const tag = k === 'dep' && secNow() >= DEP_T ? ' <span class="ch u-late">เลย 08:30</span>' : k === 'fdel' && secNow() >= FDEL_T ? ' <span class="ch u-late">เลย 09:00</span>' : '';
+  CFOPEN = true;
+  sheet('<div class="u2cf"><h3 style="margin:0">ยืนยัน: '+RL[k]+'</h3><div style="font-size:15px;font-weight:800;margin-top:4px">'+esc(c.name)+'</div><div style="font-size:12.5px;color:var(--u-mut)">'+esc(c.code)+' · '+esc(c.type||'')+' · '+esc(c.vendor||'')+'</div>'
+    + '<div class="flow">'+RS.map((x,j) => (j?'<b>›</b>':'')+'<div class="'+(x===k?'cur':q[x]?'ok':'')+'">'+RN[x]+'<small>'+(q[x]?hm(q[x]):x===k?'ตอนนี้':'—')+'</small></div>').join('')+'</div>'
+    + '<div class="when">เวลาที่จะบันทึก<b id="u2cft">'+hm(Date.now())+'</b>'+tag+'</div>'
+    + (warn ? '<div class="warn">'+warn+'</div>' : '')
+    + '<div style="font-size:12px;color:var(--u-mut);text-align:center;margin-top:8px">บันทึกแล้วแก้ไม่ได้ — ตรวจชื่อให้ถูกคนก่อนกด</div>'
+    + '<button class="bt ok" id="u2cfy" disabled>รอสักครู่…</button><button class="bt o" id="u2cfn">ยกเลิก</button></div>');
+  const y = $('u2cfy'), n = $('u2cfn'), wait = warn ? 2000 : 1000;
+  const tm = setInterval(() => { const t = $('u2cft'); if (t) t.textContent = hm(Date.now()); }, 1000);
+  const done = () => { clearInterval(tm); CFOPEN = false; closeSheet(); };
+  setTimeout(() => { if (y){ y.disabled = false; y.textContent = '✓ ยืนยัน '+RN[k]; } }, wait);
+  n.onclick = () => { done(); RPSIG = ''; renderRP(); };
+  $('u2sh').onclick = e => { if (e.target.id === 'u2sh'){ done(); RPSIG = ''; renderRP(); } };
+  y.onclick = async () => { if (y.disabled) return; y.disabled = true; BUSY = performance.now() + 1500; done();
+    await call('rpStamp', c.id, k);
+    const p2 = (await pphOf(today())) || {}, ok = ((p2.rp||{})[c.id]||{})[k];
+    if (ok) (G('flash')||(()=>{}))('✓ '+RN[k]+' '+hm(ok)+' · '+String(c.name).split(' ')[0]);
+    RPSIG = ''; setTimeout(renderRP, 150); TLSIG = ''; renderTL(); };
+}
+function hookRP(){ ['pphBody','fdelBody'].forEach(id => { const el = $(id); if (!el || el._u2) return; el._u2 = true;
+  new MutationObserver(() => { if (ON){ RPSIG = ''; renderRP(); } }).observe(el, { childList:true }); }); }
+
 /* ---------- รายงาน: ปุ่มส่ง Report 1 + 2 พร้อมกัน ---------- */
 function hookReport(){ const m = $('repModal'); if (!m || m._u2) return; m._u2 = true;
   new MutationObserver(() => {
@@ -236,9 +329,9 @@ function mount(){
   document.body.insertAdjacentHTML('beforeend', '<div id="u2nav"></div><div id="u2sh"><div class="bx" id="u2shb"></div></div>');
   $('u2sh').onclick = e => { if (e.target.id === 'u2sh') closeSheet(); };
   const act = document.querySelector('.view.active'); TAB = act ? act.id.replace('view-','') : 'checkin';
-  hookReport(); renderNav(); TLSIG=''; renderTL(); loadUsual().then(renderCI); renderPD();
+  hookReport(); hookRP(); renderNav(); TLSIG=''; renderTL(); loadUsual().then(renderCI); renderPD();
 }
-function unmount(){ if (!ON) return; ON = false; ['u2css','u2tl','u2ci','u2nav','u2sh','u2pd'].forEach(i => { const e = $(i); if (e) e.remove(); }); document.body.classList.remove('ui2','u2sun'); }
+function unmount(){ if (!ON) return; ON = false; ['u2css','u2tl','u2ci','u2nav','u2sh','u2pd','u2rp'].forEach(i => { const e = $(i); if (e) e.remove(); }); document.body.classList.remove('ui2','u2sun'); }
 async function tick(){
   try {
     const want = ready() && UI2.includes(depot());
@@ -249,6 +342,7 @@ async function tick(){
     await renderTL();
     if (TAB === 'checkin'){ const s = await sig(); const typing = performance.now() - LASTTYPE < 4000;   /* กำลังพิมพ์ค้นหา — รอพิมพ์เสร็จก่อนค่อยวาดใหม่ */ if (s !== SIG && !typing) await renderCI(); }
     if (TAB === 'pd') await renderPD();
+    if ((TAB === 'pph' || TAB === 'fdel') && !(document.activeElement && document.activeElement.id === 'u2rq')) await renderRP();
   } catch(e){ console.warn('[ui2] ถอดหน้าตาใหม่ชั่วคราว', e); try { unmount(); } catch(x){} }
 }
 setInterval(tick, 2000); setTimeout(tick, 800);

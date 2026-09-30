@@ -582,7 +582,7 @@ function attRender(){
   const rows = R.map(c => { const hs = days.map((x,i) => cell(c, x, keys[i]));
     /* คนเข้าใหม่ / พักงาน-ออก: ช่วงก่อนมีข้อมูลครั้งแรก และหลังพักงาน = เทา (ไม่นับว่าขาด) */
     const has = hs.map(h => h[0]==='w' || h[0]==='l' || h[0]==='o'), f = has.indexOf(true), l = has.lastIndexOf(true);
-    hs.forEach((h,i) => { if (h[0]!=='x2' && h[0]!=='x') return;
+    hs.forEach((h,i) => { if ((h[0]!=='x2' && h[0]!=='x') || (keys[i]===TKEY && c.active!==false)) return;   /* วันนี้: คนที่ใช้งานอยู่ต้องเห็น 'ยังไม่ลง' เสมอ */
       if (f < 0 || i < f) hs[i] = ['n','', f < 0 ? 'ยังไม่มีข้อมูลของคนนี้' : 'ก่อนเริ่มลงเวลาครั้งแรก'];
       else if (c.active === false && i > l) hs[i] = ['n','','พักงาน / ออกแล้ว']; });
     const cnt = { l: hs.filter(h=>h[0]==='l').length, 'ล': hs.filter(h=>h[1]==='ล').length, 'ข': hs.filter(h=>h[1]==='ข').length, 'ห': hs.filter(h=>h[1]==='ห').length };

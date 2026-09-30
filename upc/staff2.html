@@ -374,7 +374,7 @@
 <div class="flash" id="flash"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.30-d';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, calcStatus, CUT, cutOf, hmCut } from './fb.js?v=2026.09.30-e';
 
 const APP_VER = FB_VER; let KEEP_DAYS = 30;
 const $ = id => document.getElementById(id);
@@ -674,16 +674,16 @@ window.nxCmt = (id, auto) => {
   id = String(id); const c = byId(id) || { code:'#'+id, name:'' }, r = (DAY.checkins||{})[id], m = cmtOf(DAY, id);
   sheet('<h2>💬 หมายเหตุ</h2><div class="small">'+escapeHtml(c.code)+' · '+escapeHtml(c.name)+(r&&r.ts?' · '+(r.status==='late'?'Late ':'Ontime ')+fmtTime(r.ts):'')+'</div>'
     + (auto ? '<div class="nx-cmhint">มา Late — มีธุระหรือจัดการงานพิเศษไหม? (ไม่บังคับ กด "ข้าม" ได้)</div>' : '')
-    + '<div class="nx-cmq">'+CMT_Q.map((q,i)=>'<button type="button" onclick="nxCmtQ('+i+')">'+q+'</button>').join('')+'</div>'
-    + '<textarea id="nxCmtT" maxlength="150" rows="3" placeholder="พิมพ์รายละเอียดเพิ่มได้ เช่น ไปส่งพัสดุด่วนให้ลูกค้าก่อนเข้างาน">'+escapeHtml(m?m.t:'')+'</textarea>'
+    + '<div style="height:10px"></div><textarea id="nxCmtT" maxlength="150" rows="3" placeholder="พิมพ์เหตุผล เช่น รถเสียระหว่างทาง / ไปส่งพัสดุด่วนให้ลูกค้าก่อนเข้างาน">'+escapeHtml(m?m.t:'')+'</textarea>'
     + '<button class="btn btn-y btn-block" onclick="nxCmtSave(\''+id+'\')">💾 บันทึกหมายเหตุ</button>'
     + (m ? '<div style="height:8px"></div><button class="btn btn-o btn-block" onclick="nxCmtDel(\''+id+'\')">🗑 ลบหมายเหตุ</button>' : '')
     + '<div style="height:8px"></div><button class="btn btn-o btn-block" onclick="closeSheet()">'+(auto?'ข้าม':'ปิด')+'</button>');
+  setTimeout(() => { const e = $('nxCmtT'); if (e) { e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }, 250);
 };
 window.nxCmtQ = i => { const e = $('nxCmtT'); if (!e) return; const q = CMT_Q[i], v = e.value.trim(); if (v.includes(q)) return; e.value = v ? v+' · '+q : q; e.focus(); };
 window.nxCmtSave = id => {
   const v = (($('nxCmtT')||{}).value || '').trim().slice(0,150);
-  if (!v) { flash('เลือกหรือพิมพ์เหตุผลก่อนบันทึก'); return; }
+  if (!v) { flash('พิมพ์เหตุผลก่อนบันทึก'); return; }
   DAY.cmt = Object.assign({}, DAY.cmt, { [id]: { t: v, by: STAFF } });
   track(fb.set(dayPath(), { date: DAYKEY, depot: CODE, cmt: { [id]: { t: v, by: STAFF, at: NOW } } }));
   closeSheet(); flash('💬 บันทึกหมายเหตุแล้ว'); try { renderCheckin(); } catch(e){}

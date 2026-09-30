@@ -42,6 +42,8 @@
 .ag td.c.n{background:#f1efe8}
 .ag td.sm{font-size:11px;white-space:nowrap;padding-left:4px}
 .attR{display:flex;gap:6px;margin-top:8px}
+.attCard .grp{font-size:11px;font-weight:800;color:#8a8272;margin:12px 0 6px;letter-spacing:.3px;}
+.attCard h3{margin:0 0 2px;font-size:15px}
 .attR button{border:1.5px solid #e6e2d6;background:#fff;border-radius:999px;padding:5px 11px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
 .attR button.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
 .attTip{margin-top:6px;background:#FFF4D6;border-radius:8px;padding:6px 9px;font-size:12.5px;color:#5c4000;min-height:30px}
@@ -112,6 +114,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
   <div id="viewIns" style="display:none"></div>
   <div id="viewCh" style="display:none"></div>
   <div id="viewData" style="display:none"></div>
+  <div id="viewAtt" style="display:none"></div>
   <div id="viewPh" style="display:none"></div>
 </div>
 
@@ -119,7 +122,7 @@ td.cell.none{background:#f2ede2;color:#b0a892;}
 <div id="feed"></div>
 
 <script type="module">
-import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.30-d';
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.30-e';
 
 const APP_VER = FB_VER, KEEP_DAYS = 30;
 /* ภาคตามโครงสร้าง UPC: Central / East / North / North-East / South */
@@ -429,6 +432,7 @@ window.__tab = t => {
   Object.keys(VIEWS).forEach(x => { $('tb_'+x).classList.toggle('on', x===t); $(VIEWS[x]).style.display = x===t ? '' : 'none'; });
   if (t==='live') renderLive();
   if (['ins','ch','data'].includes(t) && window.__anRender) window.__anRender();
+  $('viewAtt').style.display = t==='data' ? '' : 'none'; if (t==='data') attData();   /* 🟩 ตารางมาทำงานรายคน ใต้แท็บ Data */
   if (t==='ph' && window.__phRender) { window.__phRender(); window.__phEnsure(); }
 };
 
@@ -555,13 +559,14 @@ window.__reThumb = (dep, id) => { const el = document.getElementById('th_'+dep+'
 
 /* ================= 🟩 ตารางมาทำงานรายคน (ต่อสาขา) =================
    ดึงข้อมูลวันทำงานย้อนหลัง (ไม่นับอาทิตย์) + วันนี้แบบสด · อ่านอย่างเดียว ไม่แก้ข้อมูล */
-let ATTDEP = null, ATTN = 15, ATTC = {};
+let ATTDEP = null, ATTN = 15, ATTC = {}, ATTMODE = 'modal';
 const attKeys = n => { const L = []; const d = new Date(TKEY+'T00:00:00'); let g = 0; while (L.length < n && g++ < n*2+7) { if (d.getDay() !== 0) L.unshift(ymd(d)); d.setDate(d.getDate()-1); } return L; };
 const abCode = a => { const ty = a && a.type, n = String(a && a.note || ''); if (ty==='off' || /หยุด/.test(n)) return 'ห'; if (ty==='absent' || /ขาด/.test(n)) return 'ข'; return 'ล'; };
-window.__att = async (dep, n) => {
-  OPENDEP = null; ATTDEP = dep; if (n) ATTN = n;
+window.__att = async (dep, n, mode) => {
+  ATTMODE = mode || 'modal'; if (ATTMODE === 'modal') OPENDEP = null; ATTDEP = dep; if (n) ATTN = n;
   const keys = attKeys(ATTN), need = keys.filter(k => k !== TKEY && !ATTC[dep+'|'+k]);
-  if (need.length) { modal('<h3>🟩 ตารางมาทำงาน — '+esc(dep)+'</h3><div class="sub">กำลังโหลดข้อมูล '+ATTN+' วันทำงาน…</div>');
+  if (need.length) { const ld = '<h3>🟩 ตารางมาทำงาน — '+esc(dep)+'</h3><div class="sub">กำลังโหลดข้อมูล '+ATTN+' วันทำงาน…</div>';
+    if (ATTMODE === 'modal') modal(ld); else if ($('attBody')) $('attBody').innerHTML = ld;
     await Promise.all(need.map(async k => { try { ATTC[dep+'|'+k] = (await fb.get(`depots/${dep}/days/${k}`)) || {}; } catch(e){ ATTC[dep+'|'+k] = null; } })); }
   if (ATTDEP !== dep) return;
   attRender();
@@ -591,9 +596,10 @@ function attRender(){
   const top = rows.filter(r => r.score).sort((a,b) => b.score - a.score).slice(0, 8);
   const dd = k => { const d = new Date(k+'T00:00:00'); return d.getDate(); };
   const nm = s => esc(String(s||'').replace(/^(K\.|นาย|นางสาว|นาง)\s*/,'').split(' ')[0]);
-  modal('<button class="btn btn-o" style="padding:7px 12px;margin-bottom:10px;" onclick="window.__dep(\''+esc(dep)+'\')">‹ กลับ</button>'
+  const DM = ATTMODE === 'data', mo = DM ? ",'data'" : '';
+  const H = (DM ? '' : '<button class="btn btn-o" style="padding:7px 12px;margin-bottom:10px;" onclick="window.__dep(\''+esc(dep)+'\')">‹ กลับ</button>')
     + '<h3>🟩 ตารางมาทำงาน — '+esc(dep)+' · '+esc(D.name||'')+'</h3><div class="sub">'+thDate(keys[0])+' – '+thDate(TKEY)+' · ไม่นับอาทิตย์ · คอลัมน์เหลือง = วันนี้ (สด) · แตะช่องเพื่อดูรายละเอียด</div>'
-    + '<div class="attR">'+[7,15,30].map(n => '<button class="'+(ATTN===n?'on':'')+'" onclick="window.__att(\''+esc(dep)+'\','+n+')">'+n+' วันทำงาน</button>').join('')+'</div>'
+    + '<div class="attR">'+[7,15,30].map(n => '<button class="'+(ATTN===n?'on':'')+'" onclick="window.__att(\''+esc(dep)+'\','+n+mo+')">'+n+' วันทำงาน</button>').join('')+'</div>'
     + (R.length ? '<div class="ag" id="attGrid"><table><tr><th></th>'+keys.map(k => '<th class="'+(k===TKEY?'td':'')+'">'+dd(k)+'</th>').join('')+'<th></th></tr>'
       + rows.map(r => '<tr><td class="nm" title="'+esc(r.c.name)+'"'+(r.c.active===false?' style="color:#aaa"':'')+'>'+nm(r.c.name)+(r.c.active===false?' <span style="font-weight:400;font-size:10px">(พัก)</span>':'')+'</td>'+r.hs.map((h,i) => '<td class="c '+h[0]+'" onclick="window.__attTip(this)" data-t="'+esc(nm(r.c.name)+' · '+thDate(keys[i])+' · '+h[2])+'">'+h[1]+'</td>').join('')
         + '<td class="sm">'+[r.cnt.l ? '<b style="color:#C62828">L'+r.cnt.l+'</b>' : '', (r.cnt['ล']+r.cnt['ข']) ? '<b style="color:#6A4FB3">ข/ล'+(r.cnt['ล']+r.cnt['ข'])+'</b>' : ''].filter(Boolean).join(' ')+'</td></tr>').join('')
@@ -603,9 +609,23 @@ function attRender(){
       + '<div class="grp">👀 ควรติดตาม <span style="font-weight:400;font-size:11.5px;color:#888">(ขาด×3 · ลา×2 · Late×1 · ไม่นับวันหยุดตามกะ)</span></div>'
       + (top.length ? top.map(r => '<div class="row-c"><div class="info"><div class="nm">'+esc(r.c.name)+'</div><div class="sub2">'+esc(r.c.code||'')+' • '+esc(r.c.vendor||'-')+'</div></div>'+(r.cnt['ข']?'<span class="chip" style="background:#EFE9FB;color:#6A4FB3">ขาด '+r.cnt['ข']+'</span>':'')+(r.cnt['ล']?'<span class="chip" style="background:#EFE9FB;color:#6A4FB3">ลา '+r.cnt['ล']+'</span>':'')+(r.cnt.l?'<span class="chip no">Late '+r.cnt.l+'</span>':'')+'</div>').join('') : '<div class="empty">ไม่มีคนที่ต้องติดตาม 🎉</div>')
       : '<div class="empty">ยังไม่มีรายชื่อพนักงานในสาขานี้</div>')
-    + '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>');
+    + (DM ? '' : '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>');
+  if (DM) { if ($('attBody')) $('attBody').innerHTML = H; } else modal(H);
   const g = document.getElementById('attGrid'); if (g) g.scrollLeft = g.scrollWidth;
 }
+/* แท็บ Data: เลือกสาขา (ตามตัวกรองภาค/ผู้ดูแลของหน้า Live) แล้วแสดงตารางในหน้าเลย */
+function attData(){
+  const box = $('viewAtt'); if (!box) return;
+  const L = (typeof depsInView === 'function' ? depsInView() : SCOPE).slice().sort();
+  if (!L.length) { box.innerHTML = ''; return; }
+  if (!L.includes(ATTDEP) || ATTMODE !== 'data') ATTDEP = L.includes(ATTDEP) ? ATTDEP : L[0];
+  box.innerHTML = '<div class="card attCard" style="margin-top:12px"><div style="font-weight:800;font-size:15px;margin-bottom:6px">🟩 ตารางมาทำงานรายคน</div>'
+    + '<div class="small" style="margin-bottom:6px">เลือกสาขา · ใช้ตัวกรองภาค/ผู้ดูแลเดียวกับหน้า Live</div>'
+    + '<div class="attR" style="flex-wrap:wrap;margin-top:0">'+L.map(d => '<button class="'+(d===ATTDEP?'on':'')+'" onclick="window.__attPick(\''+esc(d)+'\')">'+esc(d)+'</button>').join('')+'</div>'
+    + '<div id="attBody" style="margin-top:10px"></div></div>';
+  window.__att(ATTDEP, ATTN, 'data');
+}
+window.__attPick = d => { ATTDEP = d; ATTMODE = 'data'; attData(); };
 window.__attTip = el => { const t = document.getElementById('attTip'); if (t) t.textContent = el.getAttribute('data-t'); };
 
 /* ================= 👥 ชื่อผู้บันทึก (Staff) — จัดการโดย Manager เท่านั้น (ย้ายมาจากแอป Staff) =================

@@ -6,7 +6,7 @@
    ============================================================ */
 (function(){
 'use strict';
-const UI2_VER = '2026.10.01-d';
+const UI2_VER = '2026.10.01-e';
 const UI2 = ['TEST'];                                   /* สาขาที่เห็นหน้าใหม่ (นำร่อง) */
 const G = n => { try { return (0,eval)(n); } catch(e){ return undefined; } };
 const $ = id => document.getElementById(id);
@@ -124,8 +124,12 @@ body.ui2 #rpList,body.ui2 #rpSearch,body.ui2 #fdList,body.ui2 #fdSearch{display:
 /* ---------- ข้อมูลของวัน (อ่านจากแอปเดิม) ---------- */
 function actCouriers(){ const L = G('couriers') || [], rm = ((window.dsRemovedIds && window.dsRemovedIds()) || []).map(Number); return L.filter(c => c && c.active !== false && !rm.includes(Number(c.id))); }
 function absMap(){ const a = window.DHLSync && window.DHLSync.absent; return (a && typeof a === 'object') ? a : {}; }
-async function recsOf(k){ try { return (await G('getByDate')(k)) || []; } catch(e){ return []; } }
-async function pphOf(k){ try { return (await G('getPPH')(k)) || null; } catch(e){ return null; } }
+/* แคชสั้นๆ 0.9 วินาที: หลายส่วนอ่านข้อมูลเดียวกันในรอบเดียว → อ่านจริงครั้งเดียว (ข้อมูลเช็คอินมีรูปขนาดใหญ่ อ่านบ่อยแล้วหน่วง) */
+const CACHE = {};
+function cached(key, fn){ const c = CACHE[key], t = performance.now(); if (c && t - c.t < 900) return c.p; const p = fn(); CACHE[key] = { t, p }; return p; }
+function bust(){ for (const x in CACHE) delete CACHE[x]; }
+function recsOf(k){ return cached('r'+k, async () => { try { return (await G('getByDate')(k)) || []; } catch(e){ return []; } }); }
+function pphOf(k){ return cached('p'+k, async () => { try { return (await G('getPPH')(k)) || null; } catch(e){ return null; } }); }
 const today = () => { try { return G('todayKey')(); } catch(e){ return new Date().toISOString().slice(0,10); } };
 let USUAL = {}, USUALDAY = '', RISK = {};
 async function loadUsual(){ const k = today(); if (USUALDAY === k) return; USUALDAY = k;
@@ -170,7 +174,7 @@ function renderNav(){ const el = $('u2nav'); if (!el) return;
   const more = ['dash','insight','hist','manage'].includes(TAB);
   el.innerHTML = T.map(t => '<button data-v="'+t[0]+'" class="'+(TAB===t[0]||(t[0]==='more'&&more)?'on':'')+'"><i>'+t[1]+'</i>'+t[2]+'</button>').join('');
   el.querySelectorAll('button').forEach(b => b.onclick = () => b.dataset.v === 'more' ? openMore() : go(b.dataset.v)); }
-function go(v){ closeSheet(); call('nav', v); setTimeout(() => { const act = document.querySelector('.view.active'); TAB = act ? act.id.replace('view-','') : v; renderNav(); if (TAB === 'checkin') renderCI(); if (TAB === 'pd') renderPD(); if (TAB === 'pph' || TAB === 'fdel'){ RPSIG=''; setTimeout(renderRP, 300); } TLSIG=''; renderTL(); try { window.scrollTo(0,0); } catch(e){} }, 60); }
+function go(v){ closeSheet(); call('nav', v); setTimeout(() => { const act = document.querySelector('.view.active'); TAB = act ? act.id.replace('view-','') : v; renderNav(); if (TAB === 'checkin') renderCI(); if (TAB === 'pd') renderPD(); if (TAB === 'pph' || TAB === 'fdel'){ if (LAST) paintRP(); renderRP(); } TLSIG=''; renderTL(); try { window.scrollTo(0,0); } catch(e){} }, 60); }
 function openMore(){ sheet('<h3 style="margin:0 0 6px">☰ เพิ่มเติม</h3>'
   + [['📊','สรุปผล','KPI ทั้งวัน · สร้างรายงาน Report 1+2','dash'],['📈','อินไซต์','เทรนด์ · คนสายบ่อย','insight'],['🗓','ประวัติ','ย้อนหลังรายวัน + รายงานย้อนหลัง','hist'],['👥','จัดการ','รายชื่อ Courier · ตั้งค่า','manage']].map(m => '<div class="mi" data-v="'+m[3]+'"><i>'+m[0]+'</i><div>'+m[1]+'<small>'+m[2]+'</small></div></div>').join('')
   + '<div class="mi" data-sun="1"><i>☀️</i><div>โหมดกลางแดด: '+(SUN?'เปิดอยู่':'ปิดอยู่')+'<small>ตัวใหญ่ ตัดกันชัด มองกลางแจ้งง่าย</small></div></div>'
@@ -252,7 +256,7 @@ async function renderPD(){ const v = $('view-pd'); if (!v) return; let el = $('u
    กันกดรัว: ปุ่มยืนยันเปิดหลัง 1 วินาที + พัก 1.5 วินาทีหลังบันทึกทุกครั้ง + เตือนถ้าห่างจากขั้นก่อนน้อยผิดปกติ */
 const RS = ['fs','dep','fdel'], RN = { fs:'FS', dep:'ออกรถ', fdel:'ส่งชิ้นแรก' }, RL = { fs:'จัดรถเสร็จ (First Scan)', dep:'ออกรถ (Departure)', fdel:'ส่งชิ้นแรก (First Del)' };
 const RMIN = { dep:3, fdel:3 };                       /* ห่างจากขั้นก่อนน้อยกว่านี้ (นาที) → เตือนเพิ่ม */
-let RPSIG = '', RPQ = '', BUSY = 0, CFOPEN = false;
+let RPSIG = '', RPQ = '', BUSY = 0, CFOPEN = false, LAST = null, BOX = null; const BUSYC = {};
 const nextStep = q => RS.find(k => !q[k]) || null;
 const stLate = (k, ts) => k === 'dep' ? secOf(ts) >= DEP_T : k === 'fdel' ? secOf(ts) >= FDEL_T : false;
 async function rpData(){
@@ -266,15 +270,12 @@ function rpRow(c, q, inb){ const nx = nextStep(q), dq = esc((c.name+' '+c.code+'
     : lock ? '<button class="go dis" disabled>รอ First IB</button>'
     : '<button class="go '+nx+'" data-rk="'+nx+'" data-rc="'+esc(c.id)+'">'+RN[nx]+'<small>กดตอนนี้</small></button>';
   return '<div class="rw'+(nx?'':' fin')+'" data-q="'+dq+'"><div class="nm"><span>'+esc(c.name)+'</span><div class="ps">'+pills+'</div></div>'+btn+'</div>'; }
-async function renderRP(){
-  if (CFOPEN) return;
-  const host = TAB === 'fdel' ? $('fdList') : TAB === 'pph' ? $('rpList') : null; if (!host || !host.parentNode) { RPSIG = ''; return; }
-  const { L, rp, inb } = await rpData();
-  const s = L.map(c => c.id+':'+JSON.stringify(rp[c.id]||{})).join('|')+'#'+inb+'#'+host.id;
-  let box = $('u2rp');
-  if (box && box.nextSibling === host && s === RPSIG) return;
-  RPSIG = s; if (!box){ box = document.createElement('div'); box.id = 'u2rp'; box.className = 'u2rp'; }
-  if (box.nextSibling !== host) host.parentNode.insertBefore(box, host);
+const rpHost = () => TAB === 'fdel' ? $('fdList') : TAB === 'pph' ? $('rpList') : null;
+function placeBox(){ const host = rpHost(); if (!host || !host.parentNode) return null;
+  if (!BOX){ BOX = document.createElement('div'); BOX.id = 'u2rp'; BOX.className = 'u2rp'; }
+  if (BOX.nextSibling !== host) host.parentNode.insertBefore(BOX, host); return host; }
+function paintRP(){ if (!LAST) return; const host = placeBox(); if (!host) return; const { L, rp, inb } = LAST, box = BOX;
+  RPSIG = L.map(c => c.id+':'+JSON.stringify(rp[c.id]||{})).join('|')+'#'+inb+'#'+host.id;
   const n = L.length, cnt = k => L.filter(c => (rp[c.id]||{})[k]).length;
   box.innerHTML = '<div class="sum">'+RS.map(k => '<div><b>'+cnt(k)+'/'+n+'</b>'+RN[k]+'</div>').join('')+'</div>'
     + '<input class="srch" id="u2rq" inputmode="search" placeholder="🔍 เลขท้ายรหัส / ชื่อ" value="'+esc(RPQ)+'">'
@@ -285,22 +286,34 @@ async function renderRP(){
   box.querySelectorAll('[data-rk]').forEach(b => b.onclick = () => { const c = L.find(x => String(x.id) === b.dataset.rc); if (c) confirmStep(c, b.dataset.rk); });
   box.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { const c = L.find(x => String(x.id) === b.dataset.rc); if (c) editStep(c, b.dataset.ed); });
 }
+async function renderRP(){
+  if (CFOPEN) return;
+  const host = rpHost(); if (!host || !host.parentNode) { RPSIG = ''; return; }
+  LAST = await rpData(); if (CFOPEN) return;
+  const h2 = placeBox(); if (!h2) return;
+  const s2 = LAST.L.map(c => c.id+':'+JSON.stringify(LAST.rp[c.id]||{})).join('|')+'#'+LAST.inb+'#'+h2.id;
+  if (s2 === RPSIG && BOX.firstChild) return;
+  paintRP();
+}
 /* บันทึกเวลา ออกรถ / ส่งชิ้นแรก แบบระบุเวลาเอง (หรือเวลาปัจจุบัน) · v=null = ล้าง · ตรวจลำดับเหมือน rpStamp เดิม */
 function tsOfHM(s){ const m = /^(\d{1,2}):(\d{2})$/.exec(String(s||'').trim()); if (!m || +m[1] > 23 || +m[2] > 59) return null; const d = new Date(); d.setHours(+m[1], +m[2], 0, 0); return d.getTime(); }
 function rpCheck(q, k, v){ if (v == null){ const an = RS.slice(RS.indexOf(k)+1).find(x => q[x]); return an ? 'ล้าง '+RN[an]+' ก่อน แล้วค่อยล้าง '+RN[k] : ''; }
   if (v > Date.now() + 60000) return 'เวลาต้องไม่เกินเวลาปัจจุบัน ('+hm(Date.now())+')';
   const i = RS.indexOf(k), bp = RS.slice(0,i).find(x => q[x] && +q[x] > v); if (bp) return 'เวลา '+RN[k]+' ต้องไม่ก่อน '+RN[bp]+' ('+hm(q[bp])+')';
   const an = RS.slice(i+1).find(x => q[x] && +q[x] < v); if (an) return 'เวลา '+RN[k]+' ต้องไม่หลัง '+RN[an]+' ('+hm(q[an])+')'; return ''; }
-async function saveRp(cid, k, v){
-  const P = (await pphOf(today())) || G('pphRec'); if (!P) return 'ยังไม่มีข้อมูล PPH วันนี้';
-  P.rp = P.rp || {}; const q = P.rp[cid] = P.rp[cid] || {}; const e = rpCheck(q, k, v); if (e) return e;
+async function saveRp(cid, k, v, isNew){
+  let P = null; try { P = await G('getPPH')(today()); } catch(x){} P = P || G('pphRec'); if (!P) return 'ยังไม่มีข้อมูล PPH วันนี้';
+  P.rp = P.rp || {}; const q = P.rp[cid] = P.rp[cid] || {};
+  if (isNew && q[k]) return RN[k]+' ถูกบันทึกไปแล้ว ('+hm(q[k])+') จากอีกเครื่อง';
+  if (isNew && k === 'fs' && !P.inboundTs) return 'กด 📥 First Inbound ก่อน';
+  const e = rpCheck(q, k, v); if (e) return e;
   if (v == null) delete q[k]; else q[k] = v;
   try { (0,eval)('pphRec = ' + JSON.stringify(P)); } catch(x){}
-  const put = G('putPPH'); if (typeof put !== 'function') return 'บันทึกไม่ได้'; await put(G('pphRec') || P);
-  const fdOn = $('view-fdel') && $('view-fdel').classList.contains('active'); await call(fdOn ? 'renderFDel' : 'renderPPH'); return ''; }
+  const put = G('putPPH'); if (typeof put !== 'function') return 'บันทึกไม่ได้'; await put(G('pphRec') || P); bust();
+  const fdOn = $('view-fdel') && $('view-fdel').classList.contains('active'); call(fdOn ? 'renderFDel' : 'renderPPH'); return ''; }
 async function confirmStep(c, k){
-  if (performance.now() < BUSY) return;
-  const { rp, inb } = await rpData(), q = rp[c.id] || {};
+  const t0 = performance.now(); if (t0 < BUSY || t0 < (BUSYC[c.id]||0)) return;
+  const { rp, inb } = LAST || await rpData(), q = rp[c.id] || {};
   if (nextStep(q) !== k){ RPSIG = ''; renderRP(); return; }          /* อีกเครื่องกดไปแล้ว → วาดใหม่ */
   if (k === 'fs' && !inb){ (G('flash')||alert)('กด 📥 First Inbound ก่อน'); return; }
   const i = RS.indexOf(k), prev = i ? q[RS[i-1]] : null, canEdit = k !== 'fs';
@@ -327,21 +340,23 @@ async function confirmStep(c, k){
   const first = upd();
   const tm = setInterval(() => { const t = $('u2cft'); if (t) t.textContent = hm(Date.now()); if (!manual) upd(); }, 1000);
   const done = () => { clearInterval(tm); CFOPEN = false; closeSheet(); };
-  setTimeout(() => { if (y && $('u2cfy') === y){ armed = true; upd(); } }, first.w ? 2000 : 1000);
+  setTimeout(() => { if (y && $('u2cfy') === y){ armed = true; upd(); } }, first.w ? 1200 : 600);
   n.onclick = () => { done(); RPSIG = ''; renderRP(); };
   $('u2sh').onclick = e => { if (e.target.id === 'u2sh'){ done(); RPSIG = ''; renderRP(); } };
   y.onclick = async () => { if (y.disabled || !armed) return; const { v, e } = upd(); if (e || v == null) return;
-    y.disabled = true; BUSY = performance.now() + 1500; done();
-    let err = '';
-    if (k === 'fs') await call('rpStamp', c.id, k); else err = await saveRp(c.id, k, manual ? v : Date.now());
-    const p2 = (await pphOf(today())) || {}, ok = ((p2.rp||{})[c.id]||{})[k];
-    if (err) (G('flash')||alert)('⚠ '+err); else if (ok) (G('flash')||(()=>{}))('✓ '+RN[k]+' '+hm(ok)+(manual?' (ระบุเอง)':'')+' · '+String(c.name).split(' ')[0]);
-    RPSIG = ''; setTimeout(renderRP, 150); TLSIG = ''; renderTL(); };
+    y.disabled = true; const now = performance.now(); BUSY = now + 350; BUSYC[c.id] = now + 1200; done();
+    const tv = manual ? v : Date.now(), fl = G('flash') || (()=>{});
+    /* แสดงผลทันที (ไม่ต้องรอบันทึก/ซิงค์) แล้วค่อยบันทึกเบื้องหลัง */
+    if (LAST){ LAST.rp = Object.assign({}, LAST.rp); LAST.rp[c.id] = Object.assign({}, LAST.rp[c.id]||{}, { [k]: tv }); paintRP(); }
+    fl('✓ '+RN[k]+' '+hm(tv)+(manual?' (ระบุเอง)':'')+' · '+String(c.name).split(' ')[0]);
+    const err = await saveRp(c.id, k, tv, true);
+    if (err){ (G('flash')||alert)('⚠ '+err); bust(); RPSIG = ''; renderRP(); }
+    TLSIG = ''; renderTL(); };
 }
 /* แก้เวลาที่บันทึกแล้ว (เฉพาะ ออกรถ / ส่งชิ้นแรก) */
 async function editStep(c, k){
   if (performance.now() < BUSY || k === 'fs') return;
-  const { rp } = await rpData(), q = rp[c.id] || {}; if (!q[k]) return;
+  const { rp } = LAST || await rpData(), q = rp[c.id] || {}; if (!q[k]) return;
   CFOPEN = true;
   sheet('<div class="u2cf"><h3 style="margin:0">✏️ แก้เวลา '+RL[k]+'</h3><div style="font-size:15px;font-weight:800;margin-top:4px">'+esc(c.name)+'</div><div style="font-size:12.5px;color:var(--u-mut)">'+esc(c.code)+' · บันทึกไว้ '+hm(q[k])+'</div>'
     + '<div class="flow">'+RS.map((x,j) => (j?'<b>›</b>':'')+'<div class="'+(x===k?'cur':q[x]?'ok':'')+'">'+RN[x]+'<small>'+(q[x]?hm(q[x]):'—')+'</small></div>').join('')+'</div>'
@@ -350,15 +365,17 @@ async function editStep(c, k){
   const ti = $('u2ti'), y = $('u2cfy');
   const upd = () => { const v = tsOfHM(ti.value), e = v == null ? 'ใส่เวลาให้ถูก (ชม:นาที)' : rpCheck(q, k, v); $('u2er').innerHTML = e ? '<div class="err">✖ '+esc(e)+'</div>' : ''; y.disabled = !!e; return { v, e }; };
   ti.oninput = upd; ti.onchange = upd; upd();
-  const done = () => { CFOPEN = false; closeSheet(); RPSIG = ''; setTimeout(renderRP, 150); TLSIG = ''; renderTL(); };
-  $('u2cfn').onclick = done; $('u2sh').onclick = e => { if (e.target.id === 'u2sh') done(); };
-  y.onclick = async () => { const { v, e } = upd(); if (e) return; y.disabled = true; BUSY = performance.now() + 1500;
-    const err = await saveRp(c.id, k, v); (G('flash')||alert)(err ? '⚠ '+err : '✓ แก้ '+RN[k]+' เป็น '+hm(v)+' · '+String(c.name).split(' ')[0]); done(); };
-  $('u2cfc').onclick = async () => { if (!confirm('ล้างเวลา '+RN[k]+' ของ '+c.name+' ?')) return; BUSY = performance.now() + 1500;
-    const err = await saveRp(c.id, k, null); (G('flash')||alert)(err ? '⚠ '+err : '🗑 ล้าง '+RN[k]+' แล้ว · '+String(c.name).split(' ')[0]); done(); };
+  const done = () => { CFOPEN = false; closeSheet(); TLSIG = ''; renderTL(); };
+  const opt = v => { if (!LAST) return; LAST.rp = Object.assign({}, LAST.rp); const o = Object.assign({}, LAST.rp[c.id]||{}); if (v == null) delete o[k]; else o[k] = v; LAST.rp[c.id] = o; paintRP(); };
+  $('u2cfn').onclick = () => { done(); paintRP(); }; $('u2sh').onclick = e => { if (e.target.id === 'u2sh'){ done(); paintRP(); } };
+  const fin = async (v, msg) => { BUSY = performance.now() + 350; done(); opt(v); (G('flash')||alert)(msg);
+    const err = await saveRp(c.id, k, v); if (err){ (G('flash')||alert)('⚠ '+err); bust(); RPSIG = ''; renderRP(); } };
+  y.onclick = () => { const { v, e } = upd(); if (e) return; y.disabled = true; fin(v, '✓ แก้ '+RN[k]+' เป็น '+hm(v)+' · '+String(c.name).split(' ')[0]); };
+  $('u2cfc').onclick = () => { if (q.fdel && k === 'dep'){ $('u2er').innerHTML = '<div class="err">✖ ล้าง ส่งชิ้นแรก ก่อน แล้วค่อยล้าง ออกรถ</div>'; return; }
+    if (!confirm('ล้างเวลา '+RN[k]+' ของ '+c.name+' ?')) return; fin(null, '🗑 ล้าง '+RN[k]+' แล้ว · '+String(c.name).split(' ')[0]); };
 }
 function hookRP(){ ['pphBody','fdelBody'].forEach(id => { const el = $(id); if (!el || el._u2) return; el._u2 = true;
-  new MutationObserver(() => { if (ON){ RPSIG = ''; renderRP(); } }).observe(el, { childList:true }); }); }
+  new MutationObserver(() => { if (!ON) return; if (BOX && BOX.firstChild) placeBox(); renderRP(); }).observe(el, { childList:true }); }); }
 
 /* ---------- ครบทุกขั้นตอน (ไม่มีค้าง) → Pop Up แสดงความยินดี + ส่ง Report ทั้งหมดทาง LINE ---------- */
 async function dayStatus(){
@@ -434,7 +451,7 @@ function mount(){
   const act = document.querySelector('.view.active'); TAB = act ? act.id.replace('view-','') : 'checkin';
   hookReport(); hookRP(); renderNav(); TLSIG=''; renderTL(); loadUsual().then(renderCI); renderPD();
 }
-function unmount(){ if (!ON) return; ON = false; ['u2css','u2tl','u2ci','u2nav','u2sh','u2pd','u2rp'].forEach(i => { const e = $(i); if (e) e.remove(); }); document.body.classList.remove('ui2','u2sun'); }
+function unmount(){ if (!ON) return; ON = false; ['u2css','u2tl','u2ci','u2nav','u2sh','u2pd','u2rp'].forEach(i => { const e = $(i); if (e) e.remove(); }); BOX = null; LAST = null; document.body.classList.remove('ui2','u2sun'); }
 async function tick(){
   try {
     const want = ready() && UI2.includes(depot());

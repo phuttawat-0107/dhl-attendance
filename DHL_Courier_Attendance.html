@@ -2014,7 +2014,7 @@ async function drawReport(key){
   const recs = s.recs.slice().sort((a,b)=>a.ts-b.ts);
   const imgs = await Promise.all(recs.map(r=>r.photo? loadImg(r.photo) : Promise.resolve(null)));
 
-  const W=1080, P=40, COLS=6, CELL=(W-P*2-(COLS-1)*14)/COLS, CELLH=CELL+50;
+  const W=1080, P=40, COLS=6, CELL=(W-P*2-(COLS-1)*14)/COLS, IH=Math.round(CELL*4/3), CELLH=IH+50;   /* 3:4 ไม่ครอปหัว/เท้า (แบบ UPC) */
   const photoRows = Math.ceil(recs.length/COLS);
   const riskH = riskRows.length? 60+riskRows.length*34 : 70;
   const gridH = recs.length? 60+photoRows*(CELLH+16) : 60;
@@ -2137,21 +2137,21 @@ async function drawReport(key){
   recs.forEach((r,i)=>{
     const col=i%COLS, row=Math.floor(i/COLS);
     const gx=P+col*(CELL+14), yy=gy+row*(CELLH+16);
-    x.fillStyle='#f2f2f2'; roundRect(x,gx,yy,CELL,CELL,10); x.fill();
+    x.fillStyle='#f2f2f2'; roundRect(x,gx,yy,CELL,IH,10); x.fill();
     const im=imgs[i];
     if(im){
-      x.save(); roundRect(x,gx,yy,CELL,CELL,10); x.clip();
-      const sc=Math.max(CELL/im.width, CELL/im.height);
-      x.drawImage(im, gx+(CELL-im.width*sc)/2, yy+(CELL-im.height*sc)/2, im.width*sc, im.height*sc);
+      x.save(); roundRect(x,gx,yy,CELL,IH,10); x.clip();
+      const sc=Math.min(CELL/im.width, IH/im.height);
+      x.drawImage(im, gx+(CELL-im.width*sc)/2, yy+(IH-im.height*sc)/2, im.width*sc, im.height*sc);
       x.restore();
-    } else { x.fillStyle='#bbb'; x.font='13px Segoe UI'; x.textAlign='center'; x.fillText('no photo', gx+CELL/2, yy+CELL/2); x.textAlign='left'; }
+    } else { x.fillStyle='#bbb'; x.font='13px Segoe UI'; x.textAlign='center'; x.fillText('no photo', gx+CELL/2, yy+IH/2); x.textAlign='left'; }
     const c=cMap[r.courierId]||{code:'?',name:'?'};
     const col2 = r.status==='ontime'? '#2e7d32':'#D40511';
-    x.fillStyle=col2; x.fillRect(gx, yy+CELL+5, 6, 34);
+    x.fillStyle=col2; x.fillRect(gx, yy+IH+5, 6, 34);
     x.fillStyle='#1a1a1a'; x.font='700 13px Segoe UI';
-    x.fillText(trunc(x, c.name, CELL-16), gx+12, yy+CELL+20);
+    x.fillText(trunc(x, c.name, CELL-16), gx+12, yy+IH+20);
     x.font='700 12px Segoe UI'; x.fillStyle=col2;
-    x.fillText(c.code+' '+fmtTime(r.ts)+(r.manualEdit?'*':'')+(r.status==='late'?' L':''), gx+12, yy+CELL+38);
+    x.fillText(c.code+' '+fmtTime(r.ts)+(r.manualEdit?'*':'')+(r.status==='late'?' L':''), gx+12, yy+IH+38);
     if(r.uniform===false){
       x.fillStyle='#D40511'; x.font='700 13px Segoe UI'; x.textAlign='right';
       x.fillText('👕✖', gx+CELL-6, yy+18); x.textAlign='left';
@@ -2268,5 +2268,6 @@ function renderThemeRow(){
 </script>
   <script type="module">import('./dhl-sync.js?b='+Date.now());</script>
   <script type="module">import('./dhl-ux.js?b='+Date.now()).catch(()=>{});</script>
+  <script type="module">import('./dhl-ui2.js?b='+Date.now()).catch(()=>{});</script>
 </body>
 </html>

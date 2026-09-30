@@ -6,7 +6,7 @@
    ============================================================ */
 (function(){
 'use strict';
-const UI2_VER = '2026.10.01-f';
+const UI2_VER = '2026.10.01-g';
 const UI2 = ['TEST'];                                   /* สาขาที่เห็นหน้าใหม่ (นำร่อง) */
 const G = n => { try { return (0,eval)(n); } catch(e){ return undefined; } };
 const $ = id => document.getElementById(id);
@@ -154,8 +154,8 @@ async function stepData(){
     { v:'pd', l:'PD', val: p.pd && p.pd.ts, st: p.pd && p.pd.ts ? (secOf(p.pd.ts) >= PD_A && secOf(p.pd.ts) <= PD_B ? 'ok' : 'late') : (recs.length && s >= PD_A-600 ? 'now' : '') },
     { v:'pph', l:'First IB', val: p.inboundTs, st: p.inboundTs ? 'ok' : '' },
     { v:'pph', l:'Last IB', val: p.lastInboundTs, st: p.lastInboundTs ? 'ok' : '' },
-    { v:'pph', l:'Departure', val: avg(deps), st: deps.length ? (secOf(avg(deps)) < DEP_T ? 'ok' : 'late') : '' },
-    { v:'fdel', l:'First Del', val: avg(fd), st: fd.length ? (secOf(avg(fd)) < FDEL_T ? 'ok' : 'late') : '' } ];
+    { v:'pph', l:'Depart', val: avg(deps), st: deps.length ? (secOf(avg(deps)) < DEP_T ? 'ok' : 'late') : '' },
+    { v:'fdel', l:'1st Del', val: avg(fd), st: fd.length ? (secOf(avg(fd)) < FDEL_T ? 'ok' : 'late') : '' } ];
   const nx = S.find(x => x.st !== 'ok' && x.st !== 'late');
   return { S, nx };
 }
@@ -388,7 +388,7 @@ async function editStep(c, k){
     if (!confirm('ล้างเวลา '+RN[k]+' ของ '+c.name+' ?')) return; fin(null, '🗑 ล้าง '+RN[k]+' แล้ว · '+String(c.name).split(' ')[0]); };
 }
 function hookRP(){ ['pphBody','fdelBody'].forEach(id => { const el = $(id); if (!el || el._u2) return; el._u2 = true;
-  new MutationObserver(() => { if (!ON) return; if (BOX && BOX.firstChild) placeBox(); renderRP(); }).observe(el, { childList:true }); }); }
+  new MutationObserver(() => { if (!ON) return; if (BOX && BOX.firstChild) placeBox(); bust(); PREP = null; renderRP(); TLSIG = ''; renderTL(); }).observe(el, { childList:true }); }); }
 
 /* ---------- ครบทุกขั้นตอน (ไม่มีค้าง) → Pop Up แสดงความยินดี + ส่ง Report ทั้งหมดทาง LINE ---------- */
 async function dayStatus(){
@@ -405,17 +405,25 @@ async function dayStatus(){
   const dep = avg(recs.map(r => (rp[r.courierId]||{}).dep).filter(Boolean)), fd = avg(recs.map(r => (rp[r.courierId]||{}).fdel).filter(Boolean));
   return { ok, pend, n: recs.length, lt, pd: p.pd && p.pd.ts, dep, fd, abs: act.length - need.length }; }
 const DONEKEY = () => 'u2done_'+depot()+'_'+today();
-async function shareReports(which){
-  const k = today(), dep = depot(), fl = G('flash') || alert;
-  const all = [['drawReport','Report1'],['drawSummary','Report2'],['drawRoutePrep','RoutePrep']].filter(x => !which || which === x[1]);
-  try { fl('กำลังสร้าง Report…'); const files = [];
-    for (const [fn, nm] of all){ const f = G(fn); if (typeof f !== 'function') continue; const cv = await f(k); if (!cv || !cv.toBlob) continue;
-      const b = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', .9)); if (b) files.push(new File([b], dep+'_'+nm+'_'+k+'.jpg', { type:'image/jpeg' })); }
-    if (!files.length){ fl('สร้าง Report ไม่สำเร็จ'); return; }
-    if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files, title:'รายงาน '+dep+' '+k }); return; }
-    files.forEach(f => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); });
-    fl('เครื่องนี้ส่งตรงไม่ได้ — โหลดรูปลงเครื่องแล้ว ส่งใน LINE ได้เลย');
-  } catch(e){ if (!e || e.name !== 'AbortError') fl('ส่งไม่สำเร็จ — ลองใหม่ หรือโหลดทีละไฟล์'); } }
+/* สร้างรูป Report ไว้ล่วงหน้า → ตอนกดปุ่มส่งได้ทันที (มือถือบังคับว่าต้องเรียกแชร์ทันทีหลังนิ้วแตะ ถ้าช้าจะส่งไม่ออก) */
+const REPS = [['drawReport','Report1'],['drawSummary','Report2'],['drawRoutePrep','RoutePrep']];
+let PREP = null;
+function prepReports(){ const k = today(), dep = depot(), key = k+'|'+dep;
+  if (PREP && PREP.key === key && performance.now() - PREP.t < 60000) return PREP.p;
+  const p = (async () => { const out = {};
+    for (const [fn, nm] of REPS){ try { const f = G(fn); if (typeof f !== 'function') continue; const cv = await f(k); if (!cv || !cv.toBlob) continue;
+      const b = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', .9)); if (b) out[nm] = new File([b], dep+'_'+nm+'_'+k+'.jpg', { type:'image/jpeg' }); } catch(e){ console.warn('[ui2] report', nm, e); } }
+    PREP.ready = out; return out; })();
+  PREP = { key, t: performance.now(), p, ready: null }; return p; }
+function shareNow(files, dep, k){ const fl = G('flash') || alert;
+  if (!files.length){ fl('สร้าง Report ไม่สำเร็จ'); return; }
+  if (navigator.canShare && navigator.share && navigator.canShare({ files })){ navigator.share({ files, title:'รายงาน '+dep+' '+k }).catch(e => { if (!e || e.name !== 'AbortError') fl('ส่งไม่สำเร็จ — ลองกดอีกครั้ง'); }); return; }
+  files.forEach(f => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); });
+  fl('เครื่องนี้ส่งตรงไม่ได้ — โหลดรูปลงเครื่องแล้ว ส่งใน LINE ได้เลย'); }
+function shareReports(which){ const k = today(), dep = depot();
+  const pick = o => REPS.map(x => x[1]).filter(n => !which || which === n).map(n => o[n]).filter(Boolean);
+  if (PREP && PREP.ready && PREP.key === k+'|'+dep){ shareNow(pick(PREP.ready), dep, k); return; }   /* พร้อมแล้ว → ส่งทันที */
+  (G('flash')||alert)('⏳ กำลังเตรียม Report… อีกสักครู่กดส่งอีกครั้ง'); prepReports(); }
 async function showDone(force){
   if (CFOPEN || ($('u2sh') && $('u2sh').classList.contains('on'))) return;
   const d = await dayStatus();
@@ -430,8 +438,10 @@ async function showDone(force){
     + '<button class="bt ln" data-all="1">📤 ส่ง Report ทั้งหมดทาง LINE<small>Report 1 · Report 2 · Route prep (3 รูป)</small></button>'
     + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px">'+[['Report1','Report 1'],['Report2','Report 2'],['RoutePrep','Route prep']].map(x => '<button class="bt o" style="margin:0;font-size:12.5px;padding:10px 4px" data-one="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>'
     + '<button class="bt o" data-x="1">ปิด</button></div>');
-  const b = $('u2shb');
-  b.querySelector('[data-all]').onclick = () => shareReports();
+  const b = $('u2shb'), ab = b.querySelector('[data-all]'), sm = ab.querySelector('small'), sm0 = sm.textContent;
+  if (!(PREP && PREP.ready)){ ab.style.opacity = '.55'; sm.textContent = '⏳ กำลังเตรียมรูป Report…'; }
+  prepReports().then(() => { ab.style.opacity = ''; sm.textContent = sm0; });
+  ab.onclick = () => shareReports();
   b.querySelectorAll('[data-one]').forEach(x => x.onclick = () => shareReports(x.dataset.one));
   b.querySelector('[data-x]').onclick = closeSheet;
   try { const s = G('uxCelebrate') || (window.DHLUX && window.DHLUX.celebrate); if (typeof s === 'function') s(); } catch(e){}
@@ -444,11 +454,10 @@ function hookReport(){ const m = $('repModal'); if (!m || m._u2) return; m._u2 =
     if ($('u2share')) return; const dl = $('repDlFull'); if (!dl || !navigator.canShare) return;
     const b = document.createElement('button'); b.id = 'u2share'; b.className = dl.className; b.style.marginBottom = '8px'; b.textContent = '📤 ส่ง Report 1 + 2 พร้อมกัน (LINE)';
     dl.parentNode.insertBefore(b, dl);
-    b.onclick = async () => { try { const k = (($('repTitle')||{}).textContent||'').includes(' ') ? today() : today(); const dep = depot(), f1 = await G('drawReport')(k), f2 = await G('drawSummary')(k);
-        const bl = c => new Promise(ok => c.toBlob(ok, 'image/jpeg', .9));
-        const files = [new File([await bl(f1)], dep+'_Report1_'+k+'.jpg', {type:'image/jpeg'}), new File([await bl(f2)], dep+'_Report2_'+k+'.jpg', {type:'image/jpeg'})];
-        if (navigator.canShare({ files })) await navigator.share({ files, title:'รายงาน '+dep+' '+k }); else (G('flash')||alert)('เครื่องนี้ส่งพร้อมกันไม่ได้ — ใช้ปุ่มโหลดทีละไฟล์');
-      } catch(e){ if (e && e.name !== 'AbortError') (G('flash')||alert)('ส่งไม่สำเร็จ — ใช้ปุ่มโหลดทีละไฟล์'); } };
+    b.style.opacity = '.55'; prepReports().then(() => { b.style.opacity = ''; });
+    b.onclick = () => { const k = today(), dep = depot();
+      if (PREP && PREP.ready){ shareNow(['Report1','Report2'].map(n => PREP.ready[n]).filter(Boolean), dep, k); return; }
+      (G('flash')||alert)('⏳ กำลังเตรียม Report… อีกสักครู่กดส่งอีกครั้ง'); };
   }).observe(m, { attributes:true, attributeFilter:['class'] }); }
 
 /* ---------- เปิด / ปิด ---------- */
@@ -462,7 +471,8 @@ function mount(){
   document.body.insertAdjacentHTML('beforeend', '<div id="u2nav"></div><div id="u2sh"><div class="bx" id="u2shb"></div></div>');
   $('u2sh').onclick = e => { if (e.target.id === 'u2sh') closeSheet(); };
   const act = document.querySelector('.view.active'); TAB = act ? act.id.replace('view-','') : 'checkin';
-  hookReport(); hookRP(); { const pc = $('pdCard'); if (pc && !pc._u2){ pc._u2 = true; new MutationObserver(() => { if (ON){ bust(); PDSIG = ''; renderPD(); } }).observe(pc, { childList:true }); } } renderNav(); TLSIG=''; renderTL(); loadUsual().then(renderCI); renderPD();
+  hookReport(); hookRP(); { const pc = $('pdCard'); if (pc && !pc._u2){ pc._u2 = true; new MutationObserver(() => { if (ON){ bust(); PREP = null; PDSIG = ''; renderPD(); TLSIG = ''; renderTL(); } }).observe(pc, { childList:true }); } }
+  { const cl = $('ciList'); if (cl && !cl._u2){ cl._u2 = true; new MutationObserver(() => { if (ON && TAB === 'checkin'){ bust(); sig().then(x => { if (x !== SIG){ PREP = null; if (performance.now() - LASTTYPE > 4000) renderCI(); TLSIG = ''; renderTL(); } }); } }).observe(cl, { childList:true }); } } renderNav(); TLSIG=''; renderTL(); loadUsual().then(renderCI); renderPD();
 }
 function unmount(){ if (!ON) return; ON = false; ['u2css','u2tl','u2ci','u2nav','u2sh','u2pd','u2rp'].forEach(i => { const e = $(i); if (e) e.remove(); }); BOX = null; LAST = null; document.body.classList.remove('ui2','u2sun','u2pdok'); }
 async function tick(){

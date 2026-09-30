@@ -618,7 +618,7 @@ function attData(){
   const box = $('viewAtt'); if (!box) return;
   const L = (typeof depsInView === 'function' ? depsInView() : SCOPE).slice().sort();
   if (!L.length) { box.innerHTML = ''; return; }
-  if (!L.includes(ATTDEP) || ATTMODE !== 'data') ATTDEP = L.includes(ATTDEP) ? ATTDEP : L[0];
+  if (!L.includes(ATTDEP)) ATTDEP = L.find(d => ((DEPS[d]&&DEPS[d].roster)||[]).length) || L[0];   /* เริ่มที่สาขาแรกที่มีรายชื่อพนักงาน */
   box.innerHTML = '<div class="card attCard" style="margin-top:12px"><div style="font-weight:800;font-size:15px;margin-bottom:6px">🟩 ตารางมาทำงานรายคน</div>'
     + '<div class="small" style="margin-bottom:6px">เลือกสาขา · ใช้ตัวกรองภาค/ผู้ดูแลเดียวกับหน้า Live</div>'
     + '<div class="attR" style="flex-wrap:wrap;margin-top:0">'+L.map(d => '<button class="'+(d===ATTDEP?'on':'')+'" onclick="window.__attPick(\''+esc(d)+'\')">'+esc(d)+'</button>').join('')+'</div>'

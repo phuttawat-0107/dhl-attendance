@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FFCC00">
+<script src="inapp.js?v=1"></script>
+<title>DHL Manager Live</title>
+<!-- ธีมเดียวกับ DHL_Manager_Live.html ต้นฉบับ -->
+<link rel="stylesheet" href="theme-mgr.css?v=1">
+<style>
+/* เสริมเล็กน้อยสำหรับ UPC — ใช้คลาส/สีเดียวกับต้นฉบับ */
+#login input.txt{letter-spacing:0;font-size:15px;text-align:left;font-weight:600;}
+#login .demo{background:#fff8d9;border-radius:14px;padding:10px 12px;font-size:12px;line-height:1.6;color:#6b5a1a;margin:0 0 14px;}
+#login .demo b{color:#1a1a1a;} #login .demo a{color:#D40511;font-weight:800;}
+#login .ver{font-size:10.5px;color:#c4bca6;text-align:center;margin-top:12px;}
+#login.hide{display:none;}
+/* รูปย่อ: สัดส่วน 3:4 เท่ารูปจริง แสดงทั้งภาพ ไม่ครอปหัว/เท้า */
+.thumb{width:46px !important;height:62px !important;object-fit:contain !important;background:#f3f0e7 !important;}
+#feed{z-index:200 !important;}
+.mgbar{display:flex;gap:7px;overflow-x:auto;margin:0 0 8px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.mgbtn{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1px solid #e6e2d6;background:#fff;border-radius:12px;padding:6px 11px;font:inherit;cursor:pointer;text-align:left}
+.mgbtn b{font-size:12.5px;font-weight:800;white-space:nowrap}.mgbtn span{font-size:11px;color:#8a8270}
+.mgbtn.on{background:#1a1a1a;border-color:#1a1a1a;color:#fff}.mgbtn.on span{color:#FFCC00}
+.row-c .cmt{font-size:12.5px;color:#7a4f00;background:#FFF4D6;border-radius:8px;padding:4px 8px;margin-top:4px;line-height:1.45;word-break:break-word}
+.row-c .cmt i{color:#9a8350;font-style:normal;font-size:11.5px}
+#mZoom{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:10px;cursor:zoom-out}
+#mZoom.on{display:flex}
+#mZoom img{max-width:100%;max-height:72vh;border-radius:12px;background:#222;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#mZoom .zc{color:#fff;text-align:center;font-size:15px;line-height:1.5;max-width:520px}
+#mZoom .zm{margin-top:6px;background:#FFF4D6;color:#5c4000;border-radius:10px;padding:6px 10px;font-size:14px;text-align:left}
+#mZoom .zx{color:#bbb;font-size:13px}
+/* 🟩 ตารางมาทำงาน */
+.ag{overflow-x:auto;margin:10px -4px 0;padding-bottom:4px}
+.ag table{border-collapse:separate;border-spacing:3px;font-size:11px}
+.ag th{font-weight:700;font-size:10.5px;color:#8a8474;min-width:22px}
+.ag th.td{color:#1a1a1a;background:#FFCC00;border-radius:6px}
+.ag td.nm{position:sticky;left:0;background:#fff;font-weight:700;font-size:12px;white-space:nowrap;padding-right:6px;z-index:1;max-width:84px;overflow:hidden;text-overflow:ellipsis}
+.ag td.c{width:22px;min-width:22px;height:22px;border-radius:6px;text-align:center;font-weight:800;font-size:11px;color:#fff;cursor:pointer;padding:0}
+.ag td.c.w{background:#2E7D32}.ag td.c.l{background:#C62828}.ag td.c.o{background:#6A4FB3}
+.ag td.c.x{background:#fff;border:1.5px dashed #B7791F;color:#B7791F}.ag td.c.x2{background:#FFF4D6;color:#B7791F;border:1.5px dashed #B7791F}
+.ag td.c.n{background:#f1efe8}
+.ag td.sm{font-size:11px;white-space:nowrap;padding-left:4px}
+.attR{display:flex;gap:6px;margin-top:8px}
+.attR button{border:1.5px solid #e6e2d6;background:#fff;border-radius:999px;padding:5px 11px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.attR button.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.attTip{margin-top:6px;background:#FFF4D6;border-radius:8px;padding:6px 9px;font-size:12.5px;color:#5c4000;min-height:30px}
+.leg{display:flex;flex-wrap:wrap;gap:8px 12px;font-size:11.5px;color:#8a8474;margin-top:8px}
+.leg i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.mgsel{font-size:12.5px;background:#fff8d9;border-radius:10px;padding:7px 10px;margin:0 0 9px;line-height:1.5}
+.mgsel a{color:#C62828;font-weight:800;cursor:pointer;margin-left:4px;white-space:nowrap}   /* แจ้งผลการกด (สำเร็จ/ไม่สำเร็จ) ให้ลอยเหนือหน้าต่างเสมอ */
+.fitem.bad{background:#C62828 !important;}
+.demoRib{position:fixed;left:12px;bottom:14px;z-index:70;background:#FFCC00;color:#1a1a1a;font-size:11px;font-weight:800;padding:8px 12px;border-radius:99px;box-shadow:0 3px 12px rgba(0,0,0,.2);}
+#updBar{display:none;background:#D40511;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:700;}
+table.grid col.c-dep{width:24%;} table.grid col.c-task{width:19%;}
+td.cell.none{background:#f2ede2;color:#b0a892;}
+.flagc{display:inline-block;background:#fff3d6;color:#a06a00;border-radius:6px;padding:0 5px;font-size:9px;font-weight:800;margin-left:3px;}
+.sheet .grp{font-size:11px;font-weight:800;color:#8a8272;margin:12px 0 6px;letter-spacing:.3px;}
+.chip.gr{background:#f2ede2;color:#8a8272;}
+.chip.wt{background:#fff3d6;color:#a06a00;}
+.thumb{cursor:zoom-in;}
+.admbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.admbar .btn{padding:9px 13px;font-size:12.5px;}
+.cred{background:#1a1a1a;color:#fff;border-radius:16px;padding:14px 16px;font-size:14px;line-height:1.8;margin-top:12px;}
+.cred b{color:#FFCC00;}
+.frm2 label{display:block;font-size:11px;font-weight:800;color:#8a8272;margin:10px 0 4px;}
+.frm2 .err2{color:#D40511;font-size:12.5px;font-weight:700;min-height:18px;margin:8px 0;}
+.pick{display:flex;flex-wrap:wrap;gap:5px;}
+.pick label{display:inline-flex;align-items:center;gap:5px;margin:0;border:1px solid #efe9dc;border-radius:8px;padding:5px 9px;background:#fbf9f4;font-size:12px;font-weight:700;color:#5a5140;cursor:pointer;}
+.pick input{width:auto !important;min-height:0 !important;margin:0;}
+.lnk{font-size:12px;word-break:break-all;color:#5a5140;}
+</style>
+</head>
+<body>
+
+<div id="login"><div class="box"><div class="yb"></div>
+  <div id="lgBody"></div>
+  <div class="ver" id="lgVer"></div>
+</div></div>
+
+<div id="updBar"></div>
+<div class="topbar"><div class="ybar"></div>
+  <div class="hd">
+    <div class="mlogo"><img class="dhlmark" src="logo.webp" alt="DHL eCommerce"><span class="liveTag">Live</span><small id="teamTag" style="display:block;font-size:10px;font-weight:700;color:#a09884;letter-spacing:.3px;"></small></div>
+    <div class="meta" style="display:flex;align-items:center;gap:10px;">
+      <div><div class="live"><i></i>REAL-TIME</div><span id="clk">--:--:--</span></div>
+      <button class="btn btn-o" id="admBtn" style="min-height:38px;padding:8px 12px;font-size:15px;display:none;" onclick="window.__settings()" title="ผู้ดูแลระบบ">⚙️</button>
+      <button class="btn btn-o" style="min-height:38px;padding:8px 12px;font-size:15px;" onclick="window.__logout()" title="ออกจากระบบ">🚪</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="mtabs">
+    <button class="mtab on" id="tb_live" onclick="window.__tab('live')">🔴 Live</button>
+    <button class="mtab" id="tb_ins" onclick="window.__tab('ins')">📈 อินไซต์</button>
+    <button class="mtab" id="tb_ch" onclick="window.__tab('ch')">📊 กราฟ</button>
+    <button class="mtab" id="tb_data" onclick="window.__tab('data')">📋 Data</button>
+    <button class="mtab" id="tb_ph" onclick="window.__tab('ph')">📷 ย้อนหลัง</button>
+  </div>
+  <div id="viewLive">
+    <div id="sysBar"></div>
+    <div id="healthBar"></div>
+    <div id="kpis"></div>
+    <div class="card">
+      <h2>🗓 <span id="dTitle"></span> <span class="small" id="dSub"></span></h2>
+      <div id="depBar"></div>
+      <div class="gridwrap"><table class="grid" id="grid"></table></div>
+      <div class="legend"><span><i style="background:#e6f5eb"></i>ครบ / ทัน</span><span><i style="background:#fff6d6"></i>รอ / ขาด-ลา</span><span><i style="background:#fdeaea"></i>สาย / ยังไม่ลง (เลยเวลา)</span><span>แตะช่องเพื่อดูรายชื่อ + รูป</span></div>
+    </div>
+  </div>
+  <div id="viewIns" style="display:none"></div>
+  <div id="viewCh" style="display:none"></div>
+  <div id="viewData" style="display:none"></div>
+  <div id="viewPh" style="display:none"></div>
+</div>
+
+<div class="modal" id="mdl" onclick="if(event.target===this)window.__close()"><div class="sheet" id="mdlBody"></div></div>
+<div id="feed"></div>
+
+<script type="module">
+import { initFB, DEMO, FB_VER, NOW, DEL, toMs, depotEmail, mgrEmail, mgrPw, CUT, GRACE, cutOf, hmCut } from './fb.js?v=2026.09.30-c';
+
+const APP_VER = FB_VER, KEEP_DAYS = 30;
+/* ภาคตามโครงสร้าง UPC: Central / East / North / North-East / South */
+const REGIONS = ['กลาง','ตะวันออก','เหนือ','อีสาน','ใต้'];
+const REG_EN = { 'กลาง':'Central', 'ตะวันออก':'East', 'เหนือ':'North', 'อีสาน':'North-East', 'ใต้':'South' };
+const regLabel = r => r ? r + (REG_EN[r] ? ' ('+REG_EN[r]+')' : '') : '—';
+function regOf(txt){
+  const t = String(txt||'').trim().toLowerCase();
+  if (/north.?east|อีสาน|ตะวันออกเฉียงเหนือ/.test(t)) return 'อีสาน';
+  if (/north|เหนือ/.test(t)) return 'เหนือ';
+  if (/east|ตะวันออก/.test(t)) return 'ตะวันออก';
+  if (/south|ใต้/.test(t)) return 'ใต้';
+  if (/central|กลาง/.test(t)) return 'กลาง';
+  return '';
+}
+/* รายชื่อ UPC Manager แต่ละภาค (อัปเดต 25 ก.ย. 2569) — ใช้เติมในหน้า "นำเข้าผู้จัดการ" */
+const UPC_LIST = [
+  ['K.Kobkiat Doungthong','Central'], ['K.Prasitchai Krobsuan','Central'],
+  ['K.Phongthep Sendi','East'], ['K.Suttipong Kongchiyapoom','East'],
+  ['K.Piyaphan Chosinmingson','North'],
+  ['K.Aummarin Auppakarat','North-East'], ['K.Sant Pimma','North-East'], ['K.Suphasil Nanthong','North-East'], ['K.Wanchai Prukrunggroj','North-East'],
+  ['K.Kittisak Chanakul','South'], ['K.Srichon Chaiyasad','South']
+];
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const todayKey = () => ymd(new Date());
+const hm = ts => { const d=new Date(ts); return pad(d.getHours())+':'+pad(d.getMinutes()); };
+const hms = ts => { const d=new Date(ts); return hm(ts)+':'+pad(d.getSeconds()); };
+const secOf = ts => { const d=new Date(ts); return d.getHours()*3600+d.getMinutes()*60+d.getSeconds(); };
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function thDate(k){ const d=new Date(k+'T00:00:00'); const M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; return d.getDate()+' '+M[d.getMonth()]+' '+(d.getFullYear()+543); }
+const isLate = r => r && (r.status ? r.status==='late' : secOf(r.ts) > (r.cut||CUT)+600);
+const pastOf = dep => secOf(Date.now()) > cutOf(DEPS[dep]) + 600;   /* เลยเวลาเข้างาน(+ผ่อนผัน)ของสาขานั้นแล้ว */
+const TIMES = ['06:00','06:30','07:00','07:30','08:00','08:30','09:00'];
+const toSec = t => { const m=/^(\d{1,2})[:.](\d{2})$/.exec(String(t||'').trim()); return m ? (+m[1])*3600+(+m[2])*60 : 0; };
+/* สาขาของ K.Wanchai Prukrunggroj (อีสาน) — เติมในหน้า "เพิ่มหลายสาขา" */
+const DEP_PRESET = [
+  ['BRM','BRM','North-East','','07:00','K.Wanchai Prukrunggroj','K.Pongsak Kodram, K.Atitiya Inta'],
+  ['CCI','CCI','North-East','','07:00','K.Wanchai Prukrunggroj','K.Oakkharachai Sroising, K.Anan Saenwanna'],
+  ['NMA','NMA','North-East','','07:00','K.Wanchai Prukrunggroj','K.Sarawut Siripru, K.Sarawut Suraphopphisit, K.Ratchadakorn Vittayaphonpipat'],
+  ['NRG','NRG','North-East','','07:00','K.Wanchai Prukrunggroj','K.Pakasupang Suksawang, K.Chalitta Chaengprachak'],
+  ['PCG','PCG','North-East','','07:00','K.Wanchai Prukrunggroj','K.Thanyaporn Yotkhwan'],
+  ['SNN','SNN','North-East','','07:00','K.Wanchai Prukrunggroj','K.Chainarong Janpotia, K.Jutamas Ratsungnoen'],
+  ['SRN','SRN','North-East','','07:30','K.Wanchai Prukrunggroj','K.Jatuporn Kertsup, K.Kornkrit Tantiworasri'],
+  ['TLK','TLK','North-East','','07:00','K.Wanchai Prukrunggroj','K.Piyawat Phonkong, K.Natthakran Jaroenram'],
+  ['AMN','AMN','Central','','07:00','K.Prasitchai Krobsuan','K.Kamarat Inchum, K.Tanit Kuisakron'],
+  ['KRI','KRI','Central','','07:00','K.Prasitchai Krobsuan','K.Chisanupong Suteeraksomboon, K.Chaichana Chattongdee'],
+  ['BKN','BKN','North-East','','09:00','K.Sant Pimma','K.Narongwit Phetkong, K.Suriyong Suya'],
+  ['BNP','BNP','North-East','','08:30','K.Sant Pimma','K.Thanapon Kamjan'],
+  ['KKG','KKG','North-East','','08:30','K.Sant Pimma','K.Wasan Soisong, K.Issarasak Nandi'],
+  ['NKI','NKI','North-East','','08:00','K.Sant Pimma','K.Jeerapan Sachana, K.Phongsakorn Phongrat'],
+  ['NNM','NNM','North-East','','08:30','K.Sant Pimma','K.Natthapon Chomwong'],
+  ['NPU','NPU','North-East','','08:30','K.Sant Pimma','K.Phubets Hoi-kam, K.Aekkaphan phinyowong'],
+  ['SDN','SDN','North-East','','08:00','K.Sant Pimma','K.Supawat Rakthai'],
+  ['SKN','SKN','North-East','','09:00','K.Sant Pimma','K.Danai Phiphithkul, K.Suchin Sirima'],
+  ['UDI','UDI','North-East','','08:00','K.Sant Pimma','K.Nattapong Sanitnit, K.Panipuk Tammacharoen'],
+  ['CPE','CPE','North-East','','08:00','K.Aummarin Auppakarat','K.Ekbordin Boonkerd, K.Natthapong Jaroen'],
+  ['CPM','CPM','North-East','','07:30','K.Aummarin Auppakarat','K.Werawat Sangtong'],
+  ['CTR','CTR','North-East','','07:00','K.Aummarin Auppakarat','K.Wirut Pengpara'],
+  ['KSN','KSN','North-East','','08:00','K.Aummarin Auppakarat','K.Warawong Kongsomkhong'],
+  ['KKN','KKN','North-East','','08:00','K.Aummarin Auppakarat','K.Naruesun Budsrisuay, K.Thanakorn Sonirat, K.Arkom Kongpet'],
+  ['LOI','LOI','North-East','','08:30','K.Aummarin Auppakarat','K.Aungsuton Tasak, K.Wiwat Wongkham'],
+  ['MKM','MKM','North-East','','07:30','K.Aummarin Auppakarat','K.Aekkapop Phaengsa, K.Nobphanon Nethan'],
+  ['PHN','PHN','North-East','','07:30','K.Aummarin Auppakarat','K.Aekkawut Atthasena, K.Kittapon Suwanpaphakorn, K.Artit Chomnoi'],
+  ['RET','RET','North-East','','08:00','K.Aummarin Auppakarat','K.Kittiphong Phonmat'],
+  ['PTG','DP-PTG Drop Point','North-East','','08:30','K.Aummarin Auppakarat','K.Sujittra Nuntarit']
+];
+const genPin = () => String(Math.floor(100000 + Math.random()*900000));
+
+let fb, PUB = {}, CFG = {}, ME = null, SCOPE = [], DEPS = {}, TODAY = {}, TKEY = todayKey(), TAB = 'live', REG = '', MGRF = '';
+let UNS = [], TUNS = [], RT = null, OPENDEP = null;
+const PH = {};
+
+function feed(t, cls){ const f=$('feed'), d=document.createElement('div'), ic = cls==='ok' ? '✅' : cls==='bad' ? '⚠️' : 'ℹ️';
+  d.className='fitem '+(cls==='ok' ? 'ok done' : (cls||'')); d.innerHTML='<span class="ic">'+ic+'</span><div class="tx">'+t+'</div>'; f.appendChild(d); setTimeout(()=>d.remove(), cls==='bad' ? 4500 : 3200); }
+window.__close = () => { $('mdl').classList.remove('show'); OPENDEP = null; };
+function modal(h){ $('mdlBody').innerHTML = h; $('mdl').classList.add('show'); $('mdlBody').scrollTop = 0; }
+const zoomSrc = {};
+/* ดูรูปใหญ่ในหน้าเดียวกัน (ไม่เปิดหน้าต่างใหม่ — มือถือ/LINE บล็อกหน้าต่างใหม่) · แตะที่ใดก็ได้เพื่อปิด */
+const ZCAP = {};
+window.__zoomImg = async k => {
+  let src = zoomSrc[k] || PH[k];
+  if (!src) { const [dep, id] = k.split('|'); feed('กำลังโหลดรูป…'); await loadThumb(dep, id); src = zoomSrc[k] || PH[k]; if (!src) { feed('โหลดรูปไม่สำเร็จ — ลองใหม่อีกครั้ง','bad'); return; } }
+  let z = document.getElementById('mZoom');
+  if (!z) { document.body.insertAdjacentHTML('beforeend', '<div id="mZoom" onclick="this.classList.remove(\'on\')"><img alt=""><div class="zc"></div><div class="zx">แตะเพื่อปิด ✕</div></div>'); z = document.getElementById('mZoom'); }
+  z.querySelector('img').src = src; z.querySelector('.zc').innerHTML = ZCAP[k] || ''; z.classList.add('on');
+};
+
+/* ================= LOGIN (PIN อย่างเดียว เหมือนต้นฉบับ) ================= */
+(async function boot(){
+  $('lgVer').textContent = 'v'+APP_VER+' · Design By Winnie';
+  try { fb = await initFB('upc-mgr'); }
+  catch(e){ $('lgBody').innerHTML = '<h3>DHL Manager</h3><div class="err">'+esc(e.message)+'</div>'; return; }
+  if (DEMO) document.body.insertAdjacentHTML('beforeend','<div class="demoRib">🧪 โหมดทดลอง</div>');
+  await loadPub();
+  fb.onAuth(async uid => {
+    if (!uid) { stopAll(); ME = null; return renderLogin(); }
+    if (ME) return;
+    try {
+      const m = await fb.get('managers/'+uid);
+      if (!m) { await fb.signOut(); return renderLogin('PIN นี้ยังไม่ได้รับสิทธิ์ หรือถูกเปลี่ยนแล้ว'); }
+      ME = { ...m, uid }; start();
+    } catch(e){ renderLogin('เชื่อมต่อไม่ได้: '+(e.code||e.message)); }
+  });
+})();
+async function loadPub(){ try { PUB = (await fb.get('pub/depots')) || {}; } catch(e){ PUB = {}; } }
+window.__resetDemo = () => { if (confirm('ล้างข้อมูลทดลองทั้งหมด?')) { fb.resetDemo(); location.reload(); } };
+
+async function renderLogin(msg){
+  $('login').classList.remove('hide');
+  let first = false; try { first = !(await fb.get('config/adminLock')); } catch(e){}
+  const demo = DEMO ? '<div class="demo">🧪 <b>โหมดทดลอง</b><br>Admin PIN <b>999999</b><br>UPC: กลาง <b>110001</b> · ตะวันออก <b>120001</b> · เหนือ <b>130001</b> · อีสาน <b>140001</b> · ใต้ <b>150001</b><br><a href="#" onclick="window.__resetDemo();return false">↺ ล้างข้อมูลทดลอง</a></div>' : '';
+  $('lgBody').innerHTML = first
+    ? '<h3>ตั้งค่าครั้งแรก</h3><p>ยังไม่มีผู้ดูแลระบบ — ตั้ง PIN ผู้ดูแลของคุณ (ทำได้ครั้งเดียว)</p>'
+      + '<input id="suName" class="txt" placeholder="ชื่อของคุณ">'
+      + '<input id="mgPin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••••">'
+      + '<div class="err" id="mgErr">'+esc(msg||'')+'</div><button class="btn btn-y btn-block" id="mgGo" onclick="window.__setup()">สร้างผู้ดูแลระบบ</button>'
+    : '<h3>DHL Manager</h3><p>ใส่ PIN ผู้จัดการ — จะเห็นเฉพาะสาขาในความดูแลของ PIN นั้น</p>' + demo
+      + '<input id="mgPin" type="tel" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off">'
+      + '<div class="err" id="mgErr">'+esc(msg||'')+'</div><button class="btn btn-y btn-block" id="mgGo" onclick="window.__login()">เข้าใช้งาน</button>';
+  const p = $('mgPin'); p.focus(); p.addEventListener('keydown', e => { if (e.key==='Enter') $('mgGo').click(); });
+}
+function lgErr(t){ $('mgErr').textContent = t; $('mgGo').disabled = false; }
+window.__login = async () => {
+  const pin = $('mgPin').value.trim();
+  if (!/^\d{6}$/.test(pin)) return lgErr('PIN ต้องเป็นตัวเลข 6 หลัก');
+  $('mgGo').disabled = true; $('mgErr').textContent = 'กำลังตรวจสอบ...';
+  try { await fb.signIn(mgrEmail(pin), mgrPw(pin)); }
+  catch(e){ $('mgPin').value=''; lgErr(e.code==='auth/network-request-failed' ? 'เชื่อมต่อไม่ได้' : e.code==='auth/too-many-requests' ? 'ลองผิดหลายครั้ง — รอสักครู่แล้วลองใหม่' : 'PIN ไม่ถูกต้อง'); }
+};
+window.__setup = async () => {
+  const name = $('suName').value.trim(), pin = $('mgPin').value.trim();
+  if (!name) return lgErr('ใส่ชื่อของคุณ');
+  if (!/^\d{6}$/.test(pin)) return lgErr('PIN ต้องเป็นตัวเลข 6 หลัก');
+  $('mgGo').disabled = true; $('mgErr').textContent = 'กำลังสร้าง...';
+  try {
+    ME = { name, role:'admin', depots:[] };
+    const uid = await fb.createSelf(mgrEmail(pin), mgrPw(pin));
+    await fb.set('config/adminLock', { uid, at: NOW });
+    await fb.set('managers/'+uid, { name, role:'admin', depots:[], createdAt: NOW });
+    await fb.set('pub/depots', {});
+    await fb.set('config/app', { staffVer: APP_VER, managerVer: APP_VER, keepDays: KEEP_DAYS });
+    ME.uid = uid; await loadPub(); start(); window.__settings();
+  } catch(e){ ME = null; lgErr('สร้างไม่สำเร็จ: '+(e.code||e.message)); }
+};
+window.__logout = async () => { if (!confirm('ออกจากระบบ?')) return; stopAll(); ME = null; await fb.signOut(); };
+function stopAll(){ UNS.forEach(u=>u&&u()); UNS=[]; TUNS.forEach(u=>u&&u()); TUNS=[]; DEPS={}; TODAY={}; }
+
+/* ================= START ================= */
+function start(){
+  stopAll(); TAB = 'live'; REG = ''; MGRF = '';
+  $('login').classList.add('hide');
+  SCOPE = (ME.role==='admin' ? Object.keys(PUB) : (ME.depots||[])).slice().sort();
+  $('teamTag').textContent = 'UPC · '+ME.name+' · '+SCOPE.length+' สาขา';
+  $('admBtn').style.display = ME.role==='admin' ? '' : 'none';
+  SCOPE.forEach(watchDep);
+  UNS.push(fb.listen('config/app', d => { CFG = d || {}; checkVer(); }));
+  if (ME.role !== 'admin') UNS.push(fb.listen('managers/'+ME.uid, d => { if (!d) { alert('สิทธิ์ของ PIN นี้ถูกยกเลิก'); fb.signOut(); } }));
+  listenToday(); initModules(); window.__tab('live');
+  $('sysBar').innerHTML = ''; HEALTH = null; if (ME.role === 'admin') setTimeout(() => health(false), 2500);
+}
+function watchDep(dep){ UNS.push(fb.listen('depots/'+dep, d => { if (d) DEPS[dep] = d; sched(); })); }
+function listenToday(){
+  TUNS.forEach(u=>u&&u()); TUNS=[]; TODAY={}; TKEY = todayKey();
+  SCOPE.forEach(dep => TUNS.push(fb.listen(`depots/${dep}/days/${TKEY}`, d => { TODAY[dep] = d || {}; sched(); })));
+}
+function sched(){ clearTimeout(RT); RT = setTimeout(() => {
+  if (TAB==='live') renderLive();
+  else if ((TAB==='ins' || TAB==='data') && window.__anRepaint && !$('mdl').classList.contains('show')) window.__anRepaint();
+  if (OPENDEP) openDep(OPENDEP, true); }, 400); }
+setInterval(() => { $('clk').textContent = hms(Date.now()); if (ME && todayKey()!==TKEY) listenToday(); }, 1000);
+
+function checkVer(){
+  const want = CFG.managerVer, bar = $('updBar'); bar.style.display='none';
+  if (!want || want <= APP_VER) return;   /* เตือนเฉพาะเมื่อแอปนี้เก่ากว่าเวอร์ชันที่บังคับใช้ */
+  const k = 'upcmReload_'+want;
+  if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k,'1'); const u=new URL(location.href); u.searchParams.set('r',Date.now()); location.replace(u.toString()); }
+  else { bar.textContent = 'มีเวอร์ชันใหม่ ('+want+') — กด Ctrl+F5 หรือปิดแล้วเปิดใหม่'; bar.style.display='block'; }
+}
+
+
+/* ================= 🛡️ สุขภาพระบบ (เห็นเฉพาะผู้ดูแล) =================
+   ตรวจ: พื้นที่เก็บข้อมูล (แพ็กเกจฟรี 1 GB) · ประมาณการเมื่อครบรอบเก็บรูป · โควตาบันทึกรายวัน · รูปเก่าที่ยังไม่ถูกลบ
+   ตรวจอัตโนมัติทุก 6 ชม. เมื่อผู้ดูแลเปิดแอป (ใช้โควตาน้อยมาก ~2 reads/สาขา) */
+const HLIM = { mb: 1024, writes: 20000 }, HKEY = 'upcHealth_v1';
+let HEALTH = null, HBUSY = false;
+const hLoad = () => { try { return JSON.parse(localStorage.getItem(HKEY)); } catch(e){ return null; } };
+const hSave = h => { try { localStorage.setItem(HKEY, JSON.stringify(h)); } catch(e){} };
+const lvOf = (p, y, r) => p >= r ? 2 : p >= y ? 1 : 0;
+const keepDays = () => Math.max(7, Math.min(30, +CFG.keepDays || 30));
+async function health(force){
+  if (!ME || ME.role !== 'admin' || HBUSY) return;
+  HEALTH = hLoad();
+  if (!force && HEALTH && Date.now() - HEALTH.at < 6*3600e3) return hRender();
+  HBUSY = true; hRender();
+  try {
+    const K = keepDays(), cut = new Date(); cut.setDate(cut.getDate() - K); const cutKey = ymd(cut);
+    const deps = Object.keys(PUB).sort(), per = {};
+    for (let i = 0; i < deps.length; i += 8) {
+      await Promise.all(deps.slice(i, i+8).map(async d => {
+        try {
+          const col = 'depots/'+d+'/photos';
+          const n = await fb.count(col); const old = n ? await fb.count(col, 'date', '<', cutKey) : 0;
+          per[d] = { n, old };
+        } catch(e){ per[d] = { n: 0, old: 0, err: 1 }; }
+      }));
+    }
+    const total = Object.values(per).reduce((a,x)=>a+x.n,0);
+    let avg = 100000;
+    const big = deps.filter(d => per[d].n).sort((a,b)=>per[b].n-per[a].n)[0];
+    if (big) { try { const sm = await fb.sample('depots/'+big+'/photos', 5); const L = sm.map(x => String((x.data||{}).d||'').length).filter(Boolean); if (L.length) avg = L.reduce((a,b)=>a+b,0)/L.length; } catch(e){} }
+    const per1 = (avg + 800) * 1.15;                       /* ขนาดต่อรูป + ข้อมูลประกอบ + ดัชนี */
+    const mbNow = total * per1 / 1048576 + deps.length * 0.3;
+    const first = Math.min(...deps.map(d => toMs(DEPS[d] && DEPS[d].createdAt) || Date.now()));
+    const effDays = Math.max(1, Math.min(K, (Date.now() - first) / 864e5));
+    const mbFull = total ? (total / effDays) * K * per1 / 1048576 + deps.length * 0.3 : mbNow;
+    let ci = 0; Object.values(TODAY).forEach(t => { ci += Object.keys((t && t.checkins) || {}).length + Object.keys((t && t.absent) || {}).length; });
+    const writes = ci * 3;
+    const stale = deps.filter(d => per[d].old > 0).map(d => ({ d, old: per[d].old }));
+    HEALTH = { at: Date.now(), K, total, avg: Math.round(avg), mbNow, mbFull, writes, stale, deps: deps.length, errs: deps.filter(d=>per[d].err) };
+    hSave(HEALTH);
+  } catch(e){ console.warn('health', e); }
+  HBUSY = false; hRender();
+}
+function hLevel(h){
+  if (!h) return 0;
+  return Math.max(lvOf(h.mbNow/HLIM.mb, .5, .75), lvOf(h.mbFull/HLIM.mb, .6, .85), lvOf(h.writes/HLIM.writes, .4, .7), h.stale.length ? 1 : 0);
+}
+function hRender(){
+  const el = $('sysBar'); if (!el) return;
+  if (!ME || ME.role !== 'admin') { el.innerHTML = ''; return; }
+  const h = HEALTH, lv = hLevel(h);
+  const C = [['#e6f5eb','#1e7a3c','🛡️ ระบบปกติ'],['#fff3cd','#8a6100','⚠️ ระบบใกล้ถึงขีดจำกัด'],['#fdeaea','#b3121d','🚨 ต้องแก้ไขด่วน']][lv];
+  const sub = HBUSY ? 'กำลังตรวจ…' : !h ? 'ยังไม่ได้ตรวจ' :
+    'พื้นที่ '+Math.round(h.mbNow)+'/'+HLIM.mb+' MB ('+Math.round(h.mbNow/HLIM.mb*100)+'%) • ครบรอบ '+h.K+' วันคาดว่า '+Math.round(h.mbFull/HLIM.mb*100)+'%' + (h.stale.length ? ' • รูปค้าง '+h.stale.length+' สาขา' : '');
+  el.innerHTML = '<div onclick="window.__health()" style="cursor:pointer;background:'+C[0]+';color:'+C[1]+';border-radius:12px;padding:9px 13px;margin:0 0 10px;font-size:13px;display:flex;justify-content:space-between;gap:8px;align-items:center;">'
+    + '<span><b>'+C[2]+'</b> <span style="opacity:.85">— '+sub+'</span></span><span style="font-weight:700;white-space:nowrap">รายละเอียด ›</span></div>';
+  if (h && lv === 2 && !HBUSY) {                         /* แจ้งเตือนแบบเด้ง วันละครั้ง */
+    const k = 'upcHealthPop_'+todayKey();
+    if (!localStorage.getItem(k)) { localStorage.setItem(k, '1'); setTimeout(() => window.__health(), 600); }
+  }
+}
+const hBar = (v, max, y, r) => { const p = Math.min(100, v/max*100), c = ['#2e9e57','#e0a800','#d40511'][lvOf(v/max, y, r)];
+  return '<div style="height:8px;background:#eee;border-radius:5px;overflow:hidden;margin:4px 0 2px"><div style="height:100%;width:'+p+'%;background:'+c+'"></div></div>'; };
+window.__health = () => {
+  const h = HEALTH;
+  if (!h) { health(true); return; }
+  const tips = [];
+  if (h.mbFull/HLIM.mb >= .6) tips.push('<b>ลดวันเก็บรูป</b> (ปุ่มด้านล่าง) — ลดจาก 30 → 14 วัน ใช้พื้นที่ลดลงประมาณครึ่งหนึ่ง');
+  if (h.mbFull/HLIM.mb >= .75) tips.push('<b>อัปเกรด Firebase เป็น Blaze</b> (จ่ายตามใช้ ~6 บาท/GB/เดือน) — Console → ⚙️ Usage and billing → Modify plan');
+  if (h.writes/HLIM.writes >= .4) tips.push('การบันทึกวันนี้สูง — ถ้าเกิน 20,000 ครั้ง/วัน ระบบจะบันทึกไม่ได้จนถึง ~15:00 น. (ควรอัปเกรด Blaze)');
+  if (h.stale.length) tips.push('มีรูปเกิน '+h.K+' วันที่ยังไม่ถูกลบ (แอปสาขาไม่ได้เปิดใช้งาน) — กด <b>ล้างรูปเก่า</b> ได้เลย');
+  modal('<h3>🛡️ สุขภาพระบบ</h3><div class="sub">ตรวจล่าสุด '+new Date(h.at).toLocaleString('th-TH')+' • '+h.deps+' สาขา • รูป '+h.total.toLocaleString()+' ใบ (เฉลี่ย '+Math.round(h.avg/1024)+' KB)</div>'
+    + '<div style="margin:12px 0"><b>💾 พื้นที่ใช้ตอนนี้</b> '+Math.round(h.mbNow)+' / '+HLIM.mb+' MB'+hBar(h.mbNow, HLIM.mb, .5, .75)
+    + '<b>📈 คาดการณ์เมื่อครบรอบเก็บรูป '+h.K+' วัน</b> ~'+Math.round(h.mbFull)+' MB'+hBar(h.mbFull, HLIM.mb, .6, .85)
+    + '<b>✍️ การบันทึกวันนี้ (ประมาณ)</b> '+h.writes.toLocaleString()+' / 20,000'+hBar(h.writes, HLIM.writes, .4, .7)
+    + '<b>🧹 รูปเก่าที่ยังไม่ถูกลบ</b> '+(h.stale.length ? h.stale.map(s=>s.d+' ('+s.old+')').join(', ') : 'ไม่มี ✓')+'</div>'
+    + (tips.length ? '<div style="background:#fff8e1;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6"><b>ควรทำ</b><ul style="margin:4px 0 0;padding-left:18px">'+tips.map(t=>'<li>'+t+'</li>').join('')+'</ul></div>' : '<div style="color:#1e7a3c;font-weight:700">✓ ทุกอย่างปกติ ยังไม่ต้องทำอะไร</div>')
+    + '<div style="margin-top:12px;font-size:13px"><b>วันเก็บรูป:</b> '+[30,21,14].map(n=>'<button class="btn '+(n===h.K?'btn-y':'btn-o')+'" style="margin:3px;padding:6px 12px;" onclick="window.__hKeep('+n+')">'+n+' วัน</button>').join('')+'</div>'
+    + '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
+    + (h.stale.length ? '<button class="btn btn-r" onclick="window.__hPurge()">🧹 ล้างรูปเก่า</button>' : '')
+    + '<button class="btn btn-o" onclick="window.__hRefresh()">↻ ตรวจใหม่</button></div>'
+    + '<div class="small" style="margin-top:10px;color:#888">ขีดจำกัดแพ็กเกจฟรี (Spark): พื้นที่ 1 GB • บันทึก 20,000 / อ่าน 50,000 ครั้งต่อวัน • ตัวเลขเป็นค่าประมาณ ดูตัวจริงได้ที่ Firebase Console → Usage</div>');
+};
+window.__hRefresh = async () => { $('mdl').classList.remove('show'); await health(true); window.__health(); };
+window.__hKeep = async n => {
+  if (n === keepDays()) return;
+  if (!confirm('เปลี่ยนวันเก็บรูปเป็น '+n+' วัน?\nรูปที่เก่ากว่านี้จะถูกลบเมื่อแอปสาขาเปิดครั้งถัดไป (ลบแล้วกู้คืนไม่ได้)')) return;
+  try { await fb.set('config/app', { keepDays: n }); CFG.keepDays = n; await window.__hRefresh(); feed('<b>ตั้งเก็บรูป '+n+' วันแล้ว</b>','ok'); } catch(e){ alert('บันทึกไม่สำเร็จ: '+(e.code||e.message)); }
+};
+window.__hPurge = async () => {
+  const h = HEALTH; if (!h || !h.stale.length) return;
+  if (!confirm('ลบรูปที่เก่ากว่า '+h.K+' วัน ของ '+h.stale.length+' สาขา?\n(เวลาเช็คอินยังอยู่ครบ ลบเฉพาะรูป • กู้คืนไม่ได้)')) return;
+  const cut = new Date(); cut.setDate(cut.getDate() - h.K); const cutKey = ymd(cut); let n = 0;
+  for (const s of h.stale) {
+    try { const old = await fb.list('depots/'+s.d+'/photos', 'date', '<', cutKey); for (const o of old.slice(0, 500)) { await fb.del('depots/'+s.d+'/photos/'+o.id); n++; } } catch(e){}
+  }
+  alert('ลบรูปเก่าแล้ว '+n+' ใบ'); await window.__hRefresh();
+};
+
+/* ================= โมดูล On-time / ย้อนหลัง (ตัวเดียวกับต้นฉบับ) ================= */
+const depsInView = () => SCOPE.filter(d => (!REG || ((DEPS[d]&&DEPS[d].region)===REG)) && (!MGRF || ((DEPS[d]&&DEPS[d].upc)||[]).includes(MGRF)));
+function ctx(){
+  return {
+    db: null,
+    doc: (db, ...p) => p.join('/'),
+    getDoc: async p => { const d = await fb.get(p); return { exists: () => !!d, data: () => d }; },
+    esc, secOf, toMs, fb,
+    modal, close: () => window.__close(),
+    get: () => {
+      const META = {}, DATA = {};
+      SCOPE.forEach(d => { META[d] = { couriers: (DEPS[d] && DEPS[d].roster) || [], cut: cutOf(DEPS[d]), since: (DEPS[d] && toMs(DEPS[d].createdAt)) ? ymd(new Date(toMs(DEPS[d].createdAt))) : '' }; DATA[d] = TODAY[d] || {}; });
+      return { DEPOTS: depsInView(), DATA, META, TODAY: DATA, DATE: TKEY, MTAB: TAB };
+    }
+  };
+}
+let MODS = false;
+function initModules(){
+  if (MODS) return; MODS = true;
+  import('./upc-analytics.js?v=5').then(m => { m.initAnalytics(ctx()); if (['ins','ch','data'].includes(TAB)) window.__anRender(); }).catch(e => console.warn('analytics', e));
+  import('./upc-photos.js?v=1').then(m => m.initPhotos(ctx())).catch(e => console.warn('photos', e));
+}
+const VIEWS = { live:'viewLive', ins:'viewIns', ch:'viewCh', data:'viewData', ph:'viewPh' };
+window.__tab = t => {
+  TAB = t;
+  Object.keys(VIEWS).forEach(x => { $('tb_'+x).classList.toggle('on', x===t); $(VIEWS[x]).style.display = x===t ? '' : 'none'; });
+  if (t==='live') renderLive();
+  if (['ins','ch','data'].includes(t) && window.__anRender) window.__anRender();
+  if (t==='ph' && window.__phRender) { window.__phRender(); window.__phEnsure(); }
+};
+
+/* ================= LIVE ================= */
+function people(dep, day){
+  const R = (DEPS[dep] && DEPS[dep].roster) || [], ck = (day&&day.checkins)||{}, ab = (day&&day.absent)||{};
+  const out = [], seen = new Set();
+  R.forEach(c => { const id = String(c.id); if (c.active===false && !ck[id] && !ab[id]) return; seen.add(id);
+    out.push({ c, id, ck: ck[id]&&ck[id].ts ? ck[id] : null, ab: !(ck[id]&&ck[id].ts) ? ab[id] : null }); });
+  Object.keys(ck).forEach(id => { if (!seen.has(id) && ck[id] && ck[id].ts) out.push({ c:{ id, code:'#'+id, name:'(ไม่อยู่ในรายชื่อ)' }, id, ck: ck[id], ab: null }); });
+  return out;
+}
+function clockOff(x){ const s = toMs(x.srv); if (!s || !x.ts) return 0; const d = (s - x.ts)/60000; if (x.off) return d < -2 ? Math.round(d) : 0; return Math.abs(d) > 5 ? Math.round(d) : 0; }
+function stat(dep, day){
+  const P = people(dep, day), s = { dep, n:P.length, inn:0, late:0, ab:0, no:0, flag:0, last:0 };
+  P.forEach(p => { if (p.ck) { s.inn++; if (isLate(p.ck)) s.late++; if (clockOff(p.ck)) s.flag++; s.last = Math.max(s.last, p.ck.ts); } else if (p.ab) s.ab++; else s.no++; });
+  return s;
+}
+window.__reg = r => { REG = REG===r ? '' : r;   /* เปลี่ยนภาค: ถ้า Manager ที่เลือกไม่มีสาขาในภาคนั้น → ล้างตัวเลือก Manager */
+  if (MGRF && !SCOPE.some(d => (!REG || (DEPS[d]&&DEPS[d].region)===REG) && ((DEPS[d]&&DEPS[d].upc)||[]).includes(MGRF))) MGRF = '';
+  renderLive(); };
+/* กรองตาม Manager (UPC) ที่ดูแลสาขา */
+window.__mgrf = m => { MGRF = MGRF===m ? '' : m; renderLive(); };   /* ภาค → Manager → สาขา (เลือกซ้อนกันได้) */
+let MGNAMES = []; window.__mgrfI = i => window.__mgrf(MGNAMES[i] || '');
+function renderLive(){
+  if (!ME) return;
+  $('dTitle').textContent = 'วันนี้ '+thDate(TKEY);
+  const deps = depsInView(), S = deps.map(d => stat(d, TODAY[d]));
+  const T = S.reduce((a,s)=>{ ['n','inn','late','ab','no','flag'].forEach(k=>a[k]+=s[k]); return a; }, {n:0,inn:0,late:0,ab:0,no:0,flag:0});
+  const withData = S.filter(s => s.inn || s.ab).length;
+  $('dSub').textContent = '• มีข้อมูล '+withData+'/'+deps.length+' สาขา' + (new Date().getDay()===0 ? ' • วันอาทิตย์ (ไม่นับใน On-time)' : '');
+  const now = secOf(Date.now()), past = S.some(s => s.no && pastOf(s.dep));
+  const silent = S.filter(s => s.n && !s.inn && !s.ab && now > cutOf(DEPS[s.dep]) + 1800);
+  $('healthBar').innerHTML = silent.length ? '<div class="hbar" onclick="window.__dep(\''+silent[0].dep+'\')"><b>⚠️ '+silent.length+' สาขายังไม่มีการเช็คอินเลย</b><span>'+silent.slice(0,6).map(s=>s.dep).join(' • ')+(silent.length>6?' • และอีก '+(silent.length-6):'')+' — แตะดูรายละเอียด</span></div>' : '';
+  const ot = T.inn ? Math.round((T.inn-T.late)/T.inn*1000)/10 : null;
+  $('kpis').innerHTML = '<div class="kpis">'
+    + '<div class="kpi '+(ot==null?'':ot>=95?'green':'red')+'"><div class="v">'+(ot==null?'—':ot+'%')+'</div><div class="l">Ontime รวม</div></div>'
+    + '<div class="kpi '+(T.late?'red':'green')+'"><div class="v">'+T.late+'</div><div class="l">สายวันนี้</div></div>'
+    + '<div class="kpi '+(T.no&&past?'red':T.no?'am':'green')+'"><div class="v">'+T.inn+'/'+(T.n-T.ab)+'</div><div class="l">เช็คอินแล้ว</div></div>'
+    + '<div class="kpi am"><div class="v">'+T.ab+'</div><div class="l">ขาด / ลา</div></div>'
+    + '<div class="kpi"><div class="v">'+withData+'/'+deps.length+'</div><div class="l">สาขาเริ่มลงเวลา'+(T.flag?' • ⏱'+T.flag:'')+'</div></div>'
+    + '</div>';
+  const regs = [...new Set(SCOPE.map(d => (DEPS[d]&&DEPS[d].region)||'').filter(Boolean))];
+  $('depBar').innerHTML = regs.length > 1 ? '<div class="depbar" style="margin:0 0 9px;padding-top:0;border-top:0;">'
+    + '<button class="dbtn all'+(REG?'':' on')+'" onclick="window.__reg(\'\')"><i style="background:#1a1a1a"></i>ทุกภาค</button>'
+    + regs.map(r => '<button class="dbtn'+(REG===r?' on':'')+'" onclick="window.__reg(\''+esc(r)+'\')"><i style="background:#FFCC00"></i>'+esc(r)+'</button>').join('') + '</div>' : '';
+  /* แถว Manager + สาขาที่ดูแล (แสดงเมื่อเห็นมากกว่า 1 Manager เช่น Admin) */
+  const MG = {}; SCOPE.filter(d => !REG || (DEPS[d]&&DEPS[d].region)===REG).forEach(d => ((DEPS[d]&&DEPS[d].upc)||[]).forEach(n => { (MG[n] = MG[n] || []).push(d); }));   /* เฉพาะผู้ดูแลในภาคที่เลือก */
+  const mNames = Object.keys(MG).sort((a,b) => MG[b].length - MG[a].length || a.localeCompare(b));
+  MGNAMES = mNames;
+  if (mNames.length > 1 || (REG && mNames.length)) {
+    const sh = n => String(n).split(' ').slice(0,2).join(' ').replace(/^K\.(\S+)\s+(\S).*$/, 'K.$1 $2.');
+    $('depBar').innerHTML += '<div class="mgbar">'
+      + mNames.map((n,i) => '<button class="mgbtn'+(MGRF===n?' on':'')+'" onclick="window.__mgrfI('+i+')"><b>👤 '+esc(sh(n))+'</b><span>'+MG[n].length+' สาขา</span></button>').join('')
+      + '</div>'
+      + (MGRF && MG[MGRF] ? '<div class="mgsel">👤 <b>'+esc(MGRF)+'</b> ดูแล '+MG[MGRF].length+' สาขา'+(REG?' ในภาค'+esc(REG):'')+': '+MG[MGRF].slice().sort().map(d => '<b>'+esc(d)+'</b>'+((DEPS[d]&&DEPS[d].name&&DEPS[d].name!==d)?' '+esc(DEPS[d].name):'')).join(' · ')+' <a onclick="window.__mgrf(\'\')">ดูทั้งหมด ✕</a></div>' : '');
+  }
+  const cell = (dep, cls, b, sp) => '<td class="cell '+cls+'" onclick="window.__dep(\''+dep+'\')"><b>'+b+'</b><span>'+sp+'</span></td>';
+  let h = '<colgroup><col class="c-dep"><col class="c-task"><col class="c-task"><col class="c-task"><col class="c-task"></colgroup><tbody>'
+    + '<tr><th></th><th>Check-in<span class="tg">ตามเวลาสาขา</span></th><th>สาย</th><th>ขาด / ลา</th><th>ยังไม่ลง</th></tr>';
+  S.forEach(s => {
+    const D = DEPS[s.dep] || {}, need = s.n - s.ab;
+    h += '<tr><td class="dep">'+esc(s.dep)+(s.flag?'<span class="flagc">⏱'+s.flag+'</span>':'')+'<small>'+esc(D.name||(PUB[s.dep]&&PUB[s.dep].name)||'')+(D.province?' · '+esc(D.province):'')+' · ⏰'+hmCut(cutOf(D))+'</small></td>'
+      + (s.n ? cell(s.dep, s.no===0?'ok':pastOf(s.dep)?'bad':'wait', s.inn+'/'+need, s.last?'ล่าสุด '+hm(s.last):'ยังไม่เริ่ม')
+             : cell(s.dep, 'none', '—', 'ไม่มีรายชื่อ'))
+      + cell(s.dep, !s.inn?'none':s.late?'bad':'ok', s.late, s.inn? Math.round(s.late/s.inn*100)+'%' : '—')
+      + cell(s.dep, s.ab?'wait':'none', s.ab, 'คน')
+      + cell(s.dep, !s.n?'none':s.no===0?'ok':pastOf(s.dep)?'bad':'wait', s.no, 'คน')
+      + '</tr>';
+  });
+  if (!S.length) h += '<tr><td colspan="5" class="empty">'+(ME.role==='admin'?'ยังไม่มีสาขา — กด ⚙️ เพื่อเพิ่มสาขา':'ยังไม่มีสาขาในความดูแล — แจ้งผู้ดูแลระบบ')+'</td></tr>';
+  $('grid').innerHTML = h + '</tbody>';
+}
+
+/* ---- รายละเอียดสาขา (แผ่นเลื่อนขึ้น แบบต้นฉบับ) ---- */
+window.__dep = dep => openDep(dep);
+function openDep(dep, refresh){
+  if (refresh && !$('mdl').classList.contains('show')) return;
+  OPENDEP = dep;
+  const D = DEPS[dep] || {}, day = TODAY[dep] || {}, P = people(dep, day), s = stat(dep, day);
+  const ins = P.filter(p=>p.ck).sort((a,b)=>a.ck.ts-b.ck.ts), abs = P.filter(p=>p.ab), no = P.filter(p=>!p.ck&&!p.ab);
+  const row = p => {
+    const k = dep+'|'+p.id, off = p.ck ? clockOff(p.ck) : 0;
+    const img = p.ck ? (PH[k] ? '<img class="thumb" src="'+PH[k]+'">' : '<div class="thumb" id="th_'+esc(dep)+'_'+esc(p.id)+'" style="display:grid;place-items:center;font-size:10px;color:#b0a892;">⏳</div>') : '';
+    const chip = p.ck ? (isLate(p.ck) ? '<span class="chip no">✖ '+hm(p.ck.ts)+'</span>' : '<span class="chip ok">✔ '+hm(p.ck.ts)+'</span>')
+               : p.ab ? '<span class="chip gr">'+esc(p.ab.note||'ขาด')+'</span>' : '<span class="chip '+(pastOf(dep)?'no':'wt')+'">ยังไม่ลง</span>';
+    if (p.ck) ZCAP[k] = '<b>'+esc(p.c.name)+'</b><br>'+esc(p.c.code)+' • '+hm(p.ck.ts)+' • '+(isLate(p.ck)?'<span style="color:#ff8a80">Late</span>':'<span style="color:#9be7a3">Ontime</span>')+' • โดย '+esc(p.ck.staff||'-')
+      + (day.cmt && day.cmt[p.id] && day.cmt[p.id].t ? '<div class="zm">💬 '+esc(day.cmt[p.id].t)+'</div>' : '');
+    return '<div class="row-c"'+(p.ck ? ' onclick="window.__zoomImg(\''+k+'\')" style="cursor:pointer"' : '')+'>'+img+'<div class="info"><div class="nm">'+esc(p.c.name)+'</div><div class="sub2">'+esc(p.c.code)+' • '+esc(p.c.vendor||'-')
+      + (p.ck ? ' • โดย '+esc(p.ck.staff||'-') : p.ab ? ' • โดย '+esc(p.ab.by||'-') : '')
+      + (off ? ' • <b style="color:#b3121d">⏱ เวลาเครื่องต่าง '+Math.abs(off)+' นาที</b>' : '')
+      + (p.ck && p.ck.off ? ' • 📴 ลงตอนออฟไลน์' : '') + '</div>'
+      + (p.ck && day.cmt && day.cmt[p.id] && day.cmt[p.id].t ? '<div class="cmt">💬 '+esc(day.cmt[p.id].t)+' <i>— '+esc(day.cmt[p.id].by||'-')+'</i></div>' : '')   /* หมายเหตุจาก Staff (เหตุผล Late / งานพิเศษ) */
+      + '</div>'+chip+'</div>';
+  };
+  modal('<h3>'+esc(dep)+' · '+esc(D.name||'')+'</h3><div class="sub">'+thDate(TKEY)+' • เช็คอิน '+s.inn+'/'+(s.n-s.ab)+' • สาย '+s.late+' • ขาด/ลา '+s.ab+' • ยังไม่ลง '+s.no+(ins.filter(p=>day.cmt&&day.cmt[p.id]&&day.cmt[p.id].t).length?' • 💬 หมายเหตุ '+ins.filter(p=>day.cmt&&day.cmt[p.id]&&day.cmt[p.id].t).length:'')+'</div>'
+    + (no.length ? '<div class="grp">⏳ ยังไม่ลงเวลา '+no.length+' คน</div>'+no.map(row).join('') : '')
+    + (ins.length ? '<div class="grp">✓ เช็คอินแล้ว '+ins.length+' คน</div>'+ins.map(row).join('') : '')
+    + (abs.length ? '<div class="grp">🚫 ขาด / ลา '+abs.length+' คน</div>'+abs.map(row).join('') : '')
+    + (!P.length ? '<div class="empty">ยังไม่มีรายชื่อพนักงานในสาขานี้</div>' : '')
+    + '<button class="btn btn-y btn-block" style="margin-top:12px" onclick="window.__att(\''+esc(dep)+'\')">🟩 ตารางมาทำงานรายคน (ย้อนหลัง)</button>'
+    + '<button class="btn btn-o btn-block" style="margin-top:8px" onclick="window.__staffN(\''+esc(dep)+'\')">👥 ชื่อผู้บันทึก (Staff) ของสาขานี้</button>'
+    + '<button class="btn btn-o btn-block" style="margin-top:8px" onclick="window.__close()">ปิด</button>');
+  loadThumbs(dep, ins.map(p=>p.id));
+}
+async function loadThumbs(dep, ids){
+  /* โหลดรูปทีละ 6 ใบ · ถ้าเน็ตสะดุดจะลองใหม่เอง 3 ครั้ง · ถ้ายังไม่ได้ ให้แตะเพื่อโหลดใหม่ (รูปไม่ได้หาย) */
+  for (let i = 0; i < ids.length; i += 6) {
+    await Promise.all(ids.slice(i, i+6).map(id => loadThumb(dep, id)));
+  }
+}
+async function loadThumb(dep, id){
+  const k = dep+'|'+id; let miss = false;
+  if (!PH[k]) for (let a = 0; a < 3 && !PH[k]; a++) {
+    try { const p = await fb.get(`depots/${dep}/photos/ci_${id}_${TKEY}`); if (p && p.d) PH[k] = p.d; else { miss = true; break; } }
+    catch(e){ await new Promise(r => setTimeout(r, 1200*(a+1))); }
+  }
+  const el = document.getElementById('th_'+dep+'_'+id);
+  if (el) el.outerHTML = PH[k] ? '<img class="thumb" src="'+PH[k]+'">'
+    : '<div class="thumb" id="th_'+esc(dep)+'_'+esc(String(id))+'" onclick="event.stopPropagation();window.__reThumb(\''+esc(dep)+'\',\''+esc(String(id))+'\')" style="display:grid;place-items:center;font-size:9.5px;color:'+(miss?'#8a6100':'#b3121d')+';font-weight:800;text-align:center;cursor:pointer;line-height:1.25;">'+(miss?'รอรูป<br>แตะโหลด':'↻ แตะ<br>โหลดใหม่')+'</div>';
+  if (PH[k]) zoomSrc[k] = PH[k];
+}
+window.__reThumb = (dep, id) => { const el = document.getElementById('th_'+dep+'_'+id); if (el) el.innerHTML = '⏳'; loadThumb(dep, id); };
+
+/* ================= 🟩 ตารางมาทำงานรายคน (ต่อสาขา) =================
+   ดึงข้อมูลวันทำงานย้อนหลัง (ไม่นับอาทิตย์) + วันนี้แบบสด · อ่านอย่างเดียว ไม่แก้ข้อมูล */
+let ATTDEP = null, ATTN = 15, ATTC = {};
+const attKeys = n => { const L = []; const d = new Date(TKEY+'T00:00:00'); let g = 0; while (L.length < n && g++ < n*2+7) { if (d.getDay() !== 0) L.unshift(ymd(d)); d.setDate(d.getDate()-1); } return L; };
+const abCode = a => { const ty = a && a.type, n = String(a && a.note || ''); if (ty==='off' || /หยุด/.test(n)) return 'ห'; if (ty==='absent' || /ขาด/.test(n)) return 'ข'; return 'ล'; };
+window.__att = async (dep, n) => {
+  OPENDEP = null; ATTDEP = dep; if (n) ATTN = n;
+  const keys = attKeys(ATTN), need = keys.filter(k => k !== TKEY && !ATTC[dep+'|'+k]);
+  if (need.length) { modal('<h3>🟩 ตารางมาทำงาน — '+esc(dep)+'</h3><div class="sub">กำลังโหลดข้อมูล '+ATTN+' วันทำงาน…</div>');
+    await Promise.all(need.map(async k => { try { ATTC[dep+'|'+k] = (await fb.get(`depots/${dep}/days/${k}`)) || {}; } catch(e){ ATTC[dep+'|'+k] = null; } })); }
+  if (ATTDEP !== dep) return;
+  attRender();
+};
+function attRender(){
+  const dep = ATTDEP, D = DEPS[dep] || {}, keys = attKeys(ATTN);
+  const since = toMs(D.createdAt) ? ymd(new Date(toMs(D.createdAt))) : '';
+  const days = keys.map(k => k === TKEY ? (TODAY[dep] || {}) : (ATTC[dep+'|'+k] || {}));
+  const R = (D.roster || []).filter(c => c.active !== false || days.some(x => (x.checkins||{})[c.id] || (x.absent||{})[c.id]));
+  const cell = (c, x, k) => {
+    const ck = (x.checkins||{})[c.id], ab = (x.absent||{})[c.id], cm = x.cmt && x.cmt[c.id] && x.cmt[c.id].t;
+    if (ck && ck.ts) { const L = isLate(ck); return [L?'l':'w', cm?'💬':'', (L?'Late ':'Ontime ')+hm(ck.ts)+(cm?' · 💬 '+cm:'')]; }
+    if (ab) { const a = abCode(ab); return ['o', a, ab.note||'ลา']; }
+    if (k === TKEY) return [pastOf(dep)?'x2':'x', '', 'ยังไม่ลง'];
+    if ((since && k < since) || !Object.keys(x.checkins||{}).length) return ['n', '', 'ไม่มีข้อมูล'];
+    return ['x2', '–', 'ไม่มีการลงเวลา'];
+  };
+  const rows = R.map(c => { const hs = days.map((x,i) => cell(c, x, keys[i]));
+    const cnt = { l: hs.filter(h=>h[0]==='l').length, 'ล': hs.filter(h=>h[1]==='ล').length, 'ข': hs.filter(h=>h[1]==='ข').length, 'ห': hs.filter(h=>h[1]==='ห').length };
+    return { c, hs, cnt, score: cnt['ข']*3 + cnt['ล']*2 + cnt.l }; });
+  const tot = rows.reduce((a,r) => { ['l','ล','ข','ห'].forEach(k => a[k] += r.cnt[k]); return a; }, { l:0, 'ล':0, 'ข':0, 'ห':0 });
+  const top = rows.filter(r => r.score).sort((a,b) => b.score - a.score).slice(0, 8);
+  const dd = k => { const d = new Date(k+'T00:00:00'); return d.getDate(); };
+  const nm = s => esc(String(s||'').replace(/^(K\.|นาย|นางสาว|นาง)\s*/,'').split(' ')[0]);
+  modal('<button class="btn btn-o" style="padding:7px 12px;margin-bottom:10px;" onclick="window.__dep(\''+esc(dep)+'\')">‹ กลับ</button>'
+    + '<h3>🟩 ตารางมาทำงาน — '+esc(dep)+' · '+esc(D.name||'')+'</h3><div class="sub">'+thDate(keys[0])+' – '+thDate(TKEY)+' · ไม่นับอาทิตย์ · คอลัมน์เหลือง = วันนี้ (สด) · แตะช่องเพื่อดูรายละเอียด</div>'
+    + '<div class="attR">'+[7,15,30].map(n => '<button class="'+(ATTN===n?'on':'')+'" onclick="window.__att(\''+esc(dep)+'\','+n+')">'+n+' วันทำงาน</button>').join('')+'</div>'
+    + (R.length ? '<div class="ag" id="attGrid"><table><tr><th></th>'+keys.map(k => '<th class="'+(k===TKEY?'td':'')+'">'+dd(k)+'</th>').join('')+'<th></th></tr>'
+      + rows.map(r => '<tr><td class="nm" title="'+esc(r.c.name)+'">'+nm(r.c.name)+'</td>'+r.hs.map((h,i) => '<td class="c '+h[0]+'" onclick="window.__attTip(this)" data-t="'+esc(nm(r.c.name)+' · '+thDate(keys[i])+' · '+h[2])+'">'+h[1]+'</td>').join('')
+        + '<td class="sm">'+[r.cnt.l ? '<b style="color:#C62828">L'+r.cnt.l+'</b>' : '', (r.cnt['ล']+r.cnt['ข']) ? '<b style="color:#6A4FB3">ข/ล'+(r.cnt['ล']+r.cnt['ข'])+'</b>' : ''].filter(Boolean).join(' ')+'</td></tr>').join('')
+      + '</table></div><div class="attTip" id="attTip">แตะช่องสีเพื่อดูรายละเอียด</div>'
+      + '<div class="leg"><span><i style="background:#2E7D32"></i>Ontime</span><span><i style="background:#C62828"></i>Late</span><span><i style="background:#6A4FB3"></i>ขาด/ลา/หยุด</span><span><i style="border:1.5px dashed #B7791F"></i>ยังไม่ลง</span><span><i style="background:#f1efe8;border:1px solid #ddd"></i>ไม่มีข้อมูล</span><span>ล=ลา · ข=ขาดงาน · ห=วันหยุดตามกะ · 💬=มีหมายเหตุ</span></div>'
+      + '<div class="grp">สรุปทั้งสาขา ('+ATTN+' วันทำงาน)</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span class="chip no">Late '+tot.l+' ครั้ง</span><span class="chip" style="background:#EFE9FB;color:#6A4FB3">ลา '+tot['ล']+'</span><span class="chip" style="background:#EFE9FB;color:#6A4FB3">ขาดงาน '+tot['ข']+'</span><span class="chip" style="background:#eee;color:#666">วันหยุดตามกะ '+tot['ห']+'</span></div>'
+      + '<div class="grp">👀 ควรติดตาม <span style="font-weight:400;font-size:11.5px;color:#888">(ขาด×3 · ลา×2 · Late×1 · ไม่นับวันหยุดตามกะ)</span></div>'
+      + (top.length ? top.map(r => '<div class="row-c"><div class="info"><div class="nm">'+esc(r.c.name)+'</div><div class="sub2">'+esc(r.c.code||'')+' • '+esc(r.c.vendor||'-')+'</div></div>'+(r.cnt['ข']?'<span class="chip" style="background:#EFE9FB;color:#6A4FB3">ขาด '+r.cnt['ข']+'</span>':'')+(r.cnt['ล']?'<span class="chip" style="background:#EFE9FB;color:#6A4FB3">ลา '+r.cnt['ล']+'</span>':'')+(r.cnt.l?'<span class="chip no">Late '+r.cnt.l+'</span>':'')+'</div>').join('') : '<div class="empty">ไม่มีคนที่ต้องติดตาม 🎉</div>')
+      : '<div class="empty">ยังไม่มีรายชื่อพนักงานในสาขานี้</div>')
+    + '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>');
+  const g = document.getElementById('attGrid'); if (g) g.scrollLeft = g.scrollWidth;
+}
+window.__attTip = el => { const t = document.getElementById('attTip'); if (t) t.textContent = el.getAttribute('data-t'); };
+
+/* ================= 👥 ชื่อผู้บันทึก (Staff) — จัดการโดย Manager เท่านั้น (ย้ายมาจากแอป Staff) =================
+   รายชื่อนี้แสดงในหน้าเข้าสู่ระบบของสาขา · แก้แบบ transaction (2 คนแก้พร้อมกันไม่ทับกัน) */
+let SNDEP = null, SNL = [];
+window.__staffN = async dep => {
+  OPENDEP = null; SNDEP = dep;
+  modal('<h3>👥 ชื่อผู้บันทึก — '+esc(dep)+'</h3><div class="sub">กำลังโหลด…</div>');
+  try { const d = await fb.get('pubstaff/'+dep); SNL = (d && d.names) || []; } catch(e){ SNL = []; }
+  snRender();
+};
+function snRender(){
+  const dep = SNDEP;
+  modal('<button class="btn btn-o" style="padding:7px 12px;margin-bottom:10px;" onclick="window.__dep(\''+esc(dep)+'\')">‹ กลับ</button>'
+    + '<h3>👥 ชื่อผู้บันทึก (Staff) — '+esc(dep)+'</h3><div class="sub">รายชื่อนี้จะแสดงในหน้าเข้าสู่ระบบของสาขา · Staff เพิ่ม/ลบเองไม่ได้</div>'
+    + (SNL.length ? SNL.map((n,i) => '<div class="row-c"><div class="info"><div class="nm">'+esc(n)+'</div></div><button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__snDel('+i+')">✕ ลบ</button></div>').join('')
+      : '<div class="empty">ยังไม่มีรายชื่อ — สาขานี้จะเข้าสู่ระบบไม่ได้จนกว่าจะเพิ่มชื่อ</div>')
+    + '<div style="display:flex;gap:6px;margin-top:8px;"><input id="snNew" placeholder="เพิ่มชื่อ Staff เช่น K.Somchai Jaidee" style="margin:0;flex:1;min-width:0;"><button class="btn btn-y" style="flex-shrink:0;" onclick="window.__snAdd()">+ เพิ่ม</button></div>'
+    + '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>');
+  const i = $('snNew'); if (i) i.addEventListener('keydown', e => { if (e.key === 'Enter') window.__snAdd(); });
+}
+async function snTx(fn, msg){
+  try { await fb.tx('pubstaff/'+SNDEP, d => { const L = fn(((d && d.names) || []).slice()); SNL = L || SNL; return L ? { names: L } : null; });
+    const d = await fb.get('pubstaff/'+SNDEP); SNL = (d && d.names) || SNL; feed('<b>'+esc(msg)+'</b>','ok'); snRender(); return true; }
+  catch(e){ feed('บันทึกไม่สำเร็จ — '+esc(e.code||e.message),'bad'); return false; }
+}
+window.__snAdd = () => { const n = ($('snNew').value||'').trim().replace(/\s+/g,' '); if (!n) return;
+  if (SNL.includes(n)) { feed('มีชื่อนี้แล้ว','bad'); return; }
+  snTx(L => L.includes(n) ? null : [...L, n], '+ เพิ่ม '+n); };
+window.__snDel = i => { const n = SNL[i]; if (!n) return;
+  if (SNL.length === 1 && !confirm('ลบชื่อสุดท้ายของสาขา '+SNDEP+'?\nสาขานี้จะเข้าสู่ระบบไม่ได้จนกว่าจะเพิ่มชื่อใหม่')) return;
+  if (SNL.length > 1 && !confirm('ลบชื่อ '+n+' ?\nเครื่องที่ใช้ชื่อนี้อยู่ยังใช้งานต่อได้จนกว่าจะออกจากระบบ')) return;
+  snTx(L => L.filter(x => x !== n), 'ลบ '+n+' แล้ว'); };
+
+/* ================= ⚙️ ผู้ดูแลระบบ (Admin) ================= */
+let ADM = 'dep', MGRS = [], STAFFN = {};
+const staffUrl = code => { const u = new URL('staff.html', location.href); u.search = DEMO ? '?demo' : '?openExternalBrowser=1'; if (code) u.searchParams.set('d', code); return u.toString(); };
+const mgrUrl = () => { const u = new URL('manager.html', location.href); u.search = DEMO ? '?demo' : '?openExternalBrowser=1'; return u.toString(); };
+window.__copy = t => { navigator.clipboard && navigator.clipboard.writeText(t).then(()=>feed('<b>คัดลอกแล้ว</b>','ok'), ()=>feed('คัดลอกไม่ได้','bad')); };
+function credBox(title, lines){ const txt = lines.join('\n');
+  return '<div class="cred">📋 <b>'+title+'</b><br>'+lines.map(esc).join('<br>')+'<br><button class="btn btn-y" style="margin-top:8px;padding:9px 14px;" onclick=\'window.__copy('+JSON.stringify(txt).replace(/'/g,'&#39;')+')\'>คัดลอกทั้งหมด</button></div>'; }
+window.__settings = async sec => {
+  if (!ME || ME.role !== 'admin') return;
+  if (sec) ADM = sec;
+  try { MGRS = (await fb.list('managers')).map(x => ({ uid:x.id, ...x.data })); } catch(e){ MGRS = []; }
+  const segs = [['dep','🏢 สาขา'],['mgr','👥 ผู้จัดการ (UPC)'],['sys','🔧 ระบบ']];
+  let h = '<h3>⚙️ ผู้ดูแลระบบ</h3><div class="sub">เพิ่มสาขา / ผู้จัดการ / ตั้งค่าระบบ</div>'
+    + '<div class="segbar">'+segs.map(s=>'<button class="seg'+(ADM===s[0]?' on':'')+'" onclick="window.__settings(\''+s[0]+'\')">'+s[1]+'</button>').join('')+'</div>';
+  if (ADM === 'dep') {
+    const all = Object.keys(PUB).sort();
+    h += '<div class="admbar"><button class="btn btn-y" onclick="window.__aDep()">➕ เพิ่มสาขา</button><button class="btn btn-o" onclick="window.__aBulk()">📥 เพิ่มหลายสาขา (Excel)</button></div>'
+      + '<div class="dwrap"><table class="dtbl"><thead><tr><th class="l">สาขา</th><th class="l">ภาค / จังหวัด</th><th>พนักงาน</th><th class="l">UPC</th><th></th></tr></thead><tbody>'
+      + (all.map(d => { const D = DEPS[d]||{}, own = MGRS.filter(m=>m.role!=='admin'&&(m.depots||[]).includes(d)).map(m=>m.name);
+          return '<tr><td class="l"><div class="nm">'+esc(d)+'</div><div class="s2">'+esc(D.name||PUB[d].name||'')+'</div></td><td class="l"><span class="s2">'+esc(D.region||'')+' '+esc(D.province||'')+' · ⏰'+hmCut(cutOf(D))+'</span></td>'
+            + '<td>'+((D.roster||[]).filter(c=>c.active!==false).length)+'</td><td class="l '+(own.length?'':'b')+'"><span class="s2">'+(own.length?esc(own.join(', ')):'ยังไม่มี')+'</span></td>'
+            + '<td><button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aDep(\''+d+'\')">แก้ไข</button> <button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aPin(\''+d+'\')">🔑 PIN</button></td></tr>'; }).join('')
+        || '<tr><td colspan="5" class="n">ยังไม่มีสาขา — กด ➕ เพิ่มสาขา</td></tr>')
+      + '</tbody></table></div>';
+  } else if (ADM === 'mgr') {
+    const ro = m => m.role==='admin' ? -1 : Math.max(0, REGIONS.indexOf(m.region||'')) + (m.region ? 0 : 9);
+    h += '<div class="admbar"><button class="btn btn-y" onclick="window.__aMgr()">➕ เพิ่มผู้จัดการ</button><button class="btn btn-o" onclick="window.__aMgrBulk()">📥 นำเข้าผู้จัดการหลายคน</button></div>'
+      + MGRS.sort((a,b)=>ro(a)-ro(b)||String(a.name).localeCompare(String(b.name))).map(m =>
+        '<div class="row-c"><div class="info"><div class="nm">'+esc(m.name)+' '+(m.role==='admin'?'<span class="chip wt">Admin</span>':'<span class="chip gr">'+esc(regLabel(m.region))+'</span>')+'</div><div class="sub2">'
+        + (m.role==='admin' ? 'ทุกสาขา' : ((m.depots||[]).join(', ') || '<b style="color:#b3121d">ยังไม่มีสาขา — เลือก UPC ตอนเพิ่มสาขา</b>')) + '</div></div>'
+        + (m.uid===ME.uid ? '<span class="chip gr">คุณ</span>' : '<button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aMgr(\''+m.uid+'\')">แก้ไข</button><button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aMpin(\''+m.uid+'\')">🔑 PIN ใหม่</button><button class="btn btn-o" style="padding:6px 10px;font-size:12px;" onclick="window.__aMdel(\''+m.uid+'\')">ลบ</button>')
+        + '</div>').join('');
+  } else {
+    h += '<div class="card" style="margin-top:4px">เวอร์ชันแอปนี้: <b>'+APP_VER+'</b><br><span class="small">บังคับใช้ Staff: '+esc(CFG.staffVer||'-')+' · Manager: '+esc(CFG.managerVer||'-')+'</span>'
+      + '<button class="btn btn-y btn-block" style="margin-top:10px" onclick="window.__aVer()">🔄 บังคับทุกเครื่องใช้เวอร์ชันล่าสุด</button></div>'
+      + (() => { const L = CFG.pilotDepots || [], all = L.includes('*');
+          return '<div class="card"><b>🧪 หน้าตาใหม่แอป Staff (นำร่อง)</b><div class="small" style="margin:4px 0 8px">ใช้ลิ้งเดิม · ดีโป้ในรายการจะเห็นหน้าใหม่อัตโนมัติ · ปิดได้ทันที ทุกเครื่องกลับหน้าเดิมเอง</div>'
+            + '<div style="margin-bottom:8px">สถานะ: <b>'+(all ? 'เปิดทุกดีโป้' : L.length ? 'นำร่อง '+esc(L.join(', ')) : 'ปิด (ทุกดีโป้ใช้หน้าเดิม)')+'</b></div>'
+            + '<input id="pilotIn" placeholder="รหัสดีโป้ คั่นด้วย , เช่น NMA, CCI" value="'+esc(all ? '' : L.join(', '))+'" style="margin:0 0 8px">'
+            + '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-y" style="padding:9px 12px" onclick="window.__pilot()">บันทึกรายการนำร่อง</button>'
+            + '<button class="btn btn-o" style="padding:9px 12px" onclick="window.__pilot(\'*\')">เปิดทุกดีโป้</button>'
+            + '<button class="btn btn-o" style="padding:9px 12px;color:#C62828;border-color:#C62828" onclick="window.__pilot(\'off\')">ปิดนำร่อง</button></div></div>'; })()
+      + '<div class="card"><b>ลิงก์แอปสาขา (Staff)</b><div class="lnk">'+esc(staffUrl())+'</div><button class="btn btn-o" style="margin-top:6px;padding:8px 12px;" onclick="window.__copy(\''+esc(staffUrl())+'\')">คัดลอก</button>'
+      + '<div style="height:10px"></div><b>ลิงก์ Manager</b><div class="lnk">'+esc(mgrUrl())+'</div><button class="btn btn-o" style="margin-top:6px;padding:8px 12px;" onclick="window.__copy(\''+esc(mgrUrl())+'\')">คัดลอก</button></div>';
+  }
+  h += '<button class="btn btn-o btn-block" style="margin-top:12px" onclick="window.__close()">ปิด</button>';
+  modal(h);
+};
+window.__pilot = async mode => {
+  let L;
+  if (mode === 'off') L = [];
+  else if (mode === '*') { if (!confirm('เปิดหน้าตาใหม่ให้ทุกดีโป้?')) return; L = ['*']; }
+  else { L = [...new Set(($('pilotIn').value||'').toUpperCase().split(/[\s,]+/).filter(Boolean))];
+    const bad = L.filter(c => !PUB[c]); if (bad.length) { feed('ไม่พบรหัสดีโป้: '+esc(bad.join(', ')),'bad'); return; } }
+  try { await fb.set('config/app', { pilotDepots: L, updatedAt: NOW }); CFG.pilotDepots = L;
+    feed('<b>'+(L.length ? (L[0]==='*' ? 'เปิดหน้าใหม่ทุกดีโป้แล้ว' : 'นำร่อง: '+esc(L.join(', '))) : 'ปิดนำร่องแล้ว — ทุกดีโป้กลับหน้าเดิม')+'</b>','ok'); window.__settings('sys'); }
+  catch(e){ feed('บันทึกไม่สำเร็จ — '+esc(e.code||e.message),'bad'); }
+};
+window.__aVer = async () => { if (!confirm('บังคับทุกเครื่องให้ใช้เวอร์ชัน '+APP_VER+' ?')) return; await fb.set('config/app', { staffVer: APP_VER, managerVer: APP_VER, updatedAt: NOW }); feed('<b>ตั้งค่าแล้ว</b> — ทุกเครื่องจะรีโหลดเอง','ok'); window.__settings('sys'); };
+const back = s => '<button class="btn btn-o" style="padding:7px 12px;margin-bottom:10px;" onclick="window.__settings(\''+s+'\')">‹ กลับ</button>';
+
+const upcOf = region => MGRS.filter(m => m.role!=='admin' && (!region || m.region===region));
+const ownersOf = code => MGRS.filter(m => m.role!=='admin' && (m.depots||[]).includes(code)).map(m => m.name);
+function upcPick(region, sel){
+  const L = upcOf(region);
+  if (!L.length) return '<div class="small">ยังไม่มี UPC ภาค'+esc(regLabel(region))+' — สร้างผู้จัดการก่อน หรือเพิ่มทีหลังได้</div>';
+  return '<div class="pick">'+L.map(m=>'<label><input type="checkbox" class="dUpc" value="'+esc(m.name)+'"'+(sel.includes(m.name)?' checked':'')+'> '+esc(m.name)+'</label>').join('')+'</div>';
+}
+window.__depReg = r => { const L = upcOf(r); $('dUpcBox').innerHTML = upcPick(r, L.length===1 ? [L[0].name] : []); };
+window.__aDep = code => {
+  const D = code ? (DEPS[code]||{}) : {}, reg = D.region || REGIONS[0], cut = hmCut(cutOf(D));
+  const sel = code ? ownersOf(code) : (upcOf(reg).length===1 ? [upcOf(reg)[0].name] : []);
+  modal(back('dep')+'<h3>'+(code?'แก้ไขสาขา '+esc(code):'เพิ่มสาขาใหม่')+'</h3><div class="frm2" id="mdlForm">'
+    + '<label>รหัสสาขา</label><input id="dCode" value="'+esc(code||'')+'" '+(code?'disabled':'')+' placeholder="เช่น BRM">'
+    + '<label>ชื่อสาขา</label><input id="dName" value="'+esc(D.name||(code&&PUB[code].name)||'')+'">'
+    + '<label>ภาค</label><select id="dReg" onchange="window.__depReg(this.value)">'+REGIONS.map(r=>'<option value="'+r+'"'+(reg===r?' selected':'')+'>'+regLabel(r)+'</option>').join('')+'</select>'
+    + '<label>จังหวัด</label><input id="dProv" value="'+esc(D.province||'')+'">'
+    + '<label>เวลาเข้างาน (Target)</label><select id="dCut">'+TIMES.map(t=>'<option'+(t===cut?' selected':'')+'>'+t+'</option>').join('')+'</select>'
+    + '<label>UPC ผู้ดูแลสาขานี้</label><div id="dUpcBox">'+upcPick(reg, sel)+'</div>'
+    + (code ? '' : '<label>PIN สาขา (6 หลัก)</label><input id="dPin" value="'+genPin()+'" inputmode="numeric" maxlength="6">'
+               + '<label>ชื่อผู้บันทึก (Staff) — คั่นด้วย ,</label><input id="dStaff" placeholder="เช่น K.Pongsak Kodram, K.Atitiya Inta">')
+    + '<div class="err2" id="dErr"></div><button class="btn btn-y btn-block" id="dGo" onclick="window.__aDepSave(\''+esc(code||'')+'\')">'+(code?'บันทึก':'สร้างสาขา')+'</button><div id="dOut"></div></div>');
+};
+/* ผูกสาขากับ UPC ที่เลือก (เพิ่ม/ถอดจากรายการสาขาของผู้จัดการ) */
+async function assignUpc(code, names){
+  let L = []; try { L = (await fb.list('managers')).map(x => ({ uid:x.id, ...x.data })); } catch(e){}
+  for (const m of L) {
+    if (m.role === 'admin') continue;
+    const deps = m.depots || [], want = names.includes(m.name), has = deps.includes(code);
+    if (want && !has) await fb.set('managers/'+m.uid, { depots: [...deps, code], updatedAt: NOW });
+    if (!want && has) await fb.set('managers/'+m.uid, { depots: deps.filter(d => d !== code), updatedAt: NOW });
+  }
+  await fb.set('depots/'+code, { upc: names });
+  try { MGRS = (await fb.list('managers')).map(x => ({ uid:x.id, ...x.data })); } catch(e){}
+}
+async function createDepot(code, name, region, province, pin, staff, cut, upc){
+  const uid = await fb.createUser(depotEmail(code, 1), pin);
+  await fb.set('depots/'+code, { code, name, region, province, cut: cut||CUT, upc: upc||[], authUid: uid, authVer: 1, roster: [], createdAt: NOW });
+  await fb.set('pub/depots', { [code]: { ver: 1, name } });
+  if (staff && staff.length) await fb.set('pubstaff/'+code, { names: staff });
+  PUB[code] = { ver: 1, name };
+  if (!SCOPE.includes(code)) { SCOPE.push(code); SCOPE.sort(); watchDep(code); TUNS.push(fb.listen(`depots/${code}/days/${TKEY}`, d => { TODAY[code] = d || {}; sched(); })); }
+  $('teamTag').textContent = 'UPC · '+ME.name+' · '+SCOPE.length+' สาขา';
+  if (upc && upc.length) await assignUpc(code, upc);
+}
+window.__aDepSave = async code => {
+  const err = t => { $('dErr').textContent = t; $('dGo').disabled = false; };
+  const c = (code || $('dCode').value).trim().toUpperCase(), name = $('dName').value.trim(), reg = $('dReg').value, prov = $('dProv').value.trim();
+  const cut = toSec($('dCut').value) || CUT, upc = [...document.querySelectorAll('.dUpc:checked')].map(x=>x.value);
+  if (!/^[A-Z0-9]{2,10}$/.test(c)) return err('รหัสสาขา: A-Z / 0-9 ยาว 2–10 ตัว');
+  if (!name) return err('กรอกชื่อสาขา');
+  $('dGo').disabled = true;
+  try {
+    if (code) {
+      await fb.set('depots/'+c, { name, region: reg, province: prov, cut, updatedAt: NOW });
+      await fb.set('pub/depots', { [c]: { ver: PUB[c].ver||1, name } }); PUB[c].name = name;
+      await assignUpc(c, upc);
+      feed('<b>บันทึกแล้ว</b>','ok'); return window.__settings('dep');
+    }
+    const pin = $('dPin').value.trim(); if (!/^\d{6}$/.test(pin)) return err('PIN ต้องเป็นตัวเลข 6 หลัก');
+    if (PUB[c]) return err('มีรหัสสาขา '+c+' อยู่แล้ว');
+    const staff = $('dStaff').value.split(/[,\n]/).map(x=>x.trim()).filter(Boolean);
+    await createDepot(c, name, reg, prov, pin, staff, cut, upc);
+    $('dGo').style.display = 'none';
+    $('dOut').innerHTML = credBox('ส่งให้หัวหน้าสาขา '+esc(c), ['ลิงก์: '+staffUrl(c), 'สาขา: '+c+' · '+name, 'PIN: '+pin, 'เวลาเข้างาน: '+hmCut(cut)+' น.'])
+      + '<div class="small" style="margin-top:8px">👥 UPC ที่เห็นสาขานี้: '+(upc.length ? esc(upc.join(', ')) : 'ยังไม่ได้เลือก (Admin เห็นอย่างเดียว)')+'</div>';
+    feed('<b>สร้างสาขาสำเร็จ</b> — ส่งข้อมูลด้านล่างให้ผู้ใช้','ok');
+  } catch(e){ err('ไม่สำเร็จ: '+(e.code||e.message)); }
+};
+window.__aPin = code => {
+  modal(back('dep')+'<h3>รีเซ็ต PIN สาขา '+esc(code)+'</h3><div class="sub">PIN เดิมใช้ไม่ได้ทันที · ทุกเครื่องของสาขานี้ต้องเข้าสู่ระบบใหม่ · ข้อมูลไม่หาย</div>'
+    + '<div class="frm2"><label>PIN ใหม่ (6 หลัก)</label><input id="pPin" value="'+genPin()+'" inputmode="numeric" maxlength="6"><div class="err2" id="pErr"></div>'
+    + '<button class="btn btn-r btn-block" id="pGo" onclick="window.__aPinGo(\''+esc(code)+'\')">ยืนยันรีเซ็ต PIN</button><div id="pOut"></div></div>');
+};
+window.__aPinGo = async code => {
+  const pin = $('pPin').value.trim(); if (!/^\d{6}$/.test(pin)) { $('pErr').textContent = 'PIN ต้องเป็นตัวเลข 6 หลัก'; return; }
+  $('pGo').disabled = true;
+  try {
+    const ver = (PUB[code].ver||1) + 1, uid = await fb.createUser(depotEmail(code, ver), pin);
+    await fb.set('depots/'+code, { authUid: uid, authVer: ver, updatedAt: NOW });
+    await fb.set('pub/depots', { [code]: { ver, name: PUB[code].name||'' } }); PUB[code].ver = ver;
+    $('pGo').style.display = 'none';
+    $('pOut').innerHTML = credBox('PIN ใหม่ของสาขา '+esc(code), ['ลิงก์: '+staffUrl(code), 'สาขา: '+code, 'PIN: '+pin]);
+    feed('<b>ตั้ง PIN ใหม่ของสาขาสำเร็จ</b> — ส่งข้อมูลด้านล่างให้ผู้ใช้','ok');
+  } catch(e){ $('pErr').textContent = 'ไม่สำเร็จ: '+(e.code||e.message); $('pGo').disabled = false; }
+};
+window.__aBulk = () => {
+  const pre = DEP_PRESET.filter(r => !PUB[r[0]]).map(r => r.join('\t')).join('\n');
+  modal(back('dep')+'<h3>📥 เพิ่มหลายสาขาพร้อมกัน</h3><div class="sub">วางจาก Excel 7 คอลัมน์: <b>รหัสสาขา · ชื่อสาขา · ภาค · จังหวัด · เวลาเข้างาน · UPC ผู้ดูแล · ชื่อ Staff (คั่นด้วย ,)</b> — ระบบสุ่ม PIN ให้ แล้วดาวน์โหลดไฟล์ PIN ได้</div>'
+    + '<div class="frm2"><textarea id="bText" rows="10" placeholder="BRM	บุรีรัมย์	North-East	บุรีรัมย์	07:00	K.Wanchai Prukrunggroj	K.Pongsak Kodram, K.Atitiya Inta">'+esc(pre)+'</textarea>'
+    + (pre ? '<div class="small" style="margin-top:4px">เติมสาขาของ '+esc([...new Set(DEP_PRESET.filter(r => !PUB[r[0]]).map(r => r[5]))].join(', '))+' ไว้ให้แล้ว '+pre.split('\n').length+' สาขา — แก้ชื่อสาขา/จังหวัดในช่องที่ 2 และ 4 ได้ก่อนกดสร้าง</div>' : '')
+    + '<div class="err2" id="bErr"></div><button class="btn btn-y btn-block" id="bGo" onclick="window.__aBulkGo()">สร้างสาขา</button><div id="bOut"></div></div>');
+};
+window.__aBulkGo = async () => {
+  const rows = $('bText').value.split(/\r?\n/).map(l=>l.split(l.includes('\t')?'\t':',').map(x=>x.trim())).filter(r=>r[0]&&r[1]&&!/รหัส|code/i.test(r[0]));
+  if (!rows.length) { $('bErr').textContent = 'ไม่พบข้อมูล'; return; }
+  $('bGo').disabled = true; const res = [];
+  for (const [i, r] of rows.entries()) {
+    const c = r[0].toUpperCase(), reg = regOf(r[2]), cut = toSec(r[4]) || CUT;
+    const staff = String(r[6]||'').split(/[,;]/).map(x=>x.trim()).filter(Boolean);
+    let upc = String(r[5]||'').split('/').map(x=>x.trim().toLowerCase()).filter(Boolean)
+      .map(q => (MGRS.find(m => m.role!=='admin' && m.name.toLowerCase().includes(q.replace(/^k\./,''))) || {}).name).filter(Boolean);
+    if (!upc.length && upcOf(reg).length === 1) upc = [upcOf(reg)[0].name];
+    $('bOut').innerHTML = '<div class="empty">กำลังสร้าง '+(i+1)+'/'+rows.length+' · '+esc(c)+'</div>';
+    if (!/^[A-Z0-9]{2,10}$/.test(c)) { res.push([c, r[1], '', '', '', '❌ รหัสไม่ถูกต้อง']); continue; }
+    if (PUB[c]) { res.push([c, r[1], '', '', '', '⏭ มีอยู่แล้ว']); continue; }
+    const pin = genPin();
+    try { await createDepot(c, r[1], reg, r[3]||'', pin, staff, cut, upc); res.push([c, r[1], pin, hmCut(cut), upc.join(', ')||'—', '✅']); }
+    catch(e){ res.push([c, r[1], '', '', '', '❌ '+(e.code||e.message)]); }
+  }
+  const csv = '﻿'+[['รหัสสาขา','ชื่อสาขา','PIN','เวลาเข้างาน','UPC','ผล','ลิงก์'], ...res.map(r=>[...r, staffUrl(r[0])])].map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  window.__bulkCsv = () => { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='depot_pins.csv'; a.click(); };
+  $('bGo').style.display = 'none';
+  $('bOut').innerHTML = '<table class="dtbl" style="margin-top:8px"><thead><tr><th class="l">รหัส</th><th class="l">ชื่อ</th><th>PIN</th><th>เข้างาน</th><th class="l">UPC</th><th>ผล</th></tr></thead><tbody>'
+    + res.map(r=>'<tr><td class="l nm">'+esc(r[0])+'</td><td class="l">'+esc(r[1])+'</td><td><b>'+esc(r[2])+'</b></td><td>'+esc(r[3])+'</td><td class="l"><span class="s2">'+esc(r[4])+'</span></td><td>'+esc(r[5])+'</td></tr>').join('')+'</tbody></table>'
+    + '<button class="btn btn-y btn-block" style="margin-top:10px" onclick="window.__bulkCsv()">📥 ดาวน์โหลดไฟล์ PIN (เก็บเป็นความลับ)</button>';
+};
+function depPicker(sel){
+  const all = Object.keys(PUB).sort(), byR = {};
+  all.forEach(d => { const r = (DEPS[d]&&DEPS[d].region)||'อื่น ๆ'; (byR[r] = byR[r]||[]).push(d); });
+  return Object.keys(byR).map(r => '<label>'+esc(r)+' <a href="#" style="color:#D40511" onclick="document.querySelectorAll(\'[data-r=&quot;'+esc(r)+'&quot;]\').forEach(x=>x.checked=true);return false">เลือกทั้งภาค</a></label>'
+    + '<div class="pick">'+byR[r].map(d=>'<label><input type="checkbox" class="mDep" data-r="'+esc(r)+'" value="'+esc(d)+'"'+(sel.includes(d)?' checked':'')+'> '+esc(d)+' '+esc(PUB[d].name||'')+'</label>').join('')+'</div>').join('')
+    || '<div class="small">ยังไม่มีสาขา — เพิ่มสาขาก่อน</div>';
+}
+window.__aMgr = uid => {
+  const m = uid ? MGRS.find(x=>x.uid===uid) : { name:'', role:'upc', depots:[], region:'' };
+  modal(back('mgr')+'<h3>'+(uid?'แก้ไขผู้จัดการ':'เพิ่มผู้จัดการ (UPC)')+'</h3><div class="frm2">'
+    + '<label>ชื่อ</label><input id="mName" value="'+esc(m.name)+'" placeholder="เช่น K.Somchai Jaidee">'
+    + '<label>สิทธิ์</label><select id="mRole"><option value="upc"'+(m.role!=='admin'?' selected':'')+'>UPC Manager (เห็นเฉพาะสาขาที่เลือก)</option><option value="admin"'+(m.role==='admin'?' selected':'')+'>Admin (ทุกสาขา + จัดการระบบ)</option></select>'
+    + '<label>ภาคที่ดูแล</label><select id="mReg" onchange="window.__pickReg(this.value)"><option value="">— ไม่ระบุ —</option>'+REGIONS.map(r=>'<option value="'+r+'"'+(m.region===r?' selected':'')+'>'+regLabel(r)+'</option>').join('')+'</select>'
+    + '<div class="small" style="margin-top:4px">เลือกภาคแล้วกด "เลือกทั้งภาค" ได้ หรือติ๊กเฉพาะสาขาที่ดูแลจริง</div>'
+    + (uid ? '' : '<label>PIN ผู้จัดการ (6 หลัก)</label><input id="mPin" value="'+genPin()+'" inputmode="numeric" maxlength="6">')
+    + '<label>สาขาที่ดูแล</label>'+depPicker(m.depots||[])
+    + '<div class="err2" id="mErr"></div><button class="btn btn-y btn-block" id="mGo" onclick="window.__aMgrSave(\''+esc(uid||'')+'\')">'+(uid?'บันทึก':'สร้าง PIN ผู้จัดการ')+'</button><div id="mOut"></div></div>');
+};
+window.__aMgrSave = async uid => {
+  const err = t => { $('mErr').textContent = t; $('mGo').disabled = false; };
+  const name = $('mName').value.trim(), role = $('mRole').value, region = $('mReg').value, depots = [...document.querySelectorAll('.mDep:checked')].map(x=>x.value);
+  if (!name) return err('กรอกชื่อ');
+  if (role !== 'admin' && !depots.length && !region) return err('เลือกภาค หรือสาขาอย่างน้อย 1 สาขา');
+  $('mGo').disabled = true;
+  try {
+    if (uid) { await fb.set('managers/'+uid, { name, role, region, depots, updatedAt: NOW }); await syncDepUpc(name, depots); feed('<b>บันทึกแล้ว</b>','ok'); return window.__settings('mgr'); }
+    const pin = $('mPin').value.trim(); if (!/^\d{6}$/.test(pin)) return err('PIN ต้องเป็นตัวเลข 6 หลัก');
+    let id; try { id = await fb.createUser(mgrEmail(pin), mgrPw(pin)); }
+    catch(e){ if (e.code==='auth/email-already-in-use') { $('mPin').value = genPin(); return err('PIN นี้ถูกใช้แล้ว — สุ่ม PIN ใหม่ให้แล้ว กดอีกครั้ง'); } throw e; }
+    await fb.set('managers/'+id, { name, role, region, depots, createdAt: NOW });
+    await syncDepUpc(name, depots);
+    $('mGo').style.display = 'none';
+    $('mOut').innerHTML = credBox('ส่งให้ '+esc(name), ['ลิงก์: '+mgrUrl(), 'PIN ผู้จัดการ: '+pin, 'ภาค: '+regLabel(region), 'สาขา: '+(role==='admin'?'ทุกสาขา':(depots.join(', ')||'ยังไม่มี — เลือก UPC ตอนเพิ่มสาขา'))]);
+    feed('<b>เพิ่มผู้จัดการสำเร็จ</b> — ส่งข้อมูลด้านล่างให้ผู้ใช้','ok');
+  } catch(e){ err('ไม่สำเร็จ: '+(e.code||e.message)); }
+};
+const regDeps = r => Object.keys(PUB).filter(d => (DEPS[d]&&DEPS[d].region) === r).sort();
+window.__pickReg = r => {};   /* ไม่ติ๊กอัตโนมัติ — 1 ภาคมีหลาย UPC แต่ละคนดูแลคนละสาขา */
+/* ให้รายชื่อ UPC ในเอกสารสาขาตรงกับรายการสาขาของผู้จัดการ */
+async function syncDepUpc(name, depots){
+  for (const d of Object.keys(PUB)) {
+    const cur = (DEPS[d] && DEPS[d].upc) || [], want = depots.includes(d), has = cur.includes(name);
+    if (want && !has) await fb.set('depots/'+d, { upc: [...cur, name] });
+    if (!want && has) await fb.set('depots/'+d, { upc: cur.filter(x => x !== name) });
+  }
+}
+
+/* ---- 📥 นำเข้าผู้จัดการหลายคน (เติมรายชื่อ UPC แต่ละภาคไว้ให้แล้ว) ---- */
+window.__aMgrBulk = () => {
+  const have = new Set(MGRS.map(m => m.name));
+  const pre = UPC_LIST.filter(x => !have.has(x[0])).map(x => x.join('\t')).join('\n');
+  modal(back('mgr')+'<h3>📥 นำเข้าผู้จัดการหลายคน</h3><div class="sub">2 คอลัมน์: <b>ชื่อ · ภาค</b> (Central / East / North / North-East / South) — ระบบสุ่ม PIN ให้ทุกคน และผูกสาขาในภาคให้อัตโนมัติ</div>'
+    + '<div class="frm2"><textarea id="gText" rows="13">'+esc(pre)+'</textarea>'
+    + '<div class="small" style="margin-top:4px">'+(pre ? 'เติมรายชื่อ UPC ทั้ง '+pre.split('\n').length+' คนไว้ให้แล้ว (คนที่มีในระบบแล้วจะไม่ถูกเติมซ้ำ)' : 'รายชื่อ UPC ทั้งหมดอยู่ในระบบแล้ว')+'</div>'
+    + '<div class="err2" id="gErr"></div><button class="btn btn-y btn-block" id="gGo" onclick="window.__aMgrBulkGo()">สร้าง PIN ผู้จัดการ</button><div id="gOut"></div></div>');
+};
+window.__aMgrBulkGo = async () => {
+  const rows = $('gText').value.split(/\r?\n/).map(l => l.split(l.includes('\t') ? '\t' : ',').map(x => x.trim())).filter(r => r[0] && !/^ชื่อ|^name/i.test(r[0]));
+  if (!rows.length) { $('gErr').textContent = 'ไม่พบข้อมูล'; return; }
+  $('gGo').disabled = true;
+  const have = new Set(MGRS.map(m => m.name)), res = [];
+  for (const [i, r] of rows.entries()) {
+    const name = r[0], region = regOf(r[1]);
+    $('gOut').innerHTML = '<div class="empty">กำลังสร้าง '+(i+1)+'/'+rows.length+' · '+esc(name)+'</div>';
+    if (have.has(name)) { res.push([name, regLabel(region), '', '', '⏭ มีอยู่แล้ว']); continue; }
+    if (!region) { res.push([name, r[1]||'', '', '', '❌ ไม่รู้จักภาค']); continue; }
+    const depots = Object.keys(PUB).filter(d => ((DEPS[d]&&DEPS[d].upc)||[]).includes(name)).sort();
+    let pin = '', id = null;
+    for (let k = 0; k < 5 && !id; k++) {
+      pin = genPin();
+      try { id = await fb.createUser(mgrEmail(pin), mgrPw(pin)); } catch(e){ if (e.code !== 'auth/email-already-in-use') { res.push([name, regLabel(region), '', '', '❌ '+(e.code||e.message)]); break; } }
+    }
+    if (!id) continue;
+    await fb.set('managers/'+id, { name, role:'upc', region, depots, createdAt: NOW });
+    have.add(name); res.push([name, regLabel(region), pin, depots.length+' สาขา', '✅']);
+  }
+  const csv = '﻿'+[['ชื่อ','ภาค','PIN ผู้จัดการ','สาขา','ผล','ลิงก์'], ...res.map(r=>[...r, mgrUrl()])].map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  window.__mgrCsv = () => { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='upc_manager_pins.csv'; a.click(); };
+  $('gGo').style.display = 'none';
+  $('gOut').innerHTML = '<table class="dtbl" style="margin-top:8px"><thead><tr><th class="l">ชื่อ</th><th class="l">ภาค</th><th>PIN</th><th>สาขา</th><th>ผล</th></tr></thead><tbody>'
+    + res.map(r=>'<tr><td class="l nm">'+esc(r[0])+'</td><td class="l">'+esc(r[1])+'</td><td><b>'+esc(r[2])+'</b></td><td>'+esc(r[3])+'</td><td>'+esc(r[4])+'</td></tr>').join('')+'</tbody></table>'
+    + '<button class="btn btn-y btn-block" style="margin-top:10px" onclick="window.__mgrCsv()">📥 ดาวน์โหลดไฟล์ PIN ผู้จัดการ (เก็บเป็นความลับ)</button>';
+};
+window.__aMpin = uid => {
+  const m = MGRS.find(x=>x.uid===uid);
+  modal(back('mgr')+'<h3>PIN ใหม่ · '+esc(m.name)+'</h3><div class="sub">PIN เดิมใช้ไม่ได้ทันที · สาขาที่ดูแลเหมือนเดิม</div><div class="frm2">'
+    + '<label>PIN ใหม่ (6 หลัก)</label><input id="wPin" value="'+genPin()+'" inputmode="numeric" maxlength="6"><div class="err2" id="wErr"></div>'
+    + '<button class="btn btn-r btn-block" id="wGo" onclick="window.__aMpinGo(\''+esc(uid)+'\')">ยืนยัน</button><div id="wOut"></div></div>');
+};
+window.__aMpinGo = async uid => {
+  const m = MGRS.find(x=>x.uid===uid), pin = $('wPin').value.trim();
+  if (!/^\d{6}$/.test(pin)) { $('wErr').textContent = 'PIN ต้องเป็นตัวเลข 6 หลัก'; return; }
+  $('wGo').disabled = true;
+  try {
+    let id; try { id = await fb.createUser(mgrEmail(pin), mgrPw(pin)); }
+    catch(e){ if (e.code==='auth/email-already-in-use') { $('wPin').value = genPin(); $('wErr').textContent = 'PIN นี้ถูกใช้แล้ว — สุ่มใหม่ให้แล้ว กดอีกครั้ง'; $('wGo').disabled = false; return; } throw e; }
+    await fb.set('managers/'+id, { name: m.name, role: m.role, depots: m.depots||[], createdAt: NOW });
+    await fb.del('managers/'+uid);
+    $('wGo').style.display = 'none';
+    $('wOut').innerHTML = credBox('PIN ใหม่ของ '+esc(m.name), ['ลิงก์: '+mgrUrl(), 'PIN ผู้จัดการ: '+pin]);
+    feed('<b>ตั้ง PIN ใหม่ของผู้จัดการสำเร็จ</b> — ส่งข้อมูลด้านล่างให้ผู้ใช้','ok');
+  } catch(e){ $('wErr').textContent = 'ไม่สำเร็จ: '+(e.code||e.message); $('wGo').disabled = false; }
+};
+window.__aMdel = async uid => {
+  const m = MGRS.find(x=>x.uid===uid);
+  if (!confirm('ลบสิทธิ์ของ '+m.name+' ?\nPIN นี้จะเข้าดูข้อมูลไม่ได้อีก')) return;
+  await fb.del('managers/'+uid); feed('<b>ลบสิทธิ์แล้ว</b>','ok'); window.__settings('mgr');
+};
+</script>
+</body>
+</html>

@@ -1468,7 +1468,7 @@ window.dsToggleDone=()=>{
   if(h) h.classList.toggle('open', open);
 };
 function isDone(row){
-  return !!row.querySelector('button[onclick*="editTime("]');
+  return !!row.querySelector('button[onclick*="editTime("]') || /\bst-(ontime|late)\b/.test(row.className||'');   /* ไม่มีปุ่มแก้เวลาแล้ว — ดูจากสถานะแถวแทน */
 }
 function regroupCheckin(){
   if(GRPBUSY) return;

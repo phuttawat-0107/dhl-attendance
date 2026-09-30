@@ -826,7 +826,6 @@ async function renderCheckin(){
           +'<div style="flex-shrink:0;">'+chip+'</div></div>'
           +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
           +photoBit+uniBit
-          +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="editTime('+r.id+')">🕐 แก้เวลา</button>'
           +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="redo('+r.id+')">↺ ใหม่</button>'
           +'</div></div>';
       }
@@ -840,7 +839,9 @@ document.getElementById('ciSearch').addEventListener('input',()=>renderCheckin()
 async function redo(id){
   if(confirm('ลบการเช็คอินนี้เพื่อบันทึกใหม่?')){ await delCheckin(id); renderCheckin(); }
 }
+/* 2026.09.30 — ปิดการแก้ไขเวลา: เวลาเข้างาน = เวลาที่ถ่ายรูปจริงเท่านั้น (ถ้าผิด กด ↺ ใหม่ แล้วถ่ายใหม่) */
 async function editTime(id){
+  flash('🔒 ปิดการแก้ไขเวลาแล้ว — ถ้าเวลาไม่ถูกต้อง กด ↺ ใหม่ แล้วถ่ายรูปใหม่'); return;
   const r = todayRecs.find(x=>x.id===id); if(!r) return;
   const t = prompt('แก้ไขเวลาเข้างาน (HH:MM เช่น 06:55)\n⚠ รายการที่แก้จะติดเครื่องหมาย * ในรายงาน', fmtTime(r.ts));
   if(t===null) return;
@@ -1231,7 +1232,6 @@ async function renderPDCard(){
       +'<div style="flex:1;"><b>ถ่ายแล้ว '+fmtTime(pd.ts)+(pd.manualEdit?'*':'')+'</b><br>'
       +(pdInWindow(pd.ts)? '<span class="chip ontime">✔ ในช่วงเวลา</span>':'<span class="chip late">✖ นอกช่วง 07:00–07:15</span>')+'</div>'
       +'<div style="display:flex;flex-direction:column;gap:6px;">'
-      +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="editPDTime()">🕐 แก้เวลา</button>'
       +'<button class="btn btn-o" style="min-height:36px;padding:6px 10px;font-size:12px;" onclick="retakePD()">↺ ถ่ายใหม่</button>'
       +'</div></div>';
   } else {
@@ -1243,6 +1243,7 @@ async function renderPDCard(){
 }
 function retakePD(){ if(confirm('ถ่ายภาพ PD ใหม่แทนภาพเดิม?')) openPDCamera(); }
 async function editPDTime(){
+  flash('🔒 ปิดการแก้ไขเวลาแล้ว — ถ้าต้องการ กด ↺ ถ่ายใหม่'); return;   /* 2026.09.30 — เวลา PD = เวลาถ่ายจริงเท่านั้น */
   const rec = await getPPH(todayKey());
   if(!rec || !rec.pd || !rec.pd.ts){ flash('ยังไม่มีภาพ PD วันนี้'); return; }
   const t = prompt('แก้ไขเวลา PD (HH:MM เช่น 07:05)\n⚠ รายการที่แก้จะติดเครื่องหมาย * ในรายงาน', fmtTime(rec.pd.ts));

@@ -24,6 +24,12 @@
 .mgbtn.on{background:#1a1a1a;border-color:#1a1a1a;color:#fff}.mgbtn.on span{color:#FFCC00}
 .row-c .cmt{font-size:12.5px;color:#7a4f00;background:#FFF4D6;border-radius:8px;padding:4px 8px;margin-top:4px;line-height:1.45;word-break:break-word}
 .row-c .cmt i{color:#9a8350;font-style:normal;font-size:11.5px}
+#mZoom{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:10px;cursor:zoom-out}
+#mZoom.on{display:flex}
+#mZoom img{max-width:100%;max-height:72vh;border-radius:12px;background:#222;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#mZoom .zc{color:#fff;text-align:center;font-size:15px;line-height:1.5;max-width:520px}
+#mZoom .zm{margin-top:6px;background:#FFF4D6;color:#5c4000;border-radius:10px;padding:6px 10px;font-size:14px;text-align:left}
+#mZoom .zx{color:#bbb;font-size:13px}
 .mgsel{font-size:12.5px;background:#fff8d9;border-radius:10px;padding:7px 10px;margin:0 0 9px;line-height:1.5}
 .mgsel a{color:#C62828;font-weight:800;cursor:pointer;margin-left:4px;white-space:nowrap}   /* แจ้งผลการกด (สำเร็จ/ไม่สำเร็จ) ให้ลอยเหนือหน้าต่างเสมอ */
 .fitem.bad{background:#C62828 !important;}
@@ -176,7 +182,15 @@ function feed(t, cls){ const f=$('feed'), d=document.createElement('div'), ic = 
 window.__close = () => { $('mdl').classList.remove('show'); OPENDEP = null; };
 function modal(h){ $('mdlBody').innerHTML = h; $('mdl').classList.add('show'); $('mdlBody').scrollTop = 0; }
 const zoomSrc = {};
-window.__zoomImg = k => { if (window.__phZoom) return window.__phZoom(zoomSrc[k], k); const w = window.open(); if (w) w.document.write('<img src="'+zoomSrc[k]+'" style="max-width:100%">'); };
+/* ดูรูปใหญ่ในหน้าเดียวกัน (ไม่เปิดหน้าต่างใหม่ — มือถือ/LINE บล็อกหน้าต่างใหม่) · แตะที่ใดก็ได้เพื่อปิด */
+const ZCAP = {};
+window.__zoomImg = async k => {
+  let src = zoomSrc[k] || PH[k];
+  if (!src) { const [dep, id] = k.split('|'); feed('กำลังโหลดรูป…'); await loadThumb(dep, id); src = zoomSrc[k] || PH[k]; if (!src) { feed('โหลดรูปไม่สำเร็จ — ลองใหม่อีกครั้ง','bad'); return; } }
+  let z = document.getElementById('mZoom');
+  if (!z) { document.body.insertAdjacentHTML('beforeend', '<div id="mZoom" onclick="this.classList.remove(\'on\')"><img alt=""><div class="zc"></div><div class="zx">แตะเพื่อปิด ✕</div></div>'); z = document.getElementById('mZoom'); }
+  z.querySelector('img').src = src; z.querySelector('.zc').innerHTML = ZCAP[k] || ''; z.classList.add('on');
+};
 
 /* ================= LOGIN (PIN อย่างเดียว เหมือนต้นฉบับ) ================= */
 (async function boot(){
@@ -481,10 +495,12 @@ function openDep(dep, refresh){
   const ins = P.filter(p=>p.ck).sort((a,b)=>a.ck.ts-b.ck.ts), abs = P.filter(p=>p.ab), no = P.filter(p=>!p.ck&&!p.ab);
   const row = p => {
     const k = dep+'|'+p.id, off = p.ck ? clockOff(p.ck) : 0;
-    const img = p.ck ? (PH[k] ? '<img class="thumb" src="'+PH[k]+'" onclick="window.__zoomImg(\''+k+'\')">' : '<div class="thumb" id="th_'+esc(dep)+'_'+esc(p.id)+'" style="display:grid;place-items:center;font-size:10px;color:#b0a892;">⏳</div>') : '';
+    const img = p.ck ? (PH[k] ? '<img class="thumb" src="'+PH[k]+'">' : '<div class="thumb" id="th_'+esc(dep)+'_'+esc(p.id)+'" style="display:grid;place-items:center;font-size:10px;color:#b0a892;">⏳</div>') : '';
     const chip = p.ck ? (isLate(p.ck) ? '<span class="chip no">✖ '+hm(p.ck.ts)+'</span>' : '<span class="chip ok">✔ '+hm(p.ck.ts)+'</span>')
                : p.ab ? '<span class="chip gr">'+esc(p.ab.note||'ขาด')+'</span>' : '<span class="chip '+(pastOf(dep)?'no':'wt')+'">ยังไม่ลง</span>';
-    return '<div class="row-c">'+img+'<div class="info"><div class="nm">'+esc(p.c.name)+'</div><div class="sub2">'+esc(p.c.code)+' • '+esc(p.c.vendor||'-')
+    if (p.ck) ZCAP[k] = '<b>'+esc(p.c.name)+'</b><br>'+esc(p.c.code)+' • '+hm(p.ck.ts)+' • '+(isLate(p.ck)?'<span style="color:#ff8a80">Late</span>':'<span style="color:#9be7a3">Ontime</span>')+' • โดย '+esc(p.ck.staff||'-')
+      + (day.cmt && day.cmt[p.id] && day.cmt[p.id].t ? '<div class="zm">💬 '+esc(day.cmt[p.id].t)+'</div>' : '');
+    return '<div class="row-c"'+(p.ck ? ' onclick="window.__zoomImg(\''+k+'\')" style="cursor:pointer"' : '')+'>'+img+'<div class="info"><div class="nm">'+esc(p.c.name)+'</div><div class="sub2">'+esc(p.c.code)+' • '+esc(p.c.vendor||'-')
       + (p.ck ? ' • โดย '+esc(p.ck.staff||'-') : p.ab ? ' • โดย '+esc(p.ab.by||'-') : '')
       + (off ? ' • <b style="color:#b3121d">⏱ เวลาเครื่องต่าง '+Math.abs(off)+' นาที</b>' : '')
       + (p.ck && p.ck.off ? ' • 📴 ลงตอนออฟไลน์' : '') + '</div>'
@@ -513,8 +529,8 @@ async function loadThumb(dep, id){
     catch(e){ await new Promise(r => setTimeout(r, 1200*(a+1))); }
   }
   const el = document.getElementById('th_'+dep+'_'+id);
-  if (el) el.outerHTML = PH[k] ? '<img class="thumb" src="'+PH[k]+'" onclick="window.__zoomImg(\''+k+'\')">'
-    : '<div class="thumb" id="th_'+esc(dep)+'_'+esc(String(id))+'" onclick="window.__reThumb(\''+esc(dep)+'\',\''+esc(String(id))+'\')" style="display:grid;place-items:center;font-size:9.5px;color:'+(miss?'#8a6100':'#b3121d')+';font-weight:800;text-align:center;cursor:pointer;line-height:1.25;">'+(miss?'รอรูป<br>แตะโหลด':'↻ แตะ<br>โหลดใหม่')+'</div>';
+  if (el) el.outerHTML = PH[k] ? '<img class="thumb" src="'+PH[k]+'">'
+    : '<div class="thumb" id="th_'+esc(dep)+'_'+esc(String(id))+'" onclick="event.stopPropagation();window.__reThumb(\''+esc(dep)+'\',\''+esc(String(id))+'\')" style="display:grid;place-items:center;font-size:9.5px;color:'+(miss?'#8a6100':'#b3121d')+';font-weight:800;text-align:center;cursor:pointer;line-height:1.25;">'+(miss?'รอรูป<br>แตะโหลด':'↻ แตะ<br>โหลดใหม่')+'</div>';
   if (PH[k]) zoomSrc[k] = PH[k];
 }
 window.__reThumb = (dep, id) => { const el = document.getElementById('th_'+dep+'_'+id); if (el) el.innerHTML = '⏳'; loadThumb(dep, id); };

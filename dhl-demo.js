@@ -52,8 +52,8 @@ window.dsRemovedIds = () => []; window.dsPhotoQueue = () => 0;
 window.dsAbsOpen = (cid, name, code) => {
   const t = prompt('🟣 บันทึก '+name+' ('+code+') เป็น:\n1 = ลากิจ\n2 = ลาป่วย\n3 = ขาดงาน', '1'); if (t == null) return;
   const L = { '1':'ลากิจ', '2':'ลาป่วย', '3':'ขาดงาน' }[String(t).trim()]; if (!L) return;
-  const a = absLoad(); a[String(cid)] = { label:L, ts:Date.now() }; localStorage.setItem('abs_'+dkey(), JSON.stringify(a)); };
-window.dsAbsClear = cid => { const a = absLoad(); delete a[String(cid)]; localStorage.setItem('abs_'+dkey(), JSON.stringify(a)); };
+  const a = absLoad(); a[String(cid)] = { label:L, ts:Date.now() }; localStorage.setItem('abs_'+dkey(), JSON.stringify(a)); try { (0,eval)('renderCheckin')(); } catch(e){} };
+window.dsAbsClear = cid => { const a = absLoad(); delete a[String(cid)]; localStorage.setItem('abs_'+dkey(), JSON.stringify(a)); try { (0,eval)('renderCheckin')(); } catch(e){} };
 
 /* ---------- 5) กล้องจำลอง (ใช้เมื่อไม่มีกล้อง หรือ &fakecam=1) ---------- */
 function fakeStream(){

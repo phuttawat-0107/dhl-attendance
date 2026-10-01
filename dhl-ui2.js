@@ -6,7 +6,7 @@
    ============================================================ */
 (function(){
 'use strict';
-const UI2_VER = '2026.10.01-h';
+const UI2_VER = '2026.10.01-i';
 const UI2 = ['TEST'];                                   /* สาขาที่เห็นหน้าใหม่ (นำร่อง) */
 const G = n => { try { return (0,eval)(n); } catch(e){ return undefined; } };
 const $ = id => document.getElementById(id);
@@ -151,7 +151,7 @@ async function stepData(){
   const avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null, s = secNow();
   const S = [
     { v:'checkin', l:'เข้างาน', val: allIn ? Math.max(...recs.map(r=>+r.ts)) : null, txt: allIn ? null : recs.length+'/'+need, st: allIn ? (recs.some(r=>r.status==='late')?'late':'ok') : (s >= CUT-1800 ? 'now' : '') },
-    { v:'pd', l:'PD', val: p.pd && p.pd.ts, st: p.pd && p.pd.ts ? (secOf(p.pd.ts) >= PD_A && secOf(p.pd.ts) <= PD_B ? 'ok' : 'late') : (recs.length && s >= PD_A-600 ? 'now' : '') },
+    { v:'pd', l:'PD', val: p.pd && p.pd.ts, st: p.pd && p.pd.ts ? (secOf(p.pd.ts) <= PD_B ? 'ok' : 'late') : (recs.length && s >= PD_A-600 ? 'now' : '') },
     { v:'pph', l:'First IB', val: p.inboundTs, st: p.inboundTs ? 'ok' : '' },
     { v:'pph', l:'Last IB', val: p.lastInboundTs, st: p.lastInboundTs ? 'ok' : '' },
     { v:'pph', l:'Depart', val: avg(deps), st: deps.length ? (secOf(avg(deps)) < DEP_T ? 'ok' : 'late') : '' },
@@ -249,20 +249,20 @@ async function renderPD(){ const v = $('view-pd'); if (!v) return; let el = $('u
   const p = (await pphOf(today())) || {}, s = secNow(), pd = p.pd && p.pd.ts ? p.pd : null;
   document.body.classList.toggle('u2pdok', !!pd);
   if (pd){ /* ถ่ายแล้ว → แสดงสัญลักษณ์ชัดเจน: ✔ + รูป + เวลา + ในช่วง/นอกช่วง */
-    const inW = secOf(pd.ts) >= PD_A && secOf(pd.ts) <= PD_B, sg = pd.ts+':'+(pd.photo ? pd.photo.length : 0);
+    const inW = secOf(pd.ts) <= PD_B, sg = pd.ts+':'+(pd.photo ? pd.photo.length : 0);
     if (sg === PDSIG) return; PDSIG = sg;
     el.innerHTML = '<div style="display:flex;align-items:center;gap:10px"><div style="width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:24px;font-weight:900;color:#fff;background:'+(inW?'#2E7D32':'#C62828')+'">'+(inW?'✓':'!')+'</div>'
-      + '<div style="flex:1"><div style="font-weight:800;font-size:16px">📸 ถ่าย PD แล้ว '+hm(pd.ts)+'</div><span class="ch '+(inW?'u-ok':'u-late')+'">'+(inW?'✔ ในช่วง 07:00–07:15':'✖ นอกช่วง 07:00–07:15')+'</span></div></div>'
+      + '<div style="flex:1"><div style="font-weight:800;font-size:16px">📸 ถ่าย PD แล้ว '+hm(pd.ts)+'</div><span class="ch '+(inW?'u-ok':'u-late')+'">'+(inW?'✔ ทันเวลา (ไม่เกิน 07:15)':'✖ เกิน 07:15')+'</span></div></div>'
       + (pd.photo ? '<img src="'+pd.photo+'" alt="" style="width:100%;display:block;margin-top:10px;border-radius:12px;border:1.5px solid var(--u-line)">'
                   : '<div style="margin-top:10px;background:#f3f0e7;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:var(--u-mut)">📷 รูปถ่ายจากอีกเครื่อง — กำลังโหลดมาเครื่องนี้</div>')
       + '<button id="u2pdre" style="display:block;width:100%;margin-top:10px;border:1.5px solid var(--u-line);background:#fff;border-radius:12px;padding:11px;font:inherit;font-weight:800">↺ ถ่ายใหม่</button>';
     const rb = $('u2pdre'); if (rb) rb.onclick = () => call('retakePD');
     return; }
   PDSIG = '';
-  const inW = s >= PD_A && s <= PD_B;
-  el.innerHTML = '<div style="font-weight:800">📸 ประชุมเช้า PD · 07:00–07:15</div><div class="big" style="color:'+(inW?'#2E7D32':s<PD_A?'#B7791F':'#C62828')+'">'
-    + (s < PD_A ? 'อีก '+Math.ceil((PD_A-s)/60)+' นาที' : inW ? 'เหลือ '+Math.ceil((PD_B-s)/60)+' นาที' : 'เลย '+Math.floor((s-PD_B)/60)+' นาที')+'</div>'
-    + '<div style="text-align:center;font-size:12.5px;color:var(--u-mut)">'+(s<PD_A?'ยังไม่ถึงเวลาประชุม':inW?'อยู่ในช่วงเวลาถ่าย PD':'เลยช่วงเวลาแล้ว — ถ่ายได้ แต่นับว่านอกช่วง')+' · 🔒 เวลา = เวลาถ่ายจริง</div>'; }
+  const inW = s <= PD_B;
+  el.innerHTML = '<div style="font-weight:800">📸 ประชุมเช้า PD · ถ่ายไม่เกิน 07:15</div><div class="big" style="color:'+(inW?'#2E7D32':'#C62828')+'">'
+    + (inW ? 'เหลือ '+Math.ceil((PD_B-s)/60)+' นาที' : 'เลย '+Math.floor((s-PD_B)/60)+' นาที')+'</div>'
+    + '<div style="text-align:center;font-size:12.5px;color:var(--u-mut)">'+(inW?'ถ่ายตอนประชุม — ก่อน 07:15 นับว่าทันเวลา ✔':'เลย 07:15 แล้ว — ถ่ายได้ แต่นับว่าไม่ทัน')+' · 🔒 เวลา = เวลาถ่ายจริง</div>'; }
 
 /* ---------- PPH Route prep + First Del: FS → Depart → 1st Del (รายคน · ยืนยันทุกขั้น) ----------
    ใช้ rpStamp(cid,k) เดิมของแอป (มีตรวจลำดับเวลาอยู่แล้ว) · ไม่มีการแก้เวลา · กดแล้วต้องยืนยันใน Pop Up
@@ -436,7 +436,7 @@ async function showDone(force){
   const kp = (v, l, c) => '<div style="background:'+c+';border-radius:12px;padding:8px 4px;text-align:center"><b style="display:block;font-size:19px">'+v+'</b><span style="font-size:11px;font-weight:700;opacity:.8">'+l+'</span></div>';
   sheet('<div class="u2dn"><div class="cf">🎉</div><h3>เยี่ยมมาก! ครบทุกขั้นตอนแล้ว</h3><div class="sb2">'+esc(depot())+' · ไม่มีงานค้าง · ส่งรายงานให้หัวหน้าได้เลย</div>'
     + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:12px 0">'
-    + kp(pc+'%','Ontime ('+on+'/'+d.n+')', pc===100?'var(--u-okb)':'#f3f0e7') + kp(d.pd?hm(d.pd):'—','PD', '#f3f0e7')
+    + kp(pc+'%','Ontime ('+on+'/'+d.n+')', pc===100?'var(--u-okb)':'#f3f0e7') + kp(d.pd?hm(d.pd):'—','PD', d.pd&&secOf(d.pd)<=PD_B?'var(--u-okb)':'var(--u-lateb)')
     + kp(d.dep?hm(d.dep):'—','Depart เฉลี่ย', d.dep&&secOf(d.dep)<DEP_T?'var(--u-okb)':'var(--u-lateb)') + kp(d.fd?hm(d.fd):'—','1st Del เฉลี่ย', d.fd&&secOf(d.fd)<FDEL_T?'var(--u-okb)':'var(--u-lateb)') + '</div>'
     + '<button class="bt ln" data-all="1">📤 ส่ง Report ทั้งหมดทาง LINE<small>Report 1 · Report 2 · Route prep (3 รูป)</small></button>'
     + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px">'+[['Report1','Report 1'],['Report2','Report 2'],['RoutePrep','Route prep']].map(x => '<button class="bt o" style="margin:0;font-size:12.5px;padding:10px 4px" data-one="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>'

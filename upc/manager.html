@@ -157,7 +157,7 @@ const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','
 function thDate(k){ const d=new Date(k+'T00:00:00'); const M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; return d.getDate()+' '+M[d.getMonth()]+' '+(d.getFullYear()+543); }
 const isLate = r => r && (r.status ? r.status==='late' : secOf(r.ts) > (r.cut||CUT)+600);
 const pastOf = dep => secOf(Date.now()) > cutOf(DEPS[dep]) + 600;   /* เลยเวลาเข้างาน(+ผ่อนผัน)ของสาขานั้นแล้ว */
-const TIMES = ['06:00','06:30','07:00','07:30','08:00','08:30','09:00'];
+const TIMES = ['06:00','06:30','07:00','07:30','08:00','08:30','09:00','09:30','10:00'];
 const toSec = t => { const m=/^(\d{1,2})[:.](\d{2})$/.exec(String(t||'').trim()); return m ? (+m[1])*3600+(+m[2])*60 : 0; };
 /* สาขาของ K.Wanchai Prukrunggroj (อีสาน) — เติมในหน้า "เพิ่มหลายสาขา" */
 const DEP_PRESET = [
@@ -193,7 +193,7 @@ const DEP_PRESET = [
   /* K.Suphasil Nanthong (อีสาน) — เพิ่ม 1 ต.ค. 2569 */
   ['ARN','ARN','North-East','','08:30','K.Suphasil Nanthong','K.Chanchai Thammasonthicharoen'],
   ['KHK','KHK','North-East','','08:00','K.Suphasil Nanthong','K.Manop Patprom'],
-  ['MHN','MHN','North-East','','09:00','K.Suphasil Nanthong','K.Petcharin Sangjant, K.Anuchit Saphoo'],
+  ['MHN','MHN','North-East','','10:00','K.Suphasil Nanthong','K.Petcharin Sangjant, K.Anuchit Saphoo'],
   ['SKT','SKT','North-East','','08:00','K.Suphasil Nanthong','K.Tassanai Chaiyota, K.Nirut Kulathet'],
   ['UBI','UBI','North-East','','08:00','K.Suphasil Nanthong','K.Prapan Srilasak, K.Nattawan Songnoy, K.Apichit Saphoo, K.Thiwakon Khamphan'],
   ['UTP','UTP','North-East','','08:00','K.Suphasil Nanthong','K.Sa-nguan Rueanpancha'],

@@ -27,11 +27,11 @@ button{font:inherit;border:0;border-radius:10px;padding:12px 14px;font-weight:70
 input,select{font:inherit;width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--ln);background:var(--card);color:var(--tx)}
 label{font-size:13px;color:var(--mu);display:block;margin:8px 0 4px}
 #banner{display:none;background:var(--r);color:#fff;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-weight:700;font-size:14px;cursor:pointer}
-#result{border-radius:16px;padding:20px 14px;text-align:center;margin-bottom:12px;background:var(--card);border:2px dashed var(--ln);transition:.15s}
+#result{border-radius:16px;padding:12px 12px;text-align:center;margin-bottom:12px;background:var(--card);border:2px dashed var(--ln);transition:.15s;position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hh,64px));z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.15)}
 #result .lbl{font-size:16px;font-weight:700;opacity:.9}
-#result .edd{font-size:58px;font-weight:900;line-height:1.1;margin:4px 0}
-#result .rel{font-size:20px;font-weight:800}
-#result .trk{font-size:15px;opacity:.9;word-break:break-all;margin-top:8px;font-family:Consolas,monospace}
+#result .edd{font-size:50px;font-weight:900;line-height:1.05;margin:2px 0}
+#result .rel{font-size:22px;font-weight:900}
+#result .trk{font-size:14px;opacity:.9;word-break:break-all;margin-top:4px;font-family:Consolas,monospace}
 #result .chips{margin-top:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 #result .chip{background:rgba(0,0,0,.18);padding:3px 10px;border-radius:8px;font-weight:700;font-size:14px}
 #reader{width:100%;border-radius:12px;overflow:hidden;margin-top:10px}
@@ -97,12 +97,10 @@ nav button.on{color:var(--r);border-top:3px solid var(--r)}
   <div class="card">
     <h3>เสียงตอบรับ</h3>
     <div class="toggle"><span>เปิดเสียงพูด</span><input type="checkbox" id="voiceOn"></div>
-    <label>รูปแบบเสียง</label>
-    <select id="voiceFmt">
-      <option value="dm">วันที่ + เดือน (เช่น "สิบสี่ กุมภา")</option>
-      <option value="d">วันที่อย่างเดียว (เช่น "สิบสี่")</option>
-      <option value="dmr">วันที่ + เดือน + สถานะ (เช่น "สิบสี่ กุมภา วันนี้")</option>
-    </select>
+    <div class="hint">เสียงที่พูด: "วันที่ [เลขวัน] [คำสั่ง]" เช่น "วันที่ 5 ส่งวันนี้"</div>
+    <label>คำสั่งเมื่อ EDD = วันนี้</label><input id="wToday">
+    <label>คำสั่งเมื่อ EDD ล่วงหน้า (พรุ่งนี้ขึ้นไป)</label><input id="wFuture">
+    <label>คำสั่งเมื่อ EDD เลยกำหนด</label><input id="wOver">
     <div class="toggle"><span>เสียงบี๊บ</span><input type="checkbox" id="beepOn"></div>
     <div class="toggle"><span>สั่น (Android)</span><input type="checkbox" id="vibOn"></div>
     <label>ความเร็วเสียง <b id="rateV"></b></label><input type="range" id="rate" min="0.8" max="2" step="0.1">
@@ -139,8 +137,9 @@ const idbGet=k=>IDB.then(db=>new Promise((res,rej)=>{const q=db.transaction('kv'
 const idbSet=(k,v)=>IDB.then(db=>new Promise((res,rej)=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res(true);t.onerror=()=>rej(t.error)}));
 const saveScans=()=>idbSet('scans',SCANS).catch(e=>console.error(e));
 let REC={}, IDX={}, SCANS=[],
-    SET=Object.assign({voice:true,fmt:'dm',beep:true,vib:true,rate:1.2,staff:false,pin:'',importAt:null,importDay:null,scanDay:null,map:null},S.get('edd2_set',{}));
+    SET=Object.assign({voice:true,words:{today:'ส่งวันนี้',future:'แยกออก',over:'เลยกำหนด'},beep:true,vib:true,rate:1.2,staff:false,pin:'',importAt:null,importDay:null,scanDay:null,map:null},S.get('edd2_set',{}));
 let rawRows=[],headers=[];
+const setHH=()=>document.documentElement.style.setProperty('--hh',document.querySelector('header').offsetHeight+'px');setHH();addEventListener('resize',setHH);addEventListener('load',setHH);try{new ResizeObserver(setHH).observe(document.querySelector('header'))}catch(e){}
 
 /* ---------- Date ---------- */
 const MON={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11,
@@ -165,17 +164,15 @@ const fullDate=d=>{if(!d)return'-';const[y,m,dd]=d.split('-');return`${dd}/${m}/
 function relInfo(e){
   if(!e)return{txt:'ไม่มี EDD',bg:'#7b1fa2',fg:'#fff'};
   const d=dayDiff(e,todayStr());
-  if(d<0)return{txt:`เลยกำหนด ${-d} วัน`,bg:'#D40511',fg:'#fff',say:'เลยกำหนด'};
-  if(d===0)return{txt:'วันนี้',bg:'#FFCC00',fg:'#1a1a1a',say:'วันนี้'};
-  if(d===1)return{txt:'พรุ่งนี้',bg:'#1e8e3e',fg:'#fff',say:'พรุ่งนี้'};
-  return{txt:`อีก ${d} วัน`,bg:'#1a73e8',fg:'#fff',say:`อีก ${d} วัน`};
+  const W=SET.words||{};
+  if(d<0)return{txt:`เลยกำหนด ${-d} วัน`,act:W.over||'เลยกำหนด',bg:'#D40511',fg:'#fff'};
+  if(d===0)return{txt:'วันนี้',act:W.today||'ส่งวันนี้',bg:'#FFCC00',fg:'#1a1a1a'};
+  if(d===1)return{txt:'พรุ่งนี้',act:W.future||'แยกออก',bg:'#1e8e3e',fg:'#fff'};
+  return{txt:`อีก ${d} วัน`,act:W.future||'แยกออก',bg:'#1a73e8',fg:'#fff'};
 }
 function voiceText(e){
   if(!e)return'ไม่มีวันกำหนดส่ง';
-  const[y,m,d]=e.split('-');
-  if(SET.fmt==='d')return String(+d);
-  const base=`${+d} ${TH_M[m-1]}`;
-  return SET.fmt==='dmr'?base+' '+relInfo(e).say:base;
+  return`วันที่ ${+e.split('-')[2]} ${relInfo(e).act}`;
 }
 
 /* ---------- Import ---------- */
@@ -265,7 +262,7 @@ function paint(bg,fg){const r=$('result');r.style.background=bg;r.style.color=fg
 function showResult(trk,rec,dup){
   const ri=relInfo(rec.e);
   paint(ri.bg,ri.fg).innerHTML=`<div class="lbl">${dup?'⚠ สแกนซ้ำ · ':''}EDD</div><div class="edd">${showDate(rec.e)}</div>
-  <div class="rel">${ri.txt}</div><div class="trk">${trk}</div>
+  <div class="rel">${!ri.act?ri.txt:ri.act.includes(ri.txt)?ri.act:ri.txt.includes(ri.act)?ri.txt:ri.act+' · '+ri.txt}</div><div class="trk">${trk}</div>
   ${rec.i?`<div class="chips">${rec.i.split(' · ').map(x=>`<span class="chip">${x}</span>`).join('')}</div>`:''}`;
 }
 function showNotFound(trk){paint('#424242','#fff').innerHTML=`<div class="lbl">ไม่พบในไฟล์ EDD</div><div class="edd" style="font-size:40px">✖ ไม่พบ</div><div class="trk">${trk}</div>`}
@@ -316,12 +313,12 @@ function renderSum(){
     const r=relInfo(k||null);return`<tr><td>${k?fullDate(k):'(ไม่มี)'}</td><td><span class="tag" style="background:${r.bg};color:${r.fg}">${r.txt}</span></td><td>${g[k].toLocaleString()}</td><td>${(sc[k]||0).toLocaleString()}</td></tr>`}).join('')}</table>`:'<div class="hint">ยังไม่มีข้อมูล</div>';
 }
 function renderSettings(){
-  $('voiceOn').checked=SET.voice;$('voiceFmt').value=SET.fmt;$('beepOn').checked=SET.beep;$('vibOn').checked=SET.vib;
+  $('voiceOn').checked=SET.voice;const W=SET.words||{};$('wToday').value=W.today||'';$('wFuture').value=W.future||'';$('wOver').value=W.over||'';$('beepOn').checked=SET.beep;$('vibOn').checked=SET.vib;
   $('rate').value=SET.rate;$('rateV').textContent=SET.rate+'x';$('staffOn').checked=SET.staff;$('pinSet').value=SET.pin||'';
 }
 const save=()=>S.set('edd2_set',SET);
 $('voiceOn').onchange=e=>{SET.voice=e.target.checked;save()};
-$('voiceFmt').onchange=e=>{SET.fmt=e.target.value;save();speak(voiceText(todayStr()))};
+['wToday:today','wFuture:future','wOver:over'].forEach(s=>{const[id,k]=s.split(':');$(id).onchange=e=>{SET.words=Object.assign({},SET.words,{[k]:e.target.value.trim()});save();speak(`วันที่ 5 ${SET.words[k]}`)}});
 $('beepOn').onchange=e=>{SET.beep=e.target.checked;save()};
 $('vibOn').onchange=e=>{SET.vib=e.target.checked;save()};
 $('rate').oninput=e=>{SET.rate=+e.target.value;$('rateV').textContent=SET.rate+'x';save()};

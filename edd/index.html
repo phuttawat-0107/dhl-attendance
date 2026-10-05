@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DHL EDD Sorter</title>
+<style>
+:root{--y:#FFCC00;--r:#D40511;--k:#1a1a1a;--bg:#f4f4f4;--card:#fff;--tx:#1a1a1a;--mu:#666;--ln:#e3e3e3;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--card:#1e1e1e;--tx:#f2f2f2;--mu:#aaa;--ln:#333}}
+:root[data-theme="dark"]{--bg:#121212;--card:#1e1e1e;--tx:#f2f2f2;--mu:#aaa;--ln:#333}
+*{box-sizing:inherit;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{font-family:"Segoe UI",Tahoma,"Noto Sans Thai",sans-serif;background:var(--bg);color:var(--tx);padding-bottom:76px}
+header{background:var(--card);border-top:5px solid var(--y);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--ln);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.logo{font-weight:900;font-style:italic;color:var(--r);font-size:22px;user-select:none}.logo span{color:var(--tx);font-style:normal;font-weight:600;font-size:14px;margin-left:4px}
+.sub{font-size:12px;color:var(--mu)}
+main{padding:12px;max-width:640px;margin:0 auto}
+.page{display:none}.page.on{display:block}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;border-left:5px solid var(--y);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card.red{border-left-color:var(--r)}
+h3{font-size:15px;margin-bottom:10px}
+button{font:inherit;border:0;border-radius:10px;padding:12px 14px;font-weight:700;cursor:pointer;background:var(--y);color:#1a1a1a}
+.btn2{background:transparent;border:1.5px solid var(--ln);color:var(--tx)}
+.btnr{background:var(--r);color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1}
+input,select{font:inherit;width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--ln);background:var(--card);color:var(--tx)}
+label{font-size:13px;color:var(--mu);display:block;margin:8px 0 4px}
+#banner{display:none;background:var(--r);color:#fff;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-weight:700;font-size:14px;cursor:pointer}
+#result{border-radius:16px;padding:20px 14px;text-align:center;margin-bottom:12px;background:var(--card);border:2px dashed var(--ln);transition:.15s}
+#result .lbl{font-size:16px;font-weight:700;opacity:.9}
+#result .edd{font-size:58px;font-weight:900;line-height:1.1;margin:4px 0}
+#result .rel{font-size:20px;font-weight:800}
+#result .trk{font-size:15px;opacity:.9;word-break:break-all;margin-top:8px;font-family:Consolas,monospace}
+#result .chips{margin-top:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+#result .chip{background:rgba(0,0,0,.18);padding:3px 10px;border-radius:8px;font-weight:700;font-size:14px}
+#reader{width:100%;border-radius:12px;overflow:hidden;margin-top:10px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.st{background:var(--card);border-radius:12px;padding:10px;text-align:center;border-top:4px solid var(--c,var(--y))}
+.st b{display:block;font-size:22px}.st small{font-size:11px;color:var(--mu)}
+.log{max-height:320px;overflow:auto}
+.li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--ln);font-size:13px}
+.tag{padding:3px 8px;border-radius:6px;font-weight:700;font-size:12px;white-space:nowrap}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--ln);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:9}
+nav button{flex:1;background:none;border-radius:0;color:var(--mu);padding:10px 4px;font-size:12px}
+nav button.on{color:var(--r);border-top:3px solid var(--r)}
+.tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:6px;border-bottom:1px solid var(--ln);text-align:left}
+.toggle{display:flex;justify-content:space-between;align-items:center;padding:6px 0;gap:10px}
+.toggle input{width:auto;transform:scale(1.4)}
+.mode button{background:var(--bg);color:var(--tx)}.mode button.on{background:var(--k);color:#fff}
+.hint{font-size:12px;color:var(--mu);margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="logo" id="logo">DHL<span>eCommerce</span></div><div class="sub">EDD Sorter · สแกนเช็ค EDD</div></div>
+  <div style="text-align:right"><div class="sub">วันนี้</div><b id="hdrDate"></b></div>
+</header>
+
+<main>
+<section class="page on" id="pg-scan">
+  <div id="banner" onclick="$('file').click()"></div>
+  <div id="result"><div class="lbl" style="color:var(--mu)">พร้อมสแกน</div><div class="trk" id="dataInfo"></div></div>
+  <div class="card">
+    <div class="row mode"><button id="mScanner" class="on" onclick="setMode('scanner')">🔫 เครื่องยิง/พิมพ์</button><button id="mCam" onclick="setMode('camera')">📷 กล้องมือถือ</button></div>
+    <div id="boxScanner" style="margin-top:10px"><input id="scanInput" placeholder="ยิงบาร์โค้ด หรือพิมพ์เลขพัสดุแล้วกด Enter" autocomplete="off" inputmode="text"></div>
+    <div id="boxCam" style="display:none"><div id="reader"></div><div class="hint">เล็งบาร์โค้ดเลขพัสดุให้อยู่ในกรอบ</div></div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="card">
+    <div class="row" style="margin-bottom:8px"><h3 style="margin:0">ประวัติการสแกน</h3><button class="btn2" style="flex:0" onclick="undoLast()">↶ ลบล่าสุด</button></div>
+    <div class="log" id="log"></div>
+  </div>
+</section>
+
+<section class="page" id="pg-data">
+  <div class="card">
+    <h3>นำเข้าไฟล์ EDD ประจำวัน (Excel / CSV)</h3>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
+    <div id="mapBox" style="display:none">
+      <label>คอลัมน์เลขพัสดุ</label><select id="colId"></select>
+      <label>คอลัมน์ EDD</label><select id="colEdd"></select>
+      <button style="margin-top:12px;width:100%" onclick="importData()">✔ นำเข้า (แทนที่ข้อมูลเดิม)</button>
+    </div>
+    <div class="hint" id="impInfo">คอลัมน์อื่น (เช่น MirrorVAS, OrderedProduct) จะแสดงเป็นข้อมูลประกอบอัตโนมัติ</div>
+  </div>
+  <div class="card"><h3>สรุปจำนวนตาม EDD</h3><div id="sumData" class="tbl"></div></div>
+  <div class="card red">
+    <h3>Export / ล้างข้อมูล</h3>
+    <button style="width:100%" onclick="exportXlsx()">⬇ Export ผลสแกน (Excel)</button>
+    <div class="row mgr" style="margin-top:8px"><button class="btn2" onclick="clearScans()">ล้างประวัติสแกน</button><button class="btnr" onclick="clearAll()">ล้างทั้งหมด</button></div>
+    <div class="hint">Export 3 ชีต: Scanned · Not Scanned (ค้าง) · Not Found</div>
+  </div>
+</section>
+
+<section class="page" id="pg-set">
+  <div class="card">
+    <h3>เสียงตอบรับ</h3>
+    <div class="toggle"><span>เปิดเสียงพูด</span><input type="checkbox" id="voiceOn"></div>
+    <label>รูปแบบเสียง</label>
+    <select id="voiceFmt">
+      <option value="dm">วันที่ + เดือน (เช่น "สิบสี่ กุมภา")</option>
+      <option value="d">วันที่อย่างเดียว (เช่น "สิบสี่")</option>
+      <option value="dmr">วันที่ + เดือน + สถานะ (เช่น "สิบสี่ กุมภา วันนี้")</option>
+    </select>
+    <div class="toggle"><span>เสียงบี๊บ</span><input type="checkbox" id="beepOn"></div>
+    <div class="toggle"><span>สั่น (Android)</span><input type="checkbox" id="vibOn"></div>
+    <label>ความเร็วเสียง <b id="rateV"></b></label><input type="range" id="rate" min="0.8" max="2" step="0.1">
+    <button class="btn2" style="margin-top:10px;width:100%" onclick="speak(voiceText(todayStr()))">🔊 ทดสอบเสียง</button>
+    <div class="hint" id="voiceInfo"></div>
+  </div>
+  <div class="card">
+    <h3>โหมด Staff</h3>
+    <label>PIN ปลดล็อก (Manager ตั้งเอง)</label><input id="pinSet" type="password" inputmode="numeric" placeholder="ตั้ง PIN 4-6 หลัก">
+    <div class="toggle" style="margin-top:8px"><span>เปิดโหมด Staff (ซ่อนตั้งค่า/ปุ่มล้างข้อมูล)</span><input type="checkbox" id="staffOn"></div>
+    <div class="hint">ปลดล็อก: แตะโลโก้ DHL 5 ครั้ง แล้วใส่ PIN</div>
+  </div>
+</section>
+</main>
+
+<nav>
+  <button class="on" data-p="scan">📦<br>สแกน</button>
+  <button data-p="data">📊<br>ข้อมูล</button>
+  <button data-p="set" id="navSet">⚙️<br>ตั้งค่า</button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+/* ---------- Storage ---------- */
+const S={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+         set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){alert('พื้นที่เก็บข้อมูลเต็ม/ใช้ไม่ได้');return false}}};
+const $=id=>document.getElementById(id);
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+let REC=S.get('edd2_rec',{}), IDX=S.get('edd2_idx',{}), SCANS=S.get('edd2_scans',[]),
+    SET=Object.assign({voice:true,fmt:'dm',beep:true,vib:true,rate:1.2,staff:false,pin:'',importAt:null,importDay:null,scanDay:null,map:null},S.get('edd2_set',{}));
+if(SET.scanDay&&SET.scanDay!==todayStr()&&SCANS.length){SCANS=[];S.set('edd2_scans',SCANS)} // วันใหม่ → เริ่มนับใหม่
+SET.scanDay=todayStr();
+let rawRows=[],headers=[];
+
+/* ---------- Date ---------- */
+const MON={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11,
+  'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
+const TH_M=['มกรา','กุมภา','มีนา','เมษา','พฤษภา','มิถุนา','กรกฎา','สิงหา','กันยา','ตุลา','พฤศจิกา','ธันวา'];
+const TH_MS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function ymd(y,m,d){if(y<100)y+=2000;if(y>2400)y-=543;const t=new Date(y,m,d);if(isNaN(t))return null;
+  return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')}
+function parseDate(v){
+  if(v==null||v===''||v==='-')return null;
+  if(v instanceof Date&&!isNaN(v))return ymd(v.getFullYear(),v.getMonth(),v.getDate());
+  if(typeof v==='number'){const d=new Date(Math.round((v-25569)*864e5));return ymd(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())}
+  const s=String(v).trim();let m;
+  if(m=s.match(/^(\d{1,2})[-\/ ]([A-Za-zก-๙.]+)[-\/ ](\d{2,4})/)){const mo=MON[m[2].toUpperCase().slice(0,3)]??MON[m[2]];if(mo!=null)return ymd(+m[3],mo,+m[1])} // 14-Feb-26
+  if(m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))return ymd(+m[1],m[2]-1,+m[3]);
+  if(m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/))return ymd(+m[3],m[2]-1,+m[1]);
+  const t=new Date(s);return isNaN(t)?null:ymd(t.getFullYear(),t.getMonth(),t.getDate());
+}
+const dayDiff=(a,b)=>Math.round((new Date(a)-new Date(b))/864e5);
+const showDate=d=>{if(!d)return'-';const[y,m,dd]=d.split('-');return`${+dd} ${TH_MS[m-1]}`};
+const fullDate=d=>{if(!d)return'-';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`};
+function relInfo(e){
+  if(!e)return{txt:'ไม่มี EDD',bg:'#7b1fa2',fg:'#fff'};
+  const d=dayDiff(e,todayStr());
+  if(d<0)return{txt:`เลยกำหนด ${-d} วัน`,bg:'#D40511',fg:'#fff',say:'เลยกำหนด'};
+  if(d===0)return{txt:'วันนี้',bg:'#FFCC00',fg:'#1a1a1a',say:'วันนี้'};
+  if(d===1)return{txt:'พรุ่งนี้',bg:'#1e8e3e',fg:'#fff',say:'พรุ่งนี้'};
+  return{txt:`อีก ${d} วัน`,bg:'#1a73e8',fg:'#fff',say:`อีก ${d} วัน`};
+}
+function voiceText(e){
+  if(!e)return'ไม่มีวันกำหนดส่ง';
+  const[y,m,d]=e.split('-');
+  if(SET.fmt==='d')return String(+d);
+  const base=`${+d} ${TH_M[m-1]}`;
+  return SET.fmt==='dmr'?base+' '+relInfo(e).say:base;
+}
+
+/* ---------- Import ---------- */
+const norm=s=>String(s??'').trim().toUpperCase().replace(/\s+/g,'');
+const alnum=s=>norm(s).replace(/[^A-Z0-9]/g,'');
+$('file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;SET.fileName=f.name;
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rawRows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      headers=rawRows.length?Object.keys(rawRows[0]):[];
+      if(!headers.length){$('impInfo').textContent='ไม่พบข้อมูลในไฟล์';return}
+      const opt=headers.map(h=>`<option>${h}</option>`).join('');
+      $('colId').innerHTML=opt;$('colEdd').innerHTML=opt;
+      const find=re=>headers.find(h=>re.test(h.toLowerCase()));
+      $('colId').value=(SET.map&&headers.includes(SET.map.id))?SET.map.id:(find(/^id$|track|awb|shipment|parcel|barcode|เลข/)||headers[0]);
+      $('colEdd').value=(SET.map&&headers.includes(SET.map.edd))?SET.map.edd:(find(/edd|expect|due|กำหนด/)||headers[1]||headers[0]);
+      $('impInfo').textContent=`อ่านได้ ${rawRows.length.toLocaleString()} แถว (ชีต "${wb.SheetNames[0]}")`;
+      if(SET.staff&&SET.map&&headers.includes(SET.map.id)&&headers.includes(SET.map.edd))importData();
+      else $('mapBox').style.display='block';
+    }catch(err){$('impInfo').textContent='อ่านไฟล์ไม่ได้: '+err.message}
+  };
+  rd.readAsArrayBuffer(f);
+};
+function importData(){
+  const ci=$('colId').value,ce=$('colEdd').value;
+  const extra=headers.filter(h=>h!==ci&&h!==ce);
+  REC={};IDX={};let ok=0,bad=0;
+  rawRows.forEach(r=>{
+    let raw=r[ci];if(typeof raw==='number')raw=raw.toLocaleString('fullwide',{useGrouping:false});
+    const p=norm(raw);if(p.length<4){bad++;return}
+    const info=extra.map(h=>String(r[h]??'').trim()).filter(v=>v&&v!=='-').join(' · ');
+    REC[p]={e:parseDate(r[ce]),i:info};IDX[p]=p;const a=alnum(p);if(a!==p)IDX[a]=p;ok++});
+  SET.map={id:ci,edd:ce};SET.importAt=new Date().toLocaleString('th-TH');SET.importDay=todayStr();
+  SCANS=[];S.set('edd2_scans',SCANS);S.set('edd2_set',SET);
+  if(S.set('edd2_rec',REC)&&S.set('edd2_idx',IDX)){
+    $('impInfo').textContent=`✔ นำเข้า ${ok.toLocaleString()} รายการ${bad?` (ข้าม ${bad} แถว)`:''} · ${SET.fileName||''} · ${SET.importAt}`;goTab('scan');
+    $('mapBox').style.display='none';$('file').value='';refresh();speak(`นำเข้าข้อมูล ${ok} รายการ`);
+  }
+}
+
+/* ---------- Lookup (กันกรณียิงโดน QR / บาร์โค้ดมี prefix) ---------- */
+function lookup(code){
+  const k=norm(code);if(IDX[k])return IDX[k];
+  const a=alnum(code);if(IDX[a])return IDX[a];
+  for(const t of String(code).toUpperCase().split(/[^A-Z0-9]+/))if(t.length>=8&&IDX[t])return IDX[t];
+  if(a.length>=10)for(const key in IDX)if(key.length>=10&&a.includes(key))return IDX[key];
+  return null;
+}
+
+/* ---------- Feedback ---------- */
+let thVoice=null;
+function loadVoices(){const vs=speechSynthesis.getVoices();thVoice=vs.find(v=>/th/i.test(v.lang))||null;
+  $('voiceInfo').textContent=thVoice?'เสียงภาษาไทย: '+thVoice.name:'⚠ ไม่พบเสียงภาษาไทย — ตั้งค่ามือถือ > Text-to-speech > เลือก Google ภาษาไทย'}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+function speak(t){if(!SET.voice||!('speechSynthesis' in window))return;
+  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='th-TH';if(thVoice)u.voice=thVoice;u.rate=SET.rate;speechSynthesis.speak(u)}
+let actx;function beep(ok){if(!SET.beep)return;try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();
+  const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=ok?1200:300;o.type=ok?'sine':'square';
+  g.gain.value=.15;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+(ok?.08:.35))}catch(e){}}
+const vib=p=>{if(SET.vib&&navigator.vibrate)navigator.vibrate(p)};
+
+/* ---------- Scan ---------- */
+let lastCode='',lastTime=0;
+function handleScan(code){
+  const raw=norm(code);if(!raw)return;
+  const now=Date.now();if(raw===lastCode&&now-lastTime<2000)return;
+  lastCode=raw;lastTime=now;
+  const p=lookup(code),rec=p?REC[p]:null,trk=p||raw;
+  const dup=SCANS.some(s=>s.t===trk);
+  if(!rec){
+    showNotFound(trk);speak(dup?'ซ้ำ ไม่พบข้อมูล':'ไม่พบข้อมูล');beep(false);vib([200,80,200]);
+    if(!dup){SCANS.unshift({t:trk,e:null,nf:1,ts:new Date().toLocaleTimeString('th-TH')});S.set('edd2_scans',SCANS)}
+  }else{
+    showResult(trk,rec,dup);speak((dup?'ซ้ำ ':'')+voiceText(rec.e));beep(!dup);vib(dup?[80,60,80]:60);
+    if(!dup){SCANS.unshift({t:trk,e:rec.e,ts:new Date().toLocaleTimeString('th-TH')});S.set('edd2_scans',SCANS)}
+  }
+  renderStats();renderLog();
+}
+function paint(bg,fg){const r=$('result');r.style.background=bg;r.style.color=fg;r.style.border='2px solid '+bg;return r}
+function showResult(trk,rec,dup){
+  const ri=relInfo(rec.e);
+  paint(ri.bg,ri.fg).innerHTML=`<div class="lbl">${dup?'⚠ สแกนซ้ำ · ':''}EDD</div><div class="edd">${showDate(rec.e)}</div>
+  <div class="rel">${ri.txt}</div><div class="trk">${trk}</div>
+  ${rec.i?`<div class="chips">${rec.i.split(' · ').map(x=>`<span class="chip">${x}</span>`).join('')}</div>`:''}`;
+}
+function showNotFound(trk){paint('#424242','#fff').innerHTML=`<div class="lbl">ไม่พบในไฟล์ EDD</div><div class="edd" style="font-size:40px">✖ ไม่พบ</div><div class="trk">${trk}</div>`}
+$('scanInput').addEventListener('keydown',e=>{if(e.key==='Enter'){handleScan(e.target.value);e.target.value=''}});
+document.addEventListener('click',e=>{if(mode==='scanner'&&$('pg-scan').classList.contains('on')&&!e.target.closest('input,select,button,#banner'))$('scanInput').focus()});
+
+let mode='scanner',cam=null;
+function setMode(m){
+  mode=m;$('mScanner').classList.toggle('on',m==='scanner');$('mCam').classList.toggle('on',m==='camera');
+  $('boxScanner').style.display=m==='scanner'?'block':'none';$('boxCam').style.display=m==='camera'?'block':'none';
+  if(m==='camera')startCam();else{stopCam();$('scanInput').focus()}
+}
+async function startCam(){
+  if(typeof Html5Qrcode==='undefined'){alert('โหลดตัวสแกนกล้องไม่สำเร็จ');return}
+  try{cam=cam||new Html5Qrcode('reader');
+    await cam.start({facingMode:'environment'},{fps:12,qrbox:(w,h)=>({width:Math.min(w*0.9,340),height:Math.min(h*0.4,140)})},t=>handleScan(t),()=>{});
+  }catch(e){alert('เปิดกล้องไม่ได้: '+e+'\nตรวจสิทธิ์กล้องของเบราว์เซอร์')}
+}
+async function stopCam(){try{if(cam&&cam.isScanning)await cam.stop()}catch(e){}}
+
+/* ---------- Render ---------- */
+function renderStats(){
+  const total=Object.keys(REC).length,found=SCANS.filter(s=>!s.nf).length,nf=SCANS.length-found;
+  const today=todayStr();let over=0,td=0;SCANS.forEach(s=>{if(s.nf||!s.e)return;const d=dayDiff(s.e,today);if(d<0)over++;else if(d===0)td++});
+  $('stats').innerHTML=`<div class="st"><b>${total.toLocaleString()}</b><small>ในไฟล์</small></div>
+  <div class="st" style="--c:#1a1a1a"><b>${found.toLocaleString()}</b><small>สแกนแล้ว</small></div>
+  <div class="st" style="--c:#424242"><b>${nf}</b><small>ไม่พบ</small></div>
+  <div class="st" style="--c:#D40511"><b>${over}</b><small>เลยกำหนด</small></div>
+  <div class="st" style="--c:#FFCC00"><b>${td}</b><small>EDD วันนี้</small></div>
+  <div class="st" style="--c:#1a73e8"><b>${found-over-td}</b><small>EDD ล่วงหน้า</small></div>`;
+  $('dataInfo').textContent=total?`${SET.fileName||'ข้อมูล'} · ${total.toLocaleString()} รายการ · อัปเดต ${SET.importAt}`:'';
+  const b=$('banner');
+  if(!total){b.style.display='block';b.textContent='📥 ยังไม่มีข้อมูล — แตะเพื่อเลือกไฟล์ EDD (จาก LINE / อีเมล)'}
+  else if(SET.importDay!==todayStr()){b.style.display='block';b.textContent='📥 ไฟล์ EDD ไม่ใช่ของวันนี้ — แตะเพื่อเลือกไฟล์ล่าสุด'}
+  else b.style.display='none';
+  $('hdrDate').textContent=fullDate(todayStr());
+}
+function renderLog(){
+  $('log').innerHTML=SCANS.slice(0,150).map(s=>{
+    const tag=s.nf?`<span class="tag" style="background:#424242;color:#fff">ไม่พบ</span>`:(()=>{const r=relInfo(s.e);return`<span class="tag" style="background:${r.bg};color:${r.fg}">${showDate(s.e)}</span>`})();
+    return`<div class="li"><span>${s.t}<br><small style="color:var(--mu)">${s.ts}</small></span>${tag}</div>`}).join('')||'<div class="hint">ยังไม่มีการสแกน</div>';
+}
+function renderSum(){
+  const g={},sc={};Object.values(REC).forEach(r=>{const k=r.e||'';g[k]=(g[k]||0)+1});
+  SCANS.forEach(s=>{if(!s.nf){const k=s.e||'';sc[k]=(sc[k]||0)+1}});
+  const keys=Object.keys(g).sort();
+  $('sumData').innerHTML=keys.length?`<div class="hint" style="margin-bottom:6px">อัปเดต: ${SET.importAt||'-'}</div><table><tr><th>EDD</th><th>สถานะ</th><th>ทั้งหมด</th><th>สแกน</th></tr>${keys.map(k=>{
+    const r=relInfo(k||null);return`<tr><td>${k?fullDate(k):'(ไม่มี)'}</td><td><span class="tag" style="background:${r.bg};color:${r.fg}">${r.txt}</span></td><td>${g[k].toLocaleString()}</td><td>${(sc[k]||0).toLocaleString()}</td></tr>`}).join('')}</table>`:'<div class="hint">ยังไม่มีข้อมูล</div>';
+}
+function renderSettings(){
+  $('voiceOn').checked=SET.voice;$('voiceFmt').value=SET.fmt;$('beepOn').checked=SET.beep;$('vibOn').checked=SET.vib;
+  $('rate').value=SET.rate;$('rateV').textContent=SET.rate+'x';$('staffOn').checked=SET.staff;$('pinSet').value=SET.pin||'';
+}
+const save=()=>S.set('edd2_set',SET);
+$('voiceOn').onchange=e=>{SET.voice=e.target.checked;save()};
+$('voiceFmt').onchange=e=>{SET.fmt=e.target.value;save();speak(voiceText(todayStr()))};
+$('beepOn').onchange=e=>{SET.beep=e.target.checked;save()};
+$('vibOn').onchange=e=>{SET.vib=e.target.checked;save()};
+$('rate').oninput=e=>{SET.rate=+e.target.value;$('rateV').textContent=SET.rate+'x';save()};
+$('pinSet').onchange=e=>{SET.pin=e.target.value.trim();save()};
+$('staffOn').onchange=e=>{if(e.target.checked&&!SET.pin){alert('ตั้ง PIN ก่อนเปิดโหมด Staff');e.target.checked=false;return}
+  SET.staff=e.target.checked;save();applyStaff();if(SET.staff)goTab('scan')};
+
+/* ---------- Actions ---------- */
+function undoLast(){if(!SCANS.length)return;if(!confirm('ลบรายการล่าสุด '+SCANS[0].t+' ?'))return;SCANS.shift();S.set('edd2_scans',SCANS);lastCode='';refresh()}
+function clearScans(){if(confirm('ล้างประวัติสแกนทั้งหมด?')){SCANS=[];S.set('edd2_scans',SCANS);refresh()}}
+function clearAll(){if(confirm('ล้างไฟล์ EDD + ประวัติสแกนทั้งหมด?')){REC={};IDX={};SCANS=[];S.set('edd2_rec',REC);S.set('edd2_idx',IDX);S.set('edd2_scans',SCANS);refresh()}}
+async function exportXlsx(){
+  const set=new Set(SCANS.map(s=>s.t));
+  const scanned=SCANS.filter(s=>!s.nf).map(s=>({id:s.t,EDD:fullDate(s.e),Status:relInfo(s.e).txt,Info:REC[s.t]?REC[s.t].i:'',ScanTime:s.ts}));
+  const pending=Object.keys(REC).filter(t=>!set.has(t)).map(t=>({id:t,EDD:fullDate(REC[t].e),Status:relInfo(REC[t].e).txt,Info:REC[t].i}));
+  const nf=SCANS.filter(s=>s.nf).map(s=>({id:s.t,ScanTime:s.ts}));
+  const wb=XLSX.utils.book_new(),sh=a=>XLSX.utils.json_to_sheet(a.length?a:[{id:''}]);
+  XLSX.utils.book_append_sheet(wb,sh(scanned),'Scanned');XLSX.utils.book_append_sheet(wb,sh(pending),'Not Scanned');XLSX.utils.book_append_sheet(wb,sh(nf),'Not Found');
+  const fn=`EDD_Scan_${todayStr()}.xlsx`;
+  const dl=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;
+  if(dl){try{await dl.save({filename:fn,data:new Uint8Array(XLSX.write(wb,{bookType:'xlsx',type:'array'}))})}catch(e){if(e&&e.code!=='declined')alert('Export ไม่สำเร็จ: '+(e.message||e.code))}}
+  else XLSX.writeFile(wb,fn);
+}
+
+/* ---------- Nav / Staff ---------- */
+function goTab(p){
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.p===p));
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));$('pg-'+p).classList.add('on');
+  if(p!=='scan')stopCam();else if(mode==='camera')startCam();else $('scanInput').focus();
+  if(p==='data')renderSum();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>goTab(b.dataset.p));
+function applyStaff(){$('navSet').style.display=SET.staff?'none':'';document.querySelectorAll('.mgr').forEach(e=>e.style.display=SET.staff?'none':'')}
+let taps=0,tapT;$('logo').onclick=()=>{if(!SET.staff)return;taps++;clearTimeout(tapT);tapT=setTimeout(()=>taps=0,1500);
+  if(taps>=5){taps=0;const p=prompt('ใส่ PIN Manager');if(p===null)return;
+    if(p===SET.pin){SET.staff=false;save();applyStaff();renderSettings();goTab('set')}else alert('PIN ไม่ถูกต้อง')}};
+function refresh(){renderStats();renderLog();renderSum()}
+save();renderSettings();applyStaff();refresh();$('scanInput').focus();
+</script>
+</body>
+</html>

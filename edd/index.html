@@ -296,7 +296,7 @@ function renderStats(){
   <div class="st" style="--c:#D40511"><b>${over}</b><small>เลยกำหนด</small></div>
   <div class="st" style="--c:#FFCC00"><b>${td}</b><small>EDD วันนี้</small></div>
   <div class="st" style="--c:#1a73e8"><b>${found-over-td}</b><small>EDD ล่วงหน้า</small></div>`;
-  $('dataInfo').textContent=total?`${SET.fileName||'ข้อมูล'} · ${total.toLocaleString()} รายการ · อัปเดต ${SET.importAt}`:'';
+  const di=$('dataInfo');if(di)di.textContent=total?`${SET.fileName||'ข้อมูล'} · ${total.toLocaleString()} รายการ · อัปเดต ${SET.importAt}`:'';
   const b=$('banner');
   if(!total){b.style.display='block';b.textContent='📥 ยังไม่มีข้อมูล — แตะเพื่อเลือกไฟล์ EDD (จาก LINE / อีเมล)'}
   else if(SET.importDay!==todayStr()){b.style.display='block';b.textContent='📥 ไฟล์ EDD ไม่ใช่ของวันนี้ — แตะเพื่อเลือกไฟล์ล่าสุด'}

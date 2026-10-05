@@ -132,10 +132,14 @@ const S={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}c
          set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){alert('พื้นที่เก็บข้อมูลเต็ม/ใช้ไม่ได้');return false}}};
 const $=id=>document.getElementById(id);
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
-let REC=S.get('edd2_rec',{}), IDX=S.get('edd2_idx',{}), SCANS=S.get('edd2_scans',[]),
+/* ---------- IndexedDB (ข้อมูลใหญ่เก็บแยก ไม่ใช้โควต้า localStorage ร่วมกับแอปอื่น) ---------- */
+const IDB=new Promise((res,rej)=>{const r=indexedDB.open('dhl_edd_sorter',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const idbGet=k=>IDB.then(db=>new Promise((res,rej)=>{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}));
+const idbSet=(k,v)=>IDB.then(db=>new Promise((res,rej)=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res(true);t.onerror=()=>rej(t.error)}));
+const saveScans=()=>idbSet('scans',SCANS).catch(e=>console.error(e));
+let REC={}, IDX={}, SCANS=[],
     SET=Object.assign({voice:true,fmt:'dm',beep:true,vib:true,rate:1.2,staff:false,pin:'',importAt:null,importDay:null,scanDay:null,map:null},S.get('edd2_set',{}));
-if(SET.scanDay&&SET.scanDay!==todayStr()&&SCANS.length){SCANS=[];S.set('edd2_scans',SCANS)} // วันใหม่ → เริ่มนับใหม่
-SET.scanDay=todayStr();
 let rawRows=[],headers=[];
 
 /* ---------- Date ---------- */
@@ -199,7 +203,8 @@ $('file').onchange=e=>{
   };
   rd.readAsArrayBuffer(f);
 };
-function importData(){
+function buildIdx(){IDX={};for(const p in REC){IDX[p]=p;const a=alnum(p);if(a!==p)IDX[a]=p}}
+async function importData(){
   const ci=$('colId').value,ce=$('colEdd').value;
   const extra=headers.filter(h=>h!==ci&&h!==ce);
   REC={};IDX={};let ok=0,bad=0;
@@ -207,10 +212,12 @@ function importData(){
     let raw=r[ci];if(typeof raw==='number')raw=raw.toLocaleString('fullwide',{useGrouping:false});
     const p=norm(raw);if(p.length<4){bad++;return}
     const info=extra.map(h=>String(r[h]??'').trim()).filter(v=>v&&v!=='-').join(' · ');
-    REC[p]={e:parseDate(r[ce]),i:info};IDX[p]=p;const a=alnum(p);if(a!==p)IDX[a]=p;ok++});
+    REC[p]={e:parseDate(r[ce]),i:info};ok++});
+  buildIdx();
   SET.map={id:ci,edd:ce};SET.importAt=new Date().toLocaleString('th-TH');SET.importDay=todayStr();
-  SCANS=[];S.set('edd2_scans',SCANS);S.set('edd2_set',SET);
-  if(S.set('edd2_rec',REC)&&S.set('edd2_idx',IDX)){
+  SCANS=[];saveScans();S.set('edd2_set',SET);
+  let okSave=true;try{await idbSet('rec',REC)}catch(e){okSave=false;alert('บันทึกข้อมูลไม่สำเร็จ: '+e)}
+  if(okSave){
     $('impInfo').textContent=`✔ นำเข้า ${ok.toLocaleString()} รายการ${bad?` (ข้าม ${bad} แถว)`:''} · ${SET.fileName||''} · ${SET.importAt}`;goTab('scan');
     $('mapBox').style.display='none';$('file').value='';refresh();speak(`นำเข้าข้อมูล ${ok} รายการ`);
   }
@@ -247,10 +254,10 @@ function handleScan(code){
   const dup=SCANS.some(s=>s.t===trk);
   if(!rec){
     showNotFound(trk);speak(dup?'ซ้ำ ไม่พบข้อมูล':'ไม่พบข้อมูล');beep(false);vib([200,80,200]);
-    if(!dup){SCANS.unshift({t:trk,e:null,nf:1,ts:new Date().toLocaleTimeString('th-TH')});S.set('edd2_scans',SCANS)}
+    if(!dup){SCANS.unshift({t:trk,e:null,nf:1,ts:new Date().toLocaleTimeString('th-TH')});saveScans()}
   }else{
     showResult(trk,rec,dup);speak((dup?'ซ้ำ ':'')+voiceText(rec.e));beep(!dup);vib(dup?[80,60,80]:60);
-    if(!dup){SCANS.unshift({t:trk,e:rec.e,ts:new Date().toLocaleTimeString('th-TH')});S.set('edd2_scans',SCANS)}
+    if(!dup){SCANS.unshift({t:trk,e:rec.e,ts:new Date().toLocaleTimeString('th-TH')});saveScans()}
   }
   renderStats();renderLog();
 }
@@ -323,9 +330,9 @@ $('staffOn').onchange=e=>{if(e.target.checked&&!SET.pin){alert('ตั้ง PIN
   SET.staff=e.target.checked;save();applyStaff();if(SET.staff)goTab('scan')};
 
 /* ---------- Actions ---------- */
-function undoLast(){if(!SCANS.length)return;if(!confirm('ลบรายการล่าสุด '+SCANS[0].t+' ?'))return;SCANS.shift();S.set('edd2_scans',SCANS);lastCode='';refresh()}
-function clearScans(){if(confirm('ล้างประวัติสแกนทั้งหมด?')){SCANS=[];S.set('edd2_scans',SCANS);refresh()}}
-function clearAll(){if(confirm('ล้างไฟล์ EDD + ประวัติสแกนทั้งหมด?')){REC={};IDX={};SCANS=[];S.set('edd2_rec',REC);S.set('edd2_idx',IDX);S.set('edd2_scans',SCANS);refresh()}}
+function undoLast(){if(!SCANS.length)return;if(!confirm('ลบรายการล่าสุด '+SCANS[0].t+' ?'))return;SCANS.shift();saveScans();lastCode='';refresh()}
+function clearScans(){if(confirm('ล้างประวัติสแกนทั้งหมด?')){SCANS=[];saveScans();refresh()}}
+function clearAll(){if(confirm('ล้างไฟล์ EDD + ประวัติสแกนทั้งหมด?')){REC={};IDX={};SCANS=[];idbSet('rec',REC);saveScans();refresh()}}
 async function exportXlsx(){
   const set=new Set(SCANS.map(s=>s.t));
   const scanned=SCANS.filter(s=>!s.nf).map(s=>({id:s.t,EDD:fullDate(s.e),Status:relInfo(s.e).txt,Info:REC[s.t]?REC[s.t].i:'',ScanTime:s.ts}));
@@ -352,7 +359,17 @@ let taps=0,tapT;$('logo').onclick=()=>{if(!SET.staff)return;taps++;clearTimeout(
   if(taps>=5){taps=0;const p=prompt('ใส่ PIN Manager');if(p===null)return;
     if(p===SET.pin){SET.staff=false;save();applyStaff();renderSettings();goTab('set')}else alert('PIN ไม่ถูกต้อง')}};
 function refresh(){renderStats();renderLog();renderSum()}
-save();renderSettings();applyStaff();refresh();$('scanInput').focus();
+(async()=>{
+  // ย้ายข้อมูลเวอร์ชันก่อนออกจาก localStorage → คืนพื้นที่ให้แอปอื่น
+  try{const old=localStorage.getItem('edd2_rec');
+    if(old){await idbSet('rec',JSON.parse(old));const os=localStorage.getItem('edd2_scans');if(os)await idbSet('scans',JSON.parse(os))}
+    ['edd2_rec','edd2_idx','edd2_scans','edd_db','edd_rec','edd_idx','edd_scans','edd_cats','edd_set','edd_map'].forEach(k=>localStorage.removeItem(k));
+  }catch(e){console.warn(e)}
+  try{REC=(await idbGet('rec'))||{};SCANS=(await idbGet('scans'))||[]}catch(e){alert('เปิดที่เก็บข้อมูลไม่ได้: '+e)}
+  if(SET.scanDay&&SET.scanDay!==todayStr()&&SCANS.length){SCANS=[];saveScans()} // วันใหม่ → เริ่มนับใหม่
+  SET.scanDay=todayStr();buildIdx();
+  save();renderSettings();applyStaff();refresh();$('scanInput').focus();
+})();
 </script>
 </body>
 </html>

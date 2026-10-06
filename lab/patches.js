@@ -28,19 +28,21 @@ window.__PATCHES = {
      "      /* 🐞 6 ต.ค.: รวมแบบ 3 ทาง — ช่องไหนเครื่องนี้เพิ่งแก้ (ต่างจากค่าที่ซิงค์ล่าสุด) และคลาวด์ยังไม่เปลี่ยน → เก็บของเครื่องนี้ไว้ส่งขึ้น */\n" +
      "      const B=S._pb||(S._pb={f:{},rp:{}}); let _ch=false;\n" +
      "      PPH_F.forEach(k=>{ const lv=cur[k], cv=r[k], had=(k in B.f), bv=B.f[k];\n" +
-     "        const localEdited = had && !_peq(lv,bv);\n" +
+     "        const localEdited = !!(S._dirty&&S._dirty[k]) || (had && !_peq(lv,bv));\n" +
      "        if(!localEdited || !_peq(cv,bv)){ if(!_peq(lv,cv)){ cur[k]=cv; _ch=true; } }\n" +
      "        B.f[k]=cv; });\n" +
      "      const crp=r.rp||{}, lrp=cur.rp||{}, nrp={};\n" +
      "      new Set([...Object.keys(crp),...Object.keys(lrp)]).forEach(cid=>{ const c=crp[cid]||{}, l=lrp[cid]||{}, hadB=(cid in B.rp), b=B.rp[cid]||{}, o={};\n" +
-     "        ['fs','dep','fdel'].forEach(f=>{ const le = hadB? !_peq(l[f],b[f]) : (l[f]!=null && c[f]==null);\n" +
+     "        ['fs','dep','fdel'].forEach(f=>{ const le = !!(S._dirty&&S._dirty['rp.'+cid+'.'+f]) || (hadB? !_peq(l[f],b[f]) : (l[f]!=null && c[f]==null));\n" +
      "          const v = (le && _peq(c[f],b[f])) ? l[f] : (c[f]!=null? c[f] : (le? l[f] : null));\n" +
      "          if(v!=null) o[f]=v; });\n" +
      "        if(Object.keys(o).length) nrp[cid]=o;\n" +
      "        B.rp[cid]={fs:c.fs,dep:c.dep,fdel:c.fdel}; });\n" +
      "      if(!_peq(nrp,lrp)){ cur.rp=nrp; _ch=true; }\n" +
      "      if(r.pd && (!cur.pd || cur.pd.ts!==r.pd.ts || (!!cur.pd.manualEdit)!==(!!r.pd.manualEdit))){ cur.pd = cur.pd||{}; cur.pd.ts=r.pd.ts; cur.pd.manualEdit=!!r.pd.manualEdit; _ch=true; }\n" +
-     "      if(_ch){ await putPp(cur); changed=true; }", 1, 'fix'],
+     "      if(_ch){ await putPp(cur); changed=true;\n" +
+     "        /* ให้ตัวแปร pphRec ของแอปเดิมเป็นค่าล่าสุดด้วย — กันกดปุ่ม PPH ต่อแล้วเอาค่าเก่าในหน่วยความจำไปทับ */\n" +
+     "        try{ const _pr=G('pphRec'); if(_pr && _pr.date===date) (0,eval)('pphRec='+JSON.stringify(cur)); }catch(e){} }", 1, 'fix'],
     /* 7) 🐞 ตอนส่งขึ้นคลาวด์: ส่งเฉพาะช่อง PPH ที่เครื่องนี้แก้จริง (ไม่เอาค่าเก่าในเครื่องไปทับค่าใหม่ของเครื่องอื่น)
           และ Route prep ส่งรายช่อง (FS / ออกรถ / ส่งชิ้นแรก) แทนการทับทั้งคน */
     ["const o=keepFirst(cs.exists()?(cs.data().checkins||{}):{});",
@@ -52,20 +54,36 @@ window.__PATCHES = {
      "const PPH_F=['staffN','sorterN','courierN','pNew','pOld','inboundTs','lastInboundTs'];\n" +
      "function _peq(a,b){ return JSON.stringify(a==null?null:a)===JSON.stringify(b==null?null:b); }\n" +
      "function pphPushFilter(o, cp){\n" +
-     "  const B=S._pb||(S._pb={f:{},rp:{}}), n={f:{},rp:{}};\n" +
+     "  const B=S._pb||(S._pb={f:{},rp:{}}), n={f:{},rp:{},at:null};\n" +
      "  PPH_F.forEach(k=>{ const key='pph.'+k; if(!(key in o)) return;\n" +
      "    const lv=o[key], had=(k in B.f), cv=cp?cp[k]:undefined;\n" +
-     "    if(had && _peq(lv,B.f[k]) && cv!=null){ delete o[key]; return; }   /* เครื่องนี้ไม่ได้แก้ → ไม่ทับคลาวด์ */\n" +
+     "    const dirty=!!(S._dirty&&S._dirty[k]), changed=had && !_peq(lv,B.f[k]);\n" +
+     "    if(!dirty && !changed && cv!=null){ delete o[key]; return; }   /* เครื่องนี้ไม่ได้แก้ → ไม่ทับคลาวด์ */\n" +
      "    n.f[k]=lv; });\n" +
      "  Object.keys(o).filter(x=>x.indexOf('pph.rp.')===0 && x.split('.').length===3).forEach(key=>{\n" +
      "    const cid=key.split('.')[2], lv=o[key]||{}, b=B.rp[cid], c=(cp&&cp.rp&&cp.rp[cid])||{}; delete o[key];\n" +
-     "    ['fs','dep','fdel'].forEach(f=>{ if(lv[f]==null) return; const edited = b? !_peq(lv[f],b[f]) : true;\n" +
+     "    ['fs','dep','fdel'].forEach(f=>{ if(lv[f]==null) return; const edited = !!(S._dirty&&S._dirty['rp.'+cid+'.'+f]) || (b? !_peq(lv[f],b[f]) : c[f]==null);\n" +
      "      if(!edited && c[f]!=null) return;\n" +
      "      o['pph.rp.'+cid+'.'+f]=lv[f]; (n.rp[cid]=n.rp[cid]||{})[f]=lv[f]; }); });\n" +
-     "  S._pbNext=n; return o; }\n" +
-     "function pphBaseCommit(){ const n=S._pbNext; S._pbNext=null; if(!n) return; const B=S._pb||(S._pb={f:{},rp:{}});\n" +
-     "  Object.assign(B.f, n.f); Object.keys(n.rp).forEach(cid=>{ B.rp[cid]=Object.assign({}, B.rp[cid]||{}, n.rp[cid]); }); }\n" +
+     "  n.m=Object.assign({}, S._dirty||{}); S._pbNext=n; return o; }\n" +
+     "function pphBaseCommit(){ const n=S._pbNext; S._pbNext=null; if(!n) return; const B=S._pb||(S._pb={f:{},rp:{}}), D=S._dirty||{};\n" +
+     "  Object.keys(n.f).forEach(k=>{ B.f[k]=n.f[k]; if(D[k] && D[k]===(n.m||{})[k]) delete D[k]; });\n" +
+     "  Object.keys(n.rp).forEach(cid=>{ B.rp[cid]=Object.assign({}, B.rp[cid]||{}, n.rp[cid]); Object.keys(n.rp[cid]).forEach(f=>{ const _dk='rp.'+cid+'.'+f; if(D[_dk] && D[_dk]===(n.m||{})[_dk]) delete D[_dk]; }); }); }\n" +
      "let pushTimer=null;", 1, 'fix'],
+    /* 8) 🐞 ปุ่ม PPH ของแอปเดิม (กรอกตัวเลข / กดเวลา / FS-ออกรถ-ส่งชิ้นแรก) ใช้ตัวแปร pphRec ในหน่วยความจำ
+          ถ้าเครื่องอื่นเพิ่งแก้ แต่หน้านี้ยังไม่รีเฟรช → ค่าเก่าในหน่วยความจำจะถูกบันทึกทับ
+          แก้: ก่อนกดทุกครั้ง โหลดค่าล่าสุดจากเครื่องก่อน แล้วค่อยบันทึกเฉพาะช่องที่กด */
+    ["function wrap(){\n",
+     "function wrap(){\n" +
+     "  /* 🐞 6 ต.ค.: ปุ่ม PPH โหลดค่าล่าสุดก่อนบันทึก (กันค่าเก่าทับค่าที่ซิงค์มาจากเครื่องอื่น) */\n" +
+     "  ['pphNum','pphStamp','rpStamp','pphSyncCourier'].forEach(fn=>{ const o=window[fn]; if(typeof o!=='function' || o.__ds) return;\n" +
+     "    const f=async function(){ try{ const k=tKey(), fr=window.getPPH? await getPPH(k) : null; const pr=G('pphRec');\n" +
+     "        if(fr && pr && pr.date===k) (0,eval)('pphRec='+JSON.stringify(fr)); }catch(e){}\n" +
+     "      const a=arguments, r=await o.apply(this, a);\n" +
+     "      try{ const D=S._dirty||(S._dirty={}), t=Date.now()+Math.random();\n" +
+     "        if(fn==='rpStamp') D['rp.'+a[0]+'.'+a[1]]=t; else if(fn==='pphSyncCourier') D.courierN=t; else D[a[0]]=t; }catch(e){}\n" +
+     "      return r; };\n" +
+     "    f.__ds=true; window[fn]=f; });\n", 1, 'fix'],
     /* 1) ตัวตรวจรีเซ็ตข้อมูลฝึก (เฉพาะสาขา TEST) — วางไว้ก่อน pushAll */
     ["/* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */",
      "/* ============ 🧪 TEST: รีเซ็ตข้อมูลฝึกจาก Manager (6 ต.ค. 2569) ============\n" +

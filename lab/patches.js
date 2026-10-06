@@ -3,6 +3,32 @@ window.__PATCHES = {
   'dhl-ui2.js': [
     ["const UI2 = ['TEST'];", "const UI2 = /[?&]ui2=1/.test(location.search) ? ['TEST'] : [];   /* 6 ต.ค.: TEST ใช้หน้าเดิมเพื่อฝึก Staff · ทดสอบหน้าใหม่ต่อได้ด้วย &ui2=1 */", 1, 'test']
   ],
+  'DHL_Manager_Live.html': [
+    /* 🧪 ปุ่มล้างข้อมูลฝึกสาขา TEST — เห็นเฉพาะตอนเปิด Manager ด้วย ?test=1 (สาขาจริงไม่มีปุ่มนี้ และโค้ดแตะเฉพาะ depots/TEST) */
+    ["/* ---------- START LISTENERS ---------- */",
+     "/* ---------- 🧪 ล้างข้อมูลฝึก TEST (6 ต.ค. 2569) ---------- */\n" +
+     "window.__testReset = async () => {\n" +
+     "  if(!DEPOTS.includes('TEST')) return;\n" +
+     "  if(!confirm('ล้างข้อมูลฝึกของสาขา TEST วันนี้ทั้งหมด?\\n(เช็คอิน · รูป · PD · PPH · ขาด/ลา)\\n\\nทุกเครื่องที่อยู่สาขา TEST จะล้างข้อมูลในเครื่องแล้วเริ่มใหม่เอง\\nสาขาจริงไม่ถูกแตะ')) return;\n" +
+     "  const b=document.getElementById('tstReset'); if(b){ b.disabled=true; b.textContent='⏳ กำลังล้าง...'; }\n" +
+     "  try{\n" +
+     "    const k=todayKey();\n" +
+     "    await setDoc(doc(db,'depots','TEST'),{ resetAt:Date.now() },{ merge:true });   /* 1) บอกทุกเครื่องให้ล้าง (ต้องมาก่อนลบ) */\n" +
+     "    await deleteDoc(doc(db,'depots','TEST','days',k));                         /* 2) ข้อมูลวันนี้ */\n" +
+     "    const ps=await getDocs(query(collection(db,'depots','TEST','photos'), where('date','==',k)));\n" +
+     "    for(const d of ps.docs) await deleteDoc(d.ref);                              /* 3) รูปวันนี้ */\n" +
+     "    alert('✔ ล้างข้อมูลฝึก TEST แล้ว (รูป '+ps.size+' รูป)\\nเครื่อง Staff จะรีเซ็ตเองภายในไม่กี่วินาที');\n" +
+     "  }catch(e){ alert('ล้างไม่สำเร็จ: '+e.message); }\n" +
+     "  if(b){ b.disabled=false; b.textContent='🧪 ล้างข้อมูล TEST วันนี้'; }\n" +
+     "};\n" +
+     "setInterval(()=>{ try{\n" +
+     "  if(!DEPOTS.includes('TEST') || document.getElementById('tstReset')) return;\n" +
+     "  const lg=document.getElementById('login'); if(lg && lg.style.display!=='none') return;\n" +
+     "  const b=document.createElement('button'); b.id='tstReset'; b.textContent='🧪 ล้างข้อมูล TEST วันนี้'; b.onclick=window.__testReset;\n" +
+     "  b.style.cssText='position:fixed;left:12px;bottom:12px;z-index:9000;border:0;border-radius:99px;padding:10px 14px;font-weight:800;font-size:13px;background:#1a1a1a;color:#FFCC00;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer;font-family:inherit';\n" +
+     "  document.body.appendChild(b); }catch(e){} }, 2000);\n\n" +
+     "/* ---------- START LISTENERS ---------- */", 1, 'test']
+  ],
   'dhl-sync.js': [
     /* 0) 🐞 แก้บั๊กซิงค์ค้าง (6 ต.ค. 2569 — เจอจากแล็บทดสอบ 3 เครื่อง)
           ตัวดึงรูปตั้ง S.merging=true แล้วคืนค่า "เดิม" ทีหลัง → ถ้าจังหวะชนกับ mergeRemote ค่าจะค้าง true ถาวร
@@ -25,19 +51,14 @@ window.__PATCHES = {
     /* 6) 🐞 PPH: รวมแบบ 3 ทาง (ในเครื่อง / คลาวด์ / ค่าที่ซิงค์ล่าสุด) — เดิมเอาค่าคลาวด์ทับทั้งก้อน
           ทำให้ 2 เครื่องแก้คนละช่องพร้อมกันแล้วหาย และค่าที่เพิ่งกรอกยังไม่ทันส่งถูกทับ */
     ["      const same = JSON.stringify([cur.staffN,cur.sorterN,cur.courierN,cur.pNew,cur.pOld,cur.inboundTs,cur.lastInboundTs,cur.rp])\n                === JSON.stringify([r.staffN,r.sorterN,r.courierN,r.pNew,r.pOld,r.inboundTs,r.lastInboundTs,r.rp]);\n      if(!same){\n        cur.staffN=r.staffN; cur.sorterN=r.sorterN; cur.courierN=r.courierN;\n        cur.pNew=r.pNew; cur.pOld=r.pOld; cur.inboundTs=r.inboundTs;\n        cur.lastInboundTs=r.lastInboundTs; cur.rp=r.rp||{};\n        if(r.pd){ cur.pd = cur.pd||{}; cur.pd.ts=r.pd.ts; cur.pd.manualEdit=!!r.pd.manualEdit; }\n        await putPp(cur); changed=true;\n      }",
-     "      /* 🐞 6 ต.ค.: รวมแบบ 3 ทาง — ช่องไหนเครื่องนี้เพิ่งแก้ (ต่างจากค่าที่ซิงค์ล่าสุด) และคลาวด์ยังไม่เปลี่ยน → เก็บของเครื่องนี้ไว้ส่งขึ้น */\n" +
-     "      const B=S._pb||(S._pb={f:{},rp:{}}); let _ch=false;\n" +
-     "      PPH_F.forEach(k=>{ const lv=cur[k], cv=r[k], had=(k in B.f), bv=B.f[k];\n" +
-     "        const localEdited = !!(S._dirty&&S._dirty[k]) || (had && !_peq(lv,bv));\n" +
-     "        if(!localEdited || !_peq(cv,bv)){ if(!_peq(lv,cv)){ cur[k]=cv; _ch=true; } }\n" +
-     "        B.f[k]=cv; });\n" +
+     "      /* 🐞 6 ต.ค.: ช่องที่เครื่องนี้เพิ่งกรอก/กด แต่ยังไม่ได้ส่งขึ้น (dirty) → เก็บของเครื่องนี้ไว้ (เดี๋ยวส่งขึ้นเอง)\n" +
+     "         ช่องอื่นเอาค่าจากคลาวด์ (เดิม: เอาค่าคลาวด์ทับทั้งก้อน ทำให้ค่าที่เพิ่งกรอกหาย) */\n" +
+     "      const D=S._dirty||{}; let _ch=false;\n" +
+     "      PPH_F.forEach(k=>{ if(D[k]) return; if(!_peq(cur[k], r[k])){ cur[k]=r[k]; _ch=true; } });\n" +
      "      const crp=r.rp||{}, lrp=cur.rp||{}, nrp={};\n" +
-     "      new Set([...Object.keys(crp),...Object.keys(lrp)]).forEach(cid=>{ const c=crp[cid]||{}, l=lrp[cid]||{}, hadB=(cid in B.rp), b=B.rp[cid]||{}, o={};\n" +
-     "        ['fs','dep','fdel'].forEach(f=>{ const le = !!(S._dirty&&S._dirty['rp.'+cid+'.'+f]) || (hadB? !_peq(l[f],b[f]) : (l[f]!=null && c[f]==null));\n" +
-     "          const v = (le && _peq(c[f],b[f])) ? l[f] : (c[f]!=null? c[f] : (le? l[f] : null));\n" +
-     "          if(v!=null) o[f]=v; });\n" +
-     "        if(Object.keys(o).length) nrp[cid]=o;\n" +
-     "        B.rp[cid]={fs:c.fs,dep:c.dep,fdel:c.fdel}; });\n" +
+     "      new Set([...Object.keys(crp),...Object.keys(lrp)]).forEach(cid=>{ const c=crp[cid]||{}, l=lrp[cid]||{}, o={};\n" +
+     "        ['fs','dep','fdel'].forEach(f=>{ const v = D['rp.'+cid+'.'+f] ? l[f] : (c[f]!=null ? c[f] : l[f]); if(v!=null) o[f]=v; });\n" +
+     "        if(Object.keys(o).length) nrp[cid]=o; });\n" +
      "      if(!_peq(nrp,lrp)){ cur.rp=nrp; _ch=true; }\n" +
      "      if(r.pd && (!cur.pd || cur.pd.ts!==r.pd.ts || (!!cur.pd.manualEdit)!==(!!r.pd.manualEdit))){ cur.pd = cur.pd||{}; cur.pd.ts=r.pd.ts; cur.pd.manualEdit=!!r.pd.manualEdit; _ch=true; }\n" +
      "      if(_ch){ await putPp(cur); changed=true;\n" +
@@ -53,22 +74,21 @@ window.__PATCHES = {
      "/* 🐞 6 ต.ค.: ตัวช่วย PPH (ดูข้อ 6–7) */\n" +
      "const PPH_F=['staffN','sorterN','courierN','pNew','pOld','inboundTs','lastInboundTs'];\n" +
      "function _peq(a,b){ return JSON.stringify(a==null?null:a)===JSON.stringify(b==null?null:b); }\n" +
+     "/* ส่งเฉพาะช่องที่เครื่องนี้กรอก/กดจริง (dirty) หรือช่องที่คลาวด์ยังไม่มี — ไม่เอาค่าเก่าในเครื่องไปทับของเครื่องอื่น */\n" +
      "function pphPushFilter(o, cp){\n" +
-     "  const B=S._pb||(S._pb={f:{},rp:{}}), n={f:{},rp:{},at:null};\n" +
-     "  PPH_F.forEach(k=>{ const key='pph.'+k; if(!(key in o)) return;\n" +
-     "    const lv=o[key], had=(k in B.f), cv=cp?cp[k]:undefined;\n" +
-     "    const dirty=!!(S._dirty&&S._dirty[k]), changed=had && !_peq(lv,B.f[k]);\n" +
-     "    if(!dirty && !changed && cv!=null){ delete o[key]; return; }   /* เครื่องนี้ไม่ได้แก้ → ไม่ทับคลาวด์ */\n" +
-     "    n.f[k]=lv; });\n" +
+     "  const D=S._dirty||{}, sent={};\n" +
+     "  PPH_F.forEach(k=>{ const key='pph.'+k; if(!(key in o)) return; const cv=cp?cp[k]:undefined;\n" +
+     "    if(!D[k] && cv!=null){ delete o[key]; return; }\n" +
+     "    if(D[k]) sent[k]=D[k]; });\n" +
      "  Object.keys(o).filter(x=>x.indexOf('pph.rp.')===0 && x.split('.').length===3).forEach(key=>{\n" +
-     "    const cid=key.split('.')[2], lv=o[key]||{}, b=B.rp[cid], c=(cp&&cp.rp&&cp.rp[cid])||{}; delete o[key];\n" +
-     "    ['fs','dep','fdel'].forEach(f=>{ if(lv[f]==null) return; const edited = !!(S._dirty&&S._dirty['rp.'+cid+'.'+f]) || (b? !_peq(lv[f],b[f]) : c[f]==null);\n" +
-     "      if(!edited && c[f]!=null) return;\n" +
-     "      o['pph.rp.'+cid+'.'+f]=lv[f]; (n.rp[cid]=n.rp[cid]||{})[f]=lv[f]; }); });\n" +
-     "  n.m=Object.assign({}, S._dirty||{}); S._pbNext=n; return o; }\n" +
-     "function pphBaseCommit(){ const n=S._pbNext; S._pbNext=null; if(!n) return; const B=S._pb||(S._pb={f:{},rp:{}}), D=S._dirty||{};\n" +
-     "  Object.keys(n.f).forEach(k=>{ B.f[k]=n.f[k]; if(D[k] && D[k]===(n.m||{})[k]) delete D[k]; });\n" +
-     "  Object.keys(n.rp).forEach(cid=>{ B.rp[cid]=Object.assign({}, B.rp[cid]||{}, n.rp[cid]); Object.keys(n.rp[cid]).forEach(f=>{ const _dk='rp.'+cid+'.'+f; if(D[_dk] && D[_dk]===(n.m||{})[_dk]) delete D[_dk]; }); }); }\n" +
+     "    const cid=key.split('.')[2], lv=o[key]||{}, c=(cp&&cp.rp&&cp.rp[cid])||{}; delete o[key];\n" +
+     "    ['fs','dep','fdel'].forEach(f=>{ if(lv[f]==null) return; const dk='rp.'+cid+'.'+f;\n" +
+     "      if(!D[dk] && c[f]!=null) return;\n" +
+     "      o['pph.rp.'+cid+'.'+f]=lv[f]; if(D[dk]) sent[dk]=D[dk]; }); });\n" +
+     "  S._pbNext=sent; return o; }\n" +
+     "/* ส่งสำเร็จ → ล้างเครื่องหมาย dirty ของช่องที่ส่งไป (ถ้าไม่ได้ถูกกดซ้ำระหว่างส่ง) */\n" +
+     "function pphBaseCommit(){ const sent=S._pbNext; S._pbNext=null; if(!sent) return; const D=S._dirty||{};\n" +
+     "  Object.keys(sent).forEach(k=>{ if(D[k]===sent[k]) delete D[k]; }); }\n" +
      "let pushTimer=null;", 1, 'fix'],
     /* 8) 🐞 ปุ่ม PPH ของแอปเดิม (กรอกตัวเลข / กดเวลา / FS-ออกรถ-ส่งชิ้นแรก) ใช้ตัวแปร pphRec ในหน่วยความจำ
           ถ้าเครื่องอื่นเพิ่งแก้ แต่หน้านี้ยังไม่รีเฟรช → ค่าเก่าในหน่วยความจำจะถูกบันทึกทับ
@@ -116,7 +136,14 @@ window.__PATCHES = {
      "async function backfill(){\n  if(!S.ready) return;\n  if(S.depot==='TEST') return;   /* 🧪 ข้อมูลฝึก ไม่กู้ย้อนหลัง */", 1, 'test'],
     /* 4) คลาวด์ว่าง/น้อยกว่า (self-heal) — TEST เช็ครีเซ็ตก่อน */
     ["/* 🛟 SELF-HEAL: ถ้าคลาวด์มีข้อมูลน้อยกว่าในเครื่อง (ถูกลบ/หาย) → ส่งขึ้นไปคืนอัตโนมัติ */\nasync function selfHeal(cloud){",
-     "/* 🛟 SELF-HEAL: ถ้าคลาวด์มีข้อมูลน้อยกว่าในเครื่อง (ถูกลบ/หาย) → ส่งขึ้นไปคืนอัตโนมัติ */\nasync function selfHeal(cloud){\n  if(S.depot==='TEST' && await checkTestReset()) return;   /* 🧪 */", 1, 'test']
+     "/* 🛟 SELF-HEAL: ถ้าคลาวด์มีข้อมูลน้อยกว่าในเครื่อง (ถูกลบ/หาย) → ส่งขึ้นไปคืนอัตโนมัติ */\nasync function selfHeal(cloud){\n  if(S.depot==='TEST' && await checkTestReset()) return;   /* 🧪 */", 1, 'test'],
+    /* 9) 🐞 กดหลายอย่างติดกันขณะกำลังส่งข้อมูล → คำขอส่งครั้งหลังถูกทิ้ง (ข้อมูลล่าสุดค้างในเครื่องจนกว่าจะมีการกดครั้งถัดไป)
+          แก้: จำไว้แล้วส่งซ้ำทันทีที่ส่งรอบเดิมเสร็จ */
+    ["async function pushAll(){\n  if(!S.ready||S.busy) return;",
+     "async function pushAll(){\n  if(S.ready && S.busy){ S._pushAgain=true; return; }   /* 🐞 6 ต.ค.: กำลังส่งอยู่ → ส่งซ้ำทันทีที่เสร็จ (เดิมทิ้งไป) */\n  if(!S.ready||S.busy) return;", 1, 'fix'],
+    ["}catch(e){ console.warn('sync push',e); flagErr('ส่งข้อมูลขึ้นคลาวด์ไม่สำเร็จ: '+e.message); }\n  S.busy=false;\n}",
+     "}catch(e){ console.warn('sync push',e); flagErr('ส่งข้อมูลขึ้นคลาวด์ไม่สำเร็จ: '+e.message); }\n  S.busy=false;\n  if(S._pushAgain){ S._pushAgain=false; pushSoon(); }   /* 🐞 6 ต.ค. */\n}", 1, 'fix']
+
   ]
 };
 window.__applyPatch = (name, text, tags) => {

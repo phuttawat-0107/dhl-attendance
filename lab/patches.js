@@ -4,6 +4,19 @@ window.__PATCHES = {
     ["const UI2 = ['TEST'];", "const UI2 = /[?&]ui2=1/.test(location.search) ? ['TEST'] : [];   /* 6 ต.ค.: TEST ใช้หน้าเดิมเพื่อฝึก Staff · ทดสอบหน้าใหม่ต่อได้ด้วย &ui2=1 */", 1]
   ],
   'dhl-sync.js': [
+    /* 0) 🐞 แก้บั๊กซิงค์ค้าง (6 ต.ค. 2569 — เจอจากแล็บทดสอบ 3 เครื่อง)
+          ตัวดึงรูปตั้ง S.merging=true แล้วคืนค่า "เดิม" ทีหลัง → ถ้าจังหวะชนกับ mergeRemote ค่าจะค้าง true ถาวร
+          → เครื่องนั้นไม่รับข้อมูลจากเครื่องอื่นอีกเลยจนกว่าจะปิด-เปิดแอป
+          แก้: ตัวดึงรูปใช้ put ตัวดิบอยู่แล้ว (ไม่ส่งขึ้นคลาวด์) จึงไม่ต้องแตะ S.merging
+               + snapshot ที่มาระหว่าง merge ไม่ทิ้ง เก็บไว้ทำต่อทันทีหลังเสร็จ */
+    ["const wasMerging=S.merging; S.merging=true;\n          try{ await put(rec); }finally{ S.merging=wasMerging; }",
+     "await put(rec);   /* 🐞 6 ต.ค.: ไม่แตะ S.merging (เคยทำให้ค้าง) */", 1],
+    ["const was=S.merging; S.merging=true;\n    try{ await put(cur); }finally{ S.merging=was; }",
+     "await put(cur);   /* 🐞 6 ต.ค.: ไม่แตะ S.merging (เคยทำให้ค้าง) */", 1],
+    ["async function mergeRemote(d){\n  if(S.merging) return;\n  S.merging=true;",
+     "async function mergeRemote(d){\n  if(S.merging){ S._pendMerge=d; return; }   /* 🐞 6 ต.ค.: ข้อมูลที่มาระหว่าง merge ไม่ทิ้ง */\n  S.merging=true;", 1],
+    ["finally{ S.merging=false; }\n}",
+     "finally{ S.merging=false;\n    if(S._pendMerge){ const _n=S._pendMerge; S._pendMerge=null; setTimeout(()=>mergeRemote(_n),0); } }\n}", 1],
     /* 1) ตัวตรวจรีเซ็ตข้อมูลฝึก (เฉพาะสาขา TEST) — วางไว้ก่อน pushAll */
     ["/* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */",
      "/* ============ 🧪 TEST: รีเซ็ตข้อมูลฝึกจาก Manager (6 ต.ค. 2569) ============\n" +

@@ -55,7 +55,7 @@ function matches(q, path){
   return true;
 }
 function qsnap(q){ const docs=[...DB.docs.keys()].filter(p=>matches(q,p)).map(snapOf); return {docs, size:docs.length, empty:!docs.length, forEach:f=>docs.forEach(f)}; }
-function commit(path, val){ if(val===undefined) DB.docs.delete(path); else DB.docs.set(path, val); DB.ver.set(path,(DB.ver.get(path)||0)+1); DB.log.push([Date.now(),DEV,val===undefined?'del':'set',path]); DB.notify(path); }
+function commit(path, val){ if(val===undefined) DB.docs.delete(path); else DB.docs.set(path, val); DB.ver.set(path,(DB.ver.get(path)||0)+1); DB.log.push([Date.now(),DEV,val===undefined?'del':'set',path]); DB.notify(path, DEV); }
 async function chk(){ await lat(); if(DB.offline[DEV]) { const e=new Error('offline (lab)'); e.code='unavailable'; throw e; } }
 export async function getDoc(ref){ await chk(); DB.stats.reads++; return snapOf(ref.path); }
 export async function getDocs(q){ await chk(); DB.stats.reads++; return qsnap(q._q? q : {_col:q._col,_q:[]}); }
@@ -100,17 +100,20 @@ window.__makeFSDB = function(opts){
   DB.fire = L => {
     if(!L.alive) return; DB.stats.snaps++;
     const t=L.target;
-    if(t._doc){ const d=DB.docs.get(t.path); L.cb({ id:t.id, exists:()=>d!==undefined, data:()=>clone(d), metadata:{hasPendingWrites:false,fromCache:false}, ref:t }); }
+    if(t._doc){ const d=DB.docs.get(t.path); L.cb({ id:t.id, exists:()=>d!==undefined, data:()=>clone(d), metadata:{hasPendingWrites:!!L.pend,fromCache:false}, ref:t }); }
     else { const parent=t._col; const docs=[...DB.docs.keys()].filter(p=>p.split('/').slice(0,-1).join('/')===parent).filter(p=>{
         const d=DB.docs.get(p); return (t._q||[]).every(c=>{ if(!c._w) return true; const [f,op,v]=c._w; const x=f.split('.').reduce((o,k)=>o&&o[k], d);
           return op==='=='?x===v: op==='>='?x>=v: op==='<='?x<=v: op==='<'?x<v: op==='>'?x>v: op==='in'?v.includes(x): true; }); })
         .map(p=>({ id:p.split('/').pop(), data:()=>clone(DB.docs.get(p)), ref:{path:p, _doc:true, id:p.split('/').pop()}, exists:()=>true }));
       L.cb({ docs, size:docs.length, empty:!docs.length, forEach:f=>docs.forEach(f), docChanges:()=>[] }); }
   };
-  DB.notify = path => {
+  /* เครื่องที่เป็นคนเขียน: Firestore จริงส่ง snapshot แบบ hasPendingWrites=true ทันที (แอปข้าม) ไม่ส่งซ้ำตอนเซิร์ฟเวอร์ยืนยัน */
+  DB.notify = (path, writer) => {
     for(const L of DB.listeners){ const t=L.target;
       const hit = t._doc? t.path===path : path.split('/').slice(0,-1).join('/')===t._col;
-      if(hit){ if(DB.offline[L.dev]) continue; setTimeout(()=>DB.fire(L), DB.latency(L.dev)); } }
+      if(!hit || DB.offline[L.dev]) continue;
+      if(L.dev===writer){ L.pend=true; setTimeout(()=>{ DB.fire(L); L.pend=false; }, 1); }
+      else setTimeout(()=>DB.fire(L), DB.latency(L.dev)); }
   };
   return DB;
 };

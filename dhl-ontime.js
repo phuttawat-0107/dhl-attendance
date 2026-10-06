@@ -9,7 +9,7 @@ export const OT_VER = '2026.09.20-ot6';
 const OT_CUT   = 25200;          // 07:00:00
 const OT_GRACE = 25800;          // 07:10:00
 const OT_START = '2026-09-21';   // วันเริ่มเก็บข้อมูลตามข้อกำหนดใหม่
-const OT_SCOPE = ['BPE','DST','PHI','PWN','BPL'];
+const OT_SCOPE = ['BPE','DST','PHI','PWN','BPL','KTN'];
 const OT_PAY = {
   '2W':{ g:20000, t100:21000, t95:20000, t90:18525, t0:17050 },
   '4W':{ g:29000, t100:30500, t95:29000, t90:26125, t0:23250 }

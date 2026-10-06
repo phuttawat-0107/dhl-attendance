@@ -145,7 +145,7 @@ async function injectUI(){
   document.body.appendChild(cm);
 
   /* สาขา TEST จะโผล่เฉพาะเมื่อเปิดลิงก์ด้วย ?test=1 — Staff ทั่วไปไม่เห็น */
-  let deps=['PHI','BPE','PWT','PKS','DST','BPL','PWN'];
+  let deps=['PHI','BPE','PWT','PKS','DST','BPL','PWN','KTN'];
   /* ทีมจากลิงก์ ?t=XXX — แต่ละทีมเห็นเฉพาะสาขาของตัวเอง */
   const tm=(location.search.match(/[?&]t=([A-Za-z0-9_]+)/)||[])[1];
   if(tm){
@@ -722,7 +722,7 @@ function purgeForeignCouriers(cloudList){
   /* 🛡 ตัดเฉพาะคนที่ "รหัสขึ้นต้นด้วยชื่อสาขาอื่น" เท่านั้น
      คนที่รหัสเป็นของสาขานี้ หรือรหัสไม่มีรูปแบบชัดเจน จะไม่ถูกแตะ
      (กันไม่ให้ลบพนักงานจริงที่ Staff เพิ่งเพิ่มแล้วยังไม่ทันซิงค์ขึ้นคลาวด์) */
-  const OTHERS=['PHI','BPE','PWT','PKS','DST','BPL','PWN','TST','TEST'].filter(p=>p!==S.depot && p!==(S.depot==='TEST'?'TST':''));
+  const OTHERS=['PHI','BPE','PWT','PKS','DST','BPL','PWN','KTN','TST','TEST'].filter(p=>p!==S.depot && p!==(S.depot==='TEST'?'TST':''));
   const isOther=c=>{
     const code=String(c.code||'').toUpperCase();
     if(!code) return false;

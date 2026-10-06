@@ -499,11 +499,13 @@ window.DHLUI2 = { ver: UI2_VER, list: UI2, on: () => ON };
 })();
 
 
+
 /* ============================================================
-   🎓 Tutorial สาขาฝึก TEST (หน้าเดิม) v3 · 6 ต.ค. 2569
-   • ครบทุกขั้น: เพิ่มพนักงาน → เช็คอิน → ไม่มา → ถ่ายผิดคน → PD → PPH → FS/DEP → 1st Del → รายงาน
-   • การ์ดเล็ก ข้อความ 1 บรรทัด · อยู่ฝั่งตรงข้ามปุ่มที่ต้องกด · เปิดกล้อง/หน้าต่างอื่น = ย่อเป็นแถบมุมบน
-   • แสดงเฉพาะสาขา TEST
+   🎓 Tutorial สาขาฝึก TEST (หน้าเดิม) v4 · 6 ต.ค. 2569 — โหมดเหมือนทำงานจริง
+   • เริ่มที่เพิ่มพนักงานก่อนเสมอ (ครบ 3 คน กรอกครบทุกช่อง) แล้วไล่ตามลำดับ
+   • ต้องทำครบทุกคนก่อนไปขั้นถัดไป: เช็คอิน/ไม่มา ครบ · FS+DEP ครบ · 1st Del ครบ
+   • ระหว่างสอน ล็อกแท็บอื่น (กดแล้วเตือน) · 🔄 เริ่มฝึกใหม่ = ล้างข้อมูลฝึกทั้งหมดของ TEST
+   • การ์ดเล็ก ไม่บังปุ่ม · เปิดกล้อง = ย่อเป็นแถบมุมบน · แสดงเฉพาะสาขา TEST
    ============================================================ */
 (function(){
 'use strict';
@@ -513,62 +515,84 @@ const dep = () => { const s = G('settings'); return (s && s.depot) || (window.DH
 const today = () => { try { return G('todayKey')(); } catch(e){ return ''; } };
 const recs = async () => { try { return (await G('getByDate')(today())) || []; } catch(e){ return []; } };
 const pph = async () => { try { return (await G('getPPH')(today())) || {}; } catch(e){ return {}; } };
-const nCour = () => { const c = G('couriers'); return Array.isArray(c) ? c.length : 0; };
-const ls = { get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} } };
+const act = () => { const c = G('couriers'); return Array.isArray(c) ? c.filter(x => x && x.active !== false) : []; };
+const absent = () => (window.DHLSync && window.DHLSync.absent) || {};
+const flash = m => { try { G('flash')(m); } catch(e){} };
+const ls = { get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} }, del:k=>{ try{ localStorage.removeItem(k); }catch(e){} } };
 const vis = el => !!el && el.offsetParent !== null;
 const navBtn = v => $('.nav button[data-v="'+v+'"]');
 const firstVisible = sel => [...document.querySelectorAll(sel)].find(vis) || null;
+const btnText = (sel, re) => [...document.querySelectorAll(sel)].find(b => vis(b) && re.test(b.textContent.trim())) || null;
 const inView = v => vis($('#view-'+v));
-const popupOpen = () => !!($('#camOverlay.show') || $('#pdPreview.show') || $('#repModal.show') || $('.modal.show') || vis($('#dsAbsWrap')));
-let BASE_N = 0;
+const shown = el => !!el && getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0;   /* ใช้กับหน้าต่าง position:fixed */
+const popupOpen = () => !!($('#camOverlay.show') || $('#pdPreview.show') || $('#repModal.show') || $('.modal.show') || shown($('#dsAbsWrap')));
+const NEED = 3;                                   /* จำนวนพนักงานขั้นต่ำที่ต้องเพิ่ม */
+const fullC = c => c.code && c.name && c.vendor && c.vendor !== '-';
 
-/* t=หัวข้อ d=คำแนะนำสั้น el=ปุ่มที่ต้องกด ok=ทำสำเร็จหรือยัง */
+/* สถานะงานจริงของวันนี้ */
+async function st(){
+  const r = await recs(), p = await pph(), A = absent(), cs = act();
+  const inIds = new Set(r.map(x => x.courierId));
+  const done = cs.filter(c => inIds.has(c.id) || A[c.id] || A[String(c.id)]);
+  const chk = cs.filter(c => inIds.has(c.id));
+  const rp = p.rp || {};
+  return { cs, r, p, done, chk,
+    fsdep: chk.filter(c => rp[c.id] && rp[c.id].fs && rp[c.id].dep).length,
+    fdel: chk.filter(c => rp[c.id] && rp[c.id].fdel).length };
+}
+
+/* t=หัวข้อ d=คำแนะนำ tab=แท็บของขั้นนี้ el=ปุ่มที่ต้องกด ok=ผ่านหรือยัง prog=ตัวนับ */
 const STEPS = [
-  { t:'👋 สาขาฝึก', d:'ข้อมูลไม่นับจริง กดผิดได้ · 9 ขั้น ~5 นาที', info:true },
-  { t:'👥 1 · เพิ่มพนักงาน', d:'แท็บ <b>จัดการ</b> → กรอก รหัส/ชื่อ/Vendor → <b>+ เพิ่ม</b>', skip:true,
-    start:()=>{ BASE_N = nCour(); },
+  { t:'👋 สาขาฝึก', d:'ทำเหมือนงานจริง ต้องครบทุกคนถึงไปต่อได้ · กด 🔄 เพื่อเริ่มใหม่', info:true },
+  { t:'👥 1 · เพิ่มพนักงาน', d:'แท็บ <b>จัดการ</b> กรอก รหัส → ชื่อ → Vendor → ประเภท → <b>+ เพิ่ม</b> (อย่างน้อย '+NEED+' คน)', tab:'manage',
     el:()=>{ if (!inView('manage')) return navBtn('manage'); for (const id of ['fCode','fName','fVendor']){ const e = $('#'+id); if (vis(e) && !e.value.trim()) return e; } return firstVisible('#view-manage [onclick^="addCourier"]'); },
-    ok:async()=> nCour() > BASE_N },
-  { t:'📷 2 · เช็คอิน', d:'กด <b>📷 เช็คอิน</b> ที่ชื่อ → กดปุ่มวงกลม',
-    el:()=>{ if ($('#camOverlay.show')) return $('#camOverlay .shutter'); if (!inView('checkin')) return navBtn('checkin'); return firstVisible('#ciList [onclick^="openCamera("]'); },
-    ok:async()=> (await recs()).length > 0 },
-  { t:'🚫 3 · คนไม่มา', d:'กด <b>🚫 ไม่มา</b> → เลือกเหตุผล (ข้ามได้)', info:true,
-    el:()=>{ if (!inView('checkin')) return null; return firstVisible('#ciList .dsAbsAdd') || firstVisible('#ciList [onclick*="Abs"]'); } },
-  { t:'↺ 4 · ถ่ายผิดคน', d:'เปิด <b>✓ เช็คอินแล้ว</b> → กด <b>↺</b> ถ่ายใหม่ (ข้ามได้)', info:true,
-    el:()=>{ if (!inView('checkin')) return null; const r = firstVisible('#ciList [onclick^="redo("]'); if (r) return r; const h = $('#dsDoneHdr'); return (h && !h.classList.contains('open')) ? h : null; } },
-  { t:'📸 5 · ภาพ PD', d:'แท็บ <b>PD</b> → ถ่ายภาพประชุม → <b>บันทึก</b> (≤07:15)',
+    prog:async()=>{ const n = act().filter(fullC).length; return Math.min(n,NEED)+'/'+NEED; },
+    ok:async()=> act().filter(fullC).length >= NEED },
+  { t:'📷 2 · เช็คอินทุกคน', d:'กด <b>📷 เช็คอิน</b> ทีละคน · คนที่ไม่มา กด <b>🚫 ไม่มา</b>', tab:'checkin',
+    el:()=>{ if (shown($('#dsAbsWrap'))) return $('#dsAbsOk'); if ($('#camOverlay.show')) return $('#camOverlay .shutter'); if (!inView('checkin')) return navBtn('checkin'); return firstVisible('#ciList [onclick^="openCamera("]'); },
+    prog:async()=>{ const s = await st(); return s.done.length+'/'+s.cs.length; },
+    ok:async()=>{ const s = await st(); return s.cs.length > 0 && s.done.length >= s.cs.length && s.chk.length > 0; } },
+  { t:'↺ 3 · ถ่ายผิดคน', d:'เปิด <b>✓ เช็คอินแล้ว</b> → กด <b>↺</b> แล้วถ่ายใหม่ (ไม่บังคับ)', tab:'checkin', info:true,
+    el:()=>{ if (!inView('checkin')) return navBtn('checkin'); const r = firstVisible('#ciList [onclick^="redo("]'); if (r) return r; const h = $('#dsDoneHdr'); return (h && !h.classList.contains('open')) ? h : null; } },
+  { t:'📸 4 · ภาพ PD', d:'แท็บ <b>PD</b> → ถ่ายภาพประชุม → <b>บันทึก</b> (≤07:15)', tab:'pd',
     el:()=>{ if ($('#pdPreview.show')) return firstVisible('#pdPreview [onclick="savePDPhoto()"]'); if ($('#camOverlay.show')) return $('#camOverlay .shutter'); if (!inView('pd')) return navBtn('pd'); return firstVisible('#pdCard button'); },
     ok:async()=>{ const p = await pph(); return !!(p.pd && p.pd.ts); } },
-  { t:'📦 6 · PPH', d:'แท็บ <b>PPH</b> → กรอก Staff/พัสดุ → <b>First Inbound</b>',
+  { t:'📦 5 · PPH', d:'กรอกพัสดุ → <b>First Inbound</b> ตอนรถเข้า → <b>Last Inbound</b> คันสุดท้าย', tab:'pph',
     el:()=>{ if (!inView('pph')) return navBtn('pph'); const p = $('#pphBody input[onchange*="pNew"]'); if (vis(p) && !(+p.value > 0)) return p;
-      return [...document.querySelectorAll('#pphBody button')].find(b=>vis(b) && /First Inbound/.test(b.textContent)) || null; },
-    ok:async()=>{ const p = await pph(); return !!p.inboundTs; } },
-  { t:'🛵 7 · FS → DEP', d:'Route prep: กด <b>FS</b> ตอนจัดเสร็จ → <b>DEP</b> ตอนรถออก',
-    el:()=>{ if (!inView('pph')) return navBtn('pph'); return firstVisible('#rpList button[onclick*="\'fs\'"]:not(.btn-o)') || firstVisible('#rpList button[onclick*="\'dep\'"]:not(.btn-o)') || firstVisible('#rpList button'); },
-    ok:async()=>{ const p = await pph(); return Object.values(p.rp||{}).some(q=>q && q.dep); } },
-  { t:'🎯 8 · 1st Del', d:'แท็บ <b>First Del</b> → กดตอนส่งชิ้นแรก',
-    el:()=>{ if (!inView('fdel')) return navBtn('fdel'); return firstVisible('#fdList button:not([disabled])'); },
-    ok:async()=>{ const p = await pph(); return Object.values(p.rp||{}).some(q=>q && q.fdel); } },
-  { t:'📄 9 · ส่งรายงาน', d:'แท็บ <b>สรุปผล</b> → สร้างรายงาน → ส่ง LINE', info:true,
-    el:()=>{ if ($('#repModal.show')) return null; if (!inView('dash')) return navBtn('dash'); return firstVisible('#view-dash button[onclick^="openReport"]'); } },
-  { t:'🎉 ครบแล้ว!', d:'ฝึกซ้ำกด 🎓 · เสร็จแล้ว <b>ออกจากระบบ</b>', info:true, last:true }
+      if (!PP.inboundTs) return btnText('#pphBody button', /First Inbound/); if (!PP.lastInboundTs) return btnText('#pphBody button', /Last Inbound/); return null; },
+    prog:async()=>{ const p = await pph(); return [(+p.pNew>0||+p.pOld>0), !!p.inboundTs, !!p.lastInboundTs].filter(Boolean).length+'/3'; },
+    ok:async()=>{ const p = await pph(); return (+p.pNew > 0 || +p.pOld > 0) && !!p.inboundTs && !!p.lastInboundTs; } },
+  { t:'🛵 6 · FS → DEP ทุกคน', d:'Route prep: <b>FS</b> ตอนจัดเสร็จ → <b>DEP</b> ตอนรถออก ครบทุกคน', tab:'pph',
+    el:()=>{ if (!inView('pph')) return navBtn('pph'); return firstVisible('#rpList button[onclick*="\'fs\'"]:not(.btn-o)') || firstVisible('#rpList button[onclick*="\'dep\'"]:not(.btn-o)'); },
+    prog:async()=>{ const s = await st(); return s.fsdep+'/'+s.chk.length; },
+    ok:async()=>{ const s = await st(); return s.chk.length > 0 && s.fsdep >= s.chk.length; } },
+  { t:'🎯 7 · 1st Del ทุกคน', d:'แท็บ <b>First Del</b> → กดตอนแต่ละคนส่งชิ้นแรก', tab:'fdel',
+    el:()=>{ if (!inView('fdel')) return navBtn('fdel'); return btnText('#fdList button:not([disabled])', /^First Del$/); },
+    prog:async()=>{ const s = await st(); return s.fdel+'/'+s.chk.length; },
+    ok:async()=>{ const s = await st(); return s.chk.length > 0 && s.fdel >= s.chk.length; } },
+  { t:'📄 8 · ส่งรายงาน', d:'แท็บ <b>สรุปผล</b> → <b>สร้างรายงาน</b> → ส่ง LINE', tab:'dash',
+    el:()=>{ if ($('#repModal.show')) return null; if (!inView('dash')) return navBtn('dash'); return firstVisible('#view-dash button[onclick^="openReport"]'); },
+    ok:async()=> !!$('#repModal.show') || REP },
+  { t:'🎉 ครบแล้ว!', d:'ฝึกซ้ำกด 🔄 · เสร็จแล้ว <b>ออกจากระบบ</b>', info:true, last:true }
 ];
+let REP = false, PP = {};
 
 const CSS = `#tutCard{position:fixed;left:8px;right:8px;bottom:78px;z-index:9990;max-width:440px;margin:0 auto;background:rgba(26,26,26,.94);color:#fff;border-radius:14px;padding:8px 11px;box-shadow:0 6px 20px rgba(0,0,0,.35);font-family:inherit;transition:top .2s,bottom .2s}
 #tutCard.top{top:52px;bottom:auto}
-#tutCard .r1{display:flex;align-items:center;gap:6px}
+#tutCard .r1{display:flex;align-items:center;gap:5px}
 #tutCard h4{margin:0;font-size:13.5px;color:#FFCC00;cursor:pointer;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #tutCard p{margin:3px 0 0;font-size:12.5px;line-height:1.4;color:#eee}
 #tutCard button{border:0;border-radius:99px;padding:5px 11px;font-weight:800;font-size:12.5px;font-family:inherit;cursor:pointer;flex:none}
-#tutCard .sk{background:transparent;color:#999;padding:5px 6px} #tutCard .nx{background:#FFCC00;color:#1a1a1a} #tutCard .nx[disabled]{background:#555;color:#999}
-#tutCard .st{color:#8fd19e;font-size:12px;font-weight:800}
+#tutCard .sk{background:transparent;color:#999;padding:5px 5px} #tutCard .nx{background:#FFCC00;color:#1a1a1a} #tutCard .nx[disabled]{background:#555;color:#999}
+#tutCard .st{color:#8fd19e;font-size:12px;font-weight:800;white-space:nowrap} #tutCard .st.w{color:#ffcc80}
 #tutCard .bar{height:3px;background:#444;border-radius:3px;margin-top:6px;overflow:hidden} #tutCard .bar i{display:block;height:100%;background:#FFCC00}
-#tutCard.min{left:auto;right:8px;max-width:62%;padding:5px 10px;border-radius:99px} #tutCard.min p,#tutCard.min .bar,#tutCard.min button{display:none}
+#tutCard.min{left:auto;right:8px;max-width:66%;padding:5px 10px;border-radius:99px} #tutCard.min p,#tutCard.min .bar,#tutCard.min button{display:none}
 #tutCard.pop{top:8px;bottom:auto;z-index:100001;opacity:.92}
 .tut-hl{outline:3px solid #FFCC00!important;outline-offset:2px;animation:tutPulse 1.1s ease-in-out infinite;position:relative;z-index:2}
 @keyframes tutPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,204,0,.75)}50%{box-shadow:0 0 0 9px rgba(255,204,0,0)}}
 body.tut-on #uxRem{display:none!important}
 body.tut-on{padding-bottom:130px!important}
+body.tut-on .nav button.tut-lock{opacity:.35}
 #tutFab{position:fixed;left:10px;bottom:96px;z-index:9989;width:40px;height:40px;border-radius:50%;border:0;background:#FFCC00;font-size:19px;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer;display:none}`;
 
 let IDX = 0, OPEN = false, HL = null, DONE = false, TICK = null, MIN = false, USERMIN = false;
@@ -577,43 +601,86 @@ function hl(el){ if (HL === el) return; if (HL) HL.classList.remove('tut-hl'); H
 function render(){
   let c = $('#tutCard'); const s = STEPS[IDX];
   if (!c){ c = document.createElement('div'); c.id = 'tutCard'; document.body.appendChild(c); }
-  const lbl = IDX===0 ? 'เริ่ม ›' : s.last ? 'เสร็จ' : (s.skip ? 'ข้าม ›' : 'ถัดไป ›');
+  const lbl = IDX===0 ? 'เริ่ม ›' : s.last ? 'เสร็จ' : (s.info ? 'ข้าม ›' : 'ถัดไป ›');
   c.innerHTML = '<div class="r1"><h4 id="tutH">'+s.t+(MIN?' ▴':'')+'</h4><span class="st" id="tutSt"></span>'
-    + (s.last?'':'<button class="sk" id="tutSk">✕</button>')
-    + '<button class="nx" id="tutNx"'+(s.info||s.skip?'':' disabled')+'>'+lbl+'</button></div>'
+    + '<button class="sk" id="tutRs" title="เริ่มฝึกใหม่">🔄</button>'
+    + (s.last?'':'<button class="sk" id="tutSk" title="ปิด">✕</button>')
+    + '<button class="nx" id="tutNx"'+(s.info?'':' disabled')+'>'+lbl+'</button></div>'
     + '<p>'+s.d+'</p><div class="bar"><i style="width:'+Math.round(IDX/(STEPS.length-1)*100)+'%"></i></div>';
   c.classList.toggle('min', MIN);
   $('#tutH').onclick = () => { USERMIN = !MIN; MIN = USERMIN; render(); };
-  $('#tutNx').onclick = () => { if (s.last){ close(true); return; } go(IDX+1); };
-  const sk = $('#tutSk'); if (sk) sk.onclick = () => close(false);
-  DONE = !!s.info;
+  $('#tutNx').onclick = () => { if (s.last){ close(true); return; } if (!s.info && !DONE) return; go(IDX+1); };
+  $('#tutRs').onclick = resetAll;
+  const sk = $('#tutSk'); if (sk) sk.onclick = () => { if (confirm('ปิดการสอน?\nกด 🎓 เพื่อกลับมาทำต่อได้')) close(false); };
+  DONE = !!s.info; LASTP = '';
+  lockNav();
 }
-function markOk(){ const n = $('#tutNx'), st = $('#tutSt'); if (n){ n.disabled = false; n.textContent = 'ถัดไป ›'; } if (st) st.textContent = '✔'; }
-function go(i){ IDX = i; ls.set('tutIdx', String(IDX)); const s = STEPS[IDX]; if (s.start) try{ s.start(); }catch(e){} render(); }
+let LASTP = '';
+function setSt(txt, ok){ const e = $('#tutSt'); if (!e) return; e.textContent = txt; e.className = 'st' + (ok ? '' : ' w'); }
+function markOk(){ const n = $('#tutNx'); if (n){ n.disabled = false; n.textContent = STEPS[IDX].last ? 'เสร็จ' : 'ถัดไป ›'; } setSt('✔', true); }
+function go(i){ IDX = Math.max(0, Math.min(i, STEPS.length-1)); ls.set('tutIdx', String(IDX)); if (IDX === STEPS.findIndex(x=>x.tab==='dash')) REP = false; render(); }
+
+/* 🔒 ระหว่างสอน: กดได้เฉพาะแท็บของขั้นนี้ */
+function lockNav(){
+  const tab = OPEN ? STEPS[IDX].tab : null;
+  document.querySelectorAll('.nav button[data-v]').forEach(b => b.classList.toggle('tut-lock', !!tab && b.dataset.v !== tab));
+}
+document.addEventListener('click', e => {
+  if (!OPEN) return; const b = e.target.closest && e.target.closest('.nav button[data-v]'); if (!b) return;
+  const s = STEPS[IDX]; if (!s.tab || b.dataset.v === s.tab) return;
+  e.stopImmediatePropagation(); e.preventDefault(); flash('🎓 ทำ "'+s.t.replace(/^\S+\s*/,'')+'" ให้เสร็จก่อน');
+}, true);
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[onclick^="openReport"]')) REP = true; }, true);
+/* ขั้นเพิ่มพนักงาน: ต้องกรอกครบทุกช่องก่อนกดเพิ่ม */
+document.addEventListener('click', e => {
+  if (!OPEN || STEPS[IDX].tab !== 'manage') return; const b = e.target.closest && e.target.closest('[onclick^="addCourier"]'); if (!b) return;
+  const miss = [['fCode','รหัส'],['fName','ชื่อ'],['fVendor','Vendor']].find(([id]) => { const x = $('#'+id); return x && !x.value.trim(); });
+  if (miss){ e.stopImmediatePropagation(); e.preventDefault(); flash('🎓 กรอก '+miss[1]+' ให้ครบก่อน'); try { $('#'+miss[0]).focus(); } catch(_){} }
+}, true);
+
+async function resetAll(){
+  if (!confirm('🔄 เริ่มฝึกใหม่?\nล้างข้อมูลฝึกของสาขา TEST ทั้งหมด (พนักงาน · เช็คอิน · รูป · PD · PPH)\nทุกเครื่องใน TEST จะเริ่มใหม่พร้อมกัน · สาขาจริงไม่ถูกแตะ')) return;
+  const S = window.DHLSync; if (!S || !S.testReset || dep() !== 'TEST'){ alert('ยังล้างไม่ได้ ลองรีเฟรชหน้าแล้วกดใหม่'); return; }
+  setSt('⏳ กำลังล้าง...', false); ls.set('tutIdx','0'); ls.del('tutDone');
+  try { const r = await S.testReset(); if (!r || !r.ok){ setSt('', true); alert('ล้างไม่สำเร็จ (เน็ต?) ลองใหม่อีกครั้ง'); } }
+  catch(e){ setSt('', true); alert('ล้างไม่สำเร็จ ลองใหม่อีกครั้ง'); }
+}
+
 async function tick(){
   if (!OPEN) return; const s = STEPS[IDX], c = $('#tutCard'); if (!c) return;
+  /* ยังไม่มีพนักงานครบ → ต้องกลับไปขั้นเพิ่มพนักงานก่อนเสมอ */
+  if (IDX > 1 && act().filter(fullC).length < NEED && !STEPS[IDX].last){ go(1); flash('🎓 เพิ่มพนักงานให้ครบก่อน'); return; }
+  try { PP = await pph(); } catch(e){}
   const pop = popupOpen(); c.classList.toggle('pop', pop);
-  const wantMin = pop || USERMIN; if (wantMin !== MIN){ MIN = wantMin; render(); if (DONE && !s.info) markOk(); }
+  const wantMin = pop || USERMIN; if (wantMin !== MIN){ MIN = wantMin; render(); }
   try { hl(DONE && !s.info ? null : (s.el ? s.el() : null)); } catch(e){ hl(null); }
   if (!pop){ try { const r = HL && HL.getBoundingClientRect(); c.classList.toggle('top', !!(r && r.top > window.innerHeight*0.5 && !HL.closest('.nav'))); } catch(e){} }
-  if (s.ok && !s.info && !DONE){ let ok = false; try { ok = await s.ok(); } catch(e){}
-    if (ok){ DONE = true; hl(null); if (MIN && !pop && !USERMIN){ MIN = false; render(); } markOk(); try { if (navigator.vibrate) navigator.vibrate(60); } catch(e){} } }
+  if (s.info) return;
+  let ok = false, pg = '';
+  try { ok = await s.ok(); } catch(e){}
+  try { if (s.prog) pg = await s.prog(); } catch(e){}
+  if (ok){ if (!DONE){ DONE = true; hl(null); if (MIN && !pop && !USERMIN){ MIN = false; render(); DONE = true; } try { if (navigator.vibrate) navigator.vibrate(60); } catch(e){} } markOk(); if (pg) setSt('✔ '+pg, true); }
+  else { if (DONE){ DONE = false; const n = $('#tutNx'); if (n) n.disabled = true; } if (pg !== LASTP || !$('#tutSt').textContent) setSt(pg, false); LASTP = pg; }
 }
 function open(from){ if (OPEN) return; OPEN = true; document.body.classList.add('tut-on'); MIN = false; USERMIN = false;
-  const i = from != null ? from : (+ls.get('tutIdx') || 0); go(i >= STEPS.length ? 0 : i); $('#tutFab').style.display = 'none'; TICK = setInterval(tick, 600); tick(); }
-function close(finished){ OPEN = false; document.body.classList.remove('tut-on'); clearInterval(TICK); hl(null); const c = $('#tutCard'); if (c) c.remove(); const f = $('#tutFab'); if (f) f.style.display = 'block';
+  let i = from != null ? from : (+ls.get('tutIdx') || 0); if (i >= STEPS.length) i = 0;
+  if (i > 1 && act().filter(fullC).length < NEED) i = 1;
+  go(i); $('#tutFab').style.display = 'none'; TICK = setInterval(tick, 700); tick(); }
+function close(finished){ OPEN = false; document.body.classList.remove('tut-on'); clearInterval(TICK); hl(null); lockNav(); const c = $('#tutCard'); if (c) c.remove(); const f = $('#tutFab'); if (f) f.style.display = 'block';
   if (finished){ ls.set('tutDone', '1'); ls.set('tutIdx', '0'); } }
 function mount(){
   if ($('#tutFab')) return;
-  const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
-  const f = document.createElement('button'); f.id = 'tutFab'; f.textContent = '🎓'; f.title = 'Tutorial'; f.onclick = () => open(+ls.get('tutIdx') || 0); document.body.appendChild(f);
+  const st2 = document.createElement('style'); st2.textContent = CSS; document.head.appendChild(st2);
+  const f = document.createElement('button'); f.id = 'tutFab'; f.textContent = '🎓'; f.title = 'Tutorial'; f.onclick = () => open(); document.body.appendChild(f);
   f.style.display = 'block';
-  if (!ls.get('tutDone')) setTimeout(() => open(), 1200);
+  /* หลังกด 🔄 เริ่มฝึกใหม่ (เครื่องไหนก็ได้) → ทุกเครื่องเริ่มสอนใหม่จากขั้นแรก */
+  const rs = ls.get('dsTestReset') || ''; if (rs !== (ls.get('tutResetSeen') || '')){ ls.set('tutResetSeen', rs); ls.set('tutIdx','0'); ls.del('tutDone'); }
+  if (!ls.get('tutDone') || act().filter(fullC).length < NEED) setTimeout(() => open(), 1200);
 }
 function unmount(){ if (OPEN) close(false); ['tutFab','tutCard'].forEach(id => { const e = document.getElementById(id); if (e) e.remove(); }); }
 setInterval(() => { try {
   const want = dep() === 'TEST' && window.DHLSync && window.DHLSync.ready && !(window.DHLUI2 && window.DHLUI2.on && window.DHLUI2.on());
   if (want) mount(); else unmount();
 } catch(e){} }, 1500);
-window.DHLTut = { open, close, steps: STEPS.length };
+window.DHLTut = { open, close, go, steps: STEPS.length };
 })();

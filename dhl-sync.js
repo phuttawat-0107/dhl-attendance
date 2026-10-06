@@ -397,6 +397,39 @@ async function pullOnce(){
    ทุกเครื่องที่อยู่สาขา TEST เห็นค่าใหม่ → ล้างข้อมูลในเครื่อง + รีโหลด (ไม่ส่งของเก่ากลับขึ้นไป)
    สาขาจริงทุกสาขาไม่ผ่านโค้ดนี้เลย (เช็ค S.depot==='TEST' ก่อนทุกครั้ง) */
 let _trBusy=false;
+/* 🧪 6 ต.ค. 2569: เริ่มฝึกใหม่จากแอป Staff — เฉพาะสาขา TEST
+   1) ประกาศ resetAt + ล้างรายชื่อก่อน → ทุกเครื่องใน TEST หยุดส่งและล้างตัวเองทันที (ฟัง depots/TEST)
+   2) รอให้เครื่องอื่นหยุด แล้วค่อยลบข้อมูลวันนี้ + รูปวันนี้   3) เครื่องนี้ล้างแล้วรีโหลด */
+S.testReset = async function(){
+  if(S.depot!=='TEST') return { ok:false, why:'not-test' };
+  const k=tKey(), now=Date.now(); let dayOk=false, phN=0;
+  S._resetting=true; S.ready=false;                /* หยุดส่งข้อมูลระหว่างล้าง */
+  try{
+    const s=await getDoc(depRef('TEST'));
+    const ids=[...((s.exists()&&s.data().couriers)||[]), ...getCouriers()].map(c=>Number(c&&c.id)).filter(n=>!isNaN(n)&&n>0);
+    const up={ couriers:[], couriersAt:now, resetAt:now };
+    if(ids.length) up.removedIds=arrayUnion(...ids);
+    await setDoc(depRef('TEST'), up, { merge:true });
+  }catch(e){ console.warn('[ds] reset depot',e); S._resetting=false; S.ready=true; return { ok:false, why:'depot' }; }
+  await new Promise(r=>setTimeout(r,2500));        /* ให้เครื่องอื่นเห็นแล้วหยุดส่งก่อน */
+  try{ const snap=await getDocs(query(phoCol('TEST'), where('date','==',k)));
+    for(const d of snap.docs){ try{ await deleteDoc(d.ref); phN++; }catch(e){} } }catch(e){ console.warn('[ds] reset photos',e); }
+  try{ await deleteDoc(dayRef('TEST',k)); dayOk=true; }
+  catch(e){ try{ await setDoc(dayRef('TEST',k),{ date:k }); dayOk=true; }catch(e2){ console.warn('[ds] reset day',e2); } }
+  S._resetting=false;
+  await checkTestReset();                          /* เครื่องนี้ล้างแล้วรีโหลดทันที */
+  return { ok:true, dayOk, phN };
+};
+/* ฟังสัญญาณเริ่มฝึกใหม่แบบทันที (เฉพาะ TEST) — เครื่องอื่นไม่ต้องรอรอบส่งข้อมูล */
+let _trWatch=false;
+setInterval(function(){
+  if(_trWatch || S.depot!=='TEST') return; _trWatch=true;
+  try{ onSnapshot(depRef('TEST'), function(s){
+    if(S._resetting) return;
+    const r=s.exists()? (+s.data().resetAt||0) : 0;
+    if(r && r>(+lsGet('dsTestReset')||0)){ S.ready=false; checkTestReset(); }
+  }, function(){}); }catch(e){ _trWatch=false; }
+}, 3000);
 async function checkTestReset(){
   if(S.depot!=='TEST') return false;
   if(_trBusy) return true;

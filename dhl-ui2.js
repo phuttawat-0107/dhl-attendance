@@ -498,10 +498,12 @@ window.addEventListener('online', () => { TLSIG=''; renderTL(); }); window.addEv
 window.DHLUI2 = { ver: UI2_VER, list: UI2, on: () => ON };
 })();
 
+
 /* ============================================================
-   🎓 Tutorial สาขาฝึก TEST (หน้าเดิม) — พาทำทีละขั้น 8 ขั้นสั้นๆ   · 6 ต.ค. 2569
-   • แสดงเฉพาะสาขา TEST เท่านั้น · สาขาจริงไม่เห็นเลย
-   • ไฮไลต์ปุ่มที่ต้องกด + ตรวจเองว่าทำสำเร็จแล้วค่อยไปขั้นถัดไป · ข้าม/ปิดได้ทุกเมื่อ · เปิดใหม่ได้ที่ปุ่ม 🎓
+   🎓 Tutorial สาขาฝึก TEST (หน้าเดิม) v3 · 6 ต.ค. 2569
+   • ครบทุกขั้น: เพิ่มพนักงาน → เช็คอิน → ไม่มา → ถ่ายผิดคน → PD → PPH → FS/DEP → 1st Del → รายงาน
+   • การ์ดเล็ก ข้อความ 1 บรรทัด · อยู่ฝั่งตรงข้ามปุ่มที่ต้องกด · เปิดกล้อง/หน้าต่างอื่น = ย่อเป็นแถบมุมบน
+   • แสดงเฉพาะสาขา TEST
    ============================================================ */
 (function(){
 'use strict';
@@ -511,80 +513,104 @@ const dep = () => { const s = G('settings'); return (s && s.depot) || (window.DH
 const today = () => { try { return G('todayKey')(); } catch(e){ return ''; } };
 const recs = async () => { try { return (await G('getByDate')(today())) || []; } catch(e){ return []; } };
 const pph = async () => { try { return (await G('getPPH')(today())) || {}; } catch(e){ return {}; } };
+const nCour = () => { const c = G('couriers'); return Array.isArray(c) ? c.length : 0; };
 const ls = { get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} } };
-const vis = el => el && el.offsetParent !== null;
+const vis = el => !!el && el.offsetParent !== null;
 const navBtn = v => $('.nav button[data-v="'+v+'"]');
 const firstVisible = sel => [...document.querySelectorAll(sel)].find(vis) || null;
+const inView = v => vis($('#view-'+v));
+const popupOpen = () => !!($('#camOverlay.show') || $('#pdPreview.show') || $('#repModal.show') || $('.modal.show') || vis($('#dsAbsWrap')));
+let BASE_N = 0;
 
-/* ขั้นตอน: t=หัวข้อ, d=คำอธิบาย, el=ปุ่มที่ต้องกด (ตามสถานะ), ok=ทำสำเร็จหรือยัง */
+/* t=หัวข้อ d=คำแนะนำสั้น el=ปุ่มที่ต้องกด ok=ทำสำเร็จหรือยัง */
 const STEPS = [
-  { t:'👋 ยินดีต้อนรับสู่สาขาฝึก', d:'สาขา TEST ใช้ฝึกเท่านั้น ข้อมูลไม่นับจริง กดผิดได้ไม่ต้องกลัว<br>ใช้เวลาประมาณ 3 นาที', info:true },
-  { t:'📷 ขั้น 1 · เช็คอิน', d:'แตะปุ่ม <b>📷</b> ที่ชื่อ Courier คนไหนก็ได้ แล้วกด<b>ปุ่มวงกลม</b>เพื่อถ่ายรูป<br>เวลาเข้างาน = เวลาที่ถ่ายรูปจริง',
-    el:()=>{ if (!vis($('#view-checkin'))) return navBtn('checkin'); return $('#camOverlay.show .shutter') || firstVisible('#ciList [onclick^="openCamera("]:not([onclick*=","])') || firstVisible('#ciList [onclick^="openCamera("]'); },
+  { t:'👋 สาขาฝึก', d:'ข้อมูลไม่นับจริง กดผิดได้ · 9 ขั้น ~5 นาที', info:true },
+  { t:'👥 1 · เพิ่มพนักงาน', d:'แท็บ <b>จัดการ</b> → กรอก รหัส/ชื่อ/Vendor → <b>+ เพิ่ม</b>', skip:true,
+    start:()=>{ BASE_N = nCour(); },
+    el:()=>{ if (!inView('manage')) return navBtn('manage'); for (const id of ['fCode','fName','fVendor']){ const e = $('#'+id); if (vis(e) && !e.value.trim()) return e; } return firstVisible('#view-manage [onclick^="addCourier"]'); },
+    ok:async()=> nCour() > BASE_N },
+  { t:'📷 2 · เช็คอิน', d:'กด <b>📷 เช็คอิน</b> ที่ชื่อ → กดปุ่มวงกลม',
+    el:()=>{ if ($('#camOverlay.show')) return $('#camOverlay .shutter'); if (!inView('checkin')) return navBtn('checkin'); return firstVisible('#ciList [onclick^="openCamera("]'); },
     ok:async()=> (await recs()).length > 0 },
-  { t:'↺ ขั้น 2 · ถ่ายผิดคน ทำยังไง', d:'ถ้าถ่ายผิดคน กดปุ่ม <b>บันทึกใหม่ ↺</b> ที่รายการนั้น ระบบจะลบแล้วให้ถ่ายใหม่<br>(ลองกดหรือข้ามก็ได้)', info:true,
-    el:()=> vis($('#view-checkin')) ? firstVisible('#ciList [onclick^="redo("]') : null },
-  { t:'📸 ขั้น 3 · ภาพประชุม PD', d:'ไปแท็บ <b>2️⃣ PD</b> แล้วกด <b>ถ่ายภาพประชุมรวม</b> (ถือมือถือแนวนอน) → กด <b>✔ บันทึกภาพนี้</b><br>ต้องถ่ายไม่เกิน 07:15',
-    el:()=>{ if ($('#pdPreview.show')) return firstVisible('#pdPreview [onclick="savePDPhoto()"]'); if ($('#camOverlay.show')) return $('#camOverlay .shutter'); if (!vis($('#view-pd'))) return navBtn('pd'); return firstVisible('#pdCard button'); },
+  { t:'🚫 3 · คนไม่มา', d:'กด <b>🚫 ไม่มา</b> → เลือกเหตุผล (ข้ามได้)', info:true,
+    el:()=>{ if (!inView('checkin')) return null; return firstVisible('#ciList .dsAbsAdd') || firstVisible('#ciList [onclick*="Abs"]'); } },
+  { t:'↺ 4 · ถ่ายผิดคน', d:'เปิด <b>✓ เช็คอินแล้ว</b> → กด <b>↺</b> ถ่ายใหม่ (ข้ามได้)', info:true,
+    el:()=>{ if (!inView('checkin')) return null; const r = firstVisible('#ciList [onclick^="redo("]'); if (r) return r; const h = $('#dsDoneHdr'); return (h && !h.classList.contains('open')) ? h : null; } },
+  { t:'📸 5 · ภาพ PD', d:'แท็บ <b>PD</b> → ถ่ายภาพประชุม → <b>บันทึก</b> (≤07:15)',
+    el:()=>{ if ($('#pdPreview.show')) return firstVisible('#pdPreview [onclick="savePDPhoto()"]'); if ($('#camOverlay.show')) return $('#camOverlay .shutter'); if (!inView('pd')) return navBtn('pd'); return firstVisible('#pdCard button'); },
     ok:async()=>{ const p = await pph(); return !!(p.pd && p.pd.ts); } },
-  { t:'📦 ขั้น 4 · PPH', d:'ไปแท็บ <b>3️⃣ PPH</b> กรอก <b>จำนวน Staff</b> และ <b>พัสดุ</b> แล้วกด <b>📥 First Inbound</b> ตอนรถเข้า',
-    el:()=>{ if (!vis($('#view-pph'))) return navBtn('pph'); const p = $('#pphBody input[onchange*="pNew"]'); if (p && !(+p.value > 0)) return p;
+  { t:'📦 6 · PPH', d:'แท็บ <b>PPH</b> → กรอก Staff/พัสดุ → <b>First Inbound</b>',
+    el:()=>{ if (!inView('pph')) return navBtn('pph'); const p = $('#pphBody input[onchange*="pNew"]'); if (vis(p) && !(+p.value > 0)) return p;
       return [...document.querySelectorAll('#pphBody button')].find(b=>vis(b) && /First Inbound/.test(b.textContent)) || null; },
     ok:async()=>{ const p = await pph(); return !!p.inboundTs; } },
-  { t:'🛵 ขั้น 5 · FS และ ออกรถ', d:'ในแท็บ PPH ส่วน <b>Route prep</b> กด <b>FS</b> ตอนจัดรถเสร็จ แล้วกด <b>DEP</b> ตอนรถออก ของคนที่เช็คอิน',
-    el:()=>{ if (!vis($('#view-pph'))) return navBtn('pph'); return firstVisible('#rpList button[onclick*="\'fs\'"]:not(.btn-o)') || firstVisible('#rpList button[onclick*="\'dep\'"]:not(.btn-o)') || firstVisible('#rpList button'); },
+  { t:'🛵 7 · FS → DEP', d:'Route prep: กด <b>FS</b> ตอนจัดเสร็จ → <b>DEP</b> ตอนรถออก',
+    el:()=>{ if (!inView('pph')) return navBtn('pph'); return firstVisible('#rpList button[onclick*="\'fs\'"]:not(.btn-o)') || firstVisible('#rpList button[onclick*="\'dep\'"]:not(.btn-o)') || firstVisible('#rpList button'); },
     ok:async()=>{ const p = await pph(); return Object.values(p.rp||{}).some(q=>q && q.dep); } },
-  { t:'🎯 ขั้น 6 · ส่งชิ้นแรก', d:'ไปแท็บ <b>4️⃣ First Del</b> แล้วกด <b>First Del</b> ตอน Courier ส่งพัสดุชิ้นแรก',
-    el:()=>{ if (!vis($('#view-fdel'))) return navBtn('fdel'); return firstVisible('#fdList button:not([disabled])'); },
+  { t:'🎯 8 · 1st Del', d:'แท็บ <b>First Del</b> → กดตอนส่งชิ้นแรก',
+    el:()=>{ if (!inView('fdel')) return navBtn('fdel'); return firstVisible('#fdList button:not([disabled])'); },
     ok:async()=>{ const p = await pph(); return Object.values(p.rp||{}).some(q=>q && q.fdel); } },
-  { t:'📄 ขั้น 7 · ส่งรายงาน', d:'ไปแท็บ <b>📊 สรุปผล</b> แล้วกด <b>สร้างรายงานวันนี้</b> → ดาวน์โหลด/ส่งใน LINE ให้หัวหน้า', info:true,
-    el:()=>{ if (!vis($('#view-dash'))) return navBtn('dash'); return firstVisible('#view-dash button[onclick^="openReport"]'); } },
-  { t:'🎉 เก่งมาก! ครบทุกขั้นแล้ว', d:'พร้อมใช้งานจริงแล้ว · อยากฝึกซ้ำ กดปุ่ม <b>🎓</b> มุมจอได้ทุกเมื่อ<br>(ผู้ดูแลล้างข้อมูลฝึกให้เริ่มใหม่ได้)', info:true, last:true }
+  { t:'📄 9 · ส่งรายงาน', d:'แท็บ <b>สรุปผล</b> → สร้างรายงาน → ส่ง LINE', info:true,
+    el:()=>{ if ($('#repModal.show')) return null; if (!inView('dash')) return navBtn('dash'); return firstVisible('#view-dash button[onclick^="openReport"]'); } },
+  { t:'🎉 ครบแล้ว!', d:'ฝึกซ้ำกด 🎓 · เสร็จแล้ว <b>ออกจากระบบ</b>', info:true, last:true }
 ];
 
-const CSS = `#tutCard{position:fixed;left:10px;right:10px;bottom:84px;z-index:9990;max-width:520px;margin:0 auto;background:#1a1a1a;color:#fff;border-radius:18px;padding:14px 14px 12px;box-shadow:0 10px 30px rgba(0,0,0,.45);font-family:inherit;animation:tutUp .3s ease}
-@keyframes tutUp{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
-#tutCard h4{margin:0 0 4px;font-size:16px;color:#FFCC00} #tutCard p{margin:0;font-size:13.5px;line-height:1.55;color:#eee}
-#tutCard .dots{display:flex;gap:4px;margin:10px 0 8px} #tutCard .dots i{flex:1;height:4px;border-radius:4px;background:#444} #tutCard .dots i.on{background:#FFCC00}
-#tutCard .bt{display:flex;gap:8px;justify-content:flex-end;align-items:center} #tutCard button{border:0;border-radius:99px;padding:8px 14px;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer}
-#tutCard .sk{background:transparent;color:#aaa} #tutCard .nx{background:#FFCC00;color:#1a1a1a} #tutCard .nx[disabled]{background:#555;color:#999}
-#tutCard .st{margin-right:auto;font-size:12px;color:#8fd19e;font-weight:700}
-.tut-hl{outline:3px solid #FFCC00!important;outline-offset:3px;animation:tutPulse 1.1s ease-in-out infinite;position:relative;z-index:2}
-@keyframes tutPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,204,0,.75)}50%{box-shadow:0 0 0 10px rgba(255,204,0,0)}}
-body.tut-on #uxRem{display:none!important}   /* ระหว่างฝึก ไม่ให้ Pop Up เตือนลงเวลาบังบทเรียน */
-#tutFab{position:fixed;left:10px;bottom:96px;z-index:9989;width:42px;height:42px;border-radius:50%;border:0;background:#FFCC00;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer;display:none}`;
+const CSS = `#tutCard{position:fixed;left:8px;right:8px;bottom:78px;z-index:9990;max-width:440px;margin:0 auto;background:rgba(26,26,26,.94);color:#fff;border-radius:14px;padding:8px 11px;box-shadow:0 6px 20px rgba(0,0,0,.35);font-family:inherit;transition:top .2s,bottom .2s}
+#tutCard.top{top:52px;bottom:auto}
+#tutCard .r1{display:flex;align-items:center;gap:6px}
+#tutCard h4{margin:0;font-size:13.5px;color:#FFCC00;cursor:pointer;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tutCard p{margin:3px 0 0;font-size:12.5px;line-height:1.4;color:#eee}
+#tutCard button{border:0;border-radius:99px;padding:5px 11px;font-weight:800;font-size:12.5px;font-family:inherit;cursor:pointer;flex:none}
+#tutCard .sk{background:transparent;color:#999;padding:5px 6px} #tutCard .nx{background:#FFCC00;color:#1a1a1a} #tutCard .nx[disabled]{background:#555;color:#999}
+#tutCard .st{color:#8fd19e;font-size:12px;font-weight:800}
+#tutCard .bar{height:3px;background:#444;border-radius:3px;margin-top:6px;overflow:hidden} #tutCard .bar i{display:block;height:100%;background:#FFCC00}
+#tutCard.min{left:auto;right:8px;max-width:62%;padding:5px 10px;border-radius:99px} #tutCard.min p,#tutCard.min .bar,#tutCard.min button{display:none}
+#tutCard.pop{top:8px;bottom:auto;z-index:100001;opacity:.92}
+.tut-hl{outline:3px solid #FFCC00!important;outline-offset:2px;animation:tutPulse 1.1s ease-in-out infinite;position:relative;z-index:2}
+@keyframes tutPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,204,0,.75)}50%{box-shadow:0 0 0 9px rgba(255,204,0,0)}}
+body.tut-on #uxRem{display:none!important}
+body.tut-on{padding-bottom:130px!important}
+#tutFab{position:fixed;left:10px;bottom:96px;z-index:9989;width:40px;height:40px;border-radius:50%;border:0;background:#FFCC00;font-size:19px;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer;display:none}`;
 
-let IDX = 0, OPEN = false, HL = null, DONE = false, TICK = null;
-function hl(el){ if (HL === el) return; if (HL) HL.classList.remove('tut-hl'); HL = el; if (el){ el.classList.add('tut-hl'); try{ el.scrollIntoView({block:'nearest', behavior:'smooth'}); }catch(e){} } }
+let IDX = 0, OPEN = false, HL = null, DONE = false, TICK = null, MIN = false, USERMIN = false;
+function hl(el){ if (HL === el) return; if (HL) HL.classList.remove('tut-hl'); HL = el;
+  if (el){ el.classList.add('tut-hl'); try{ if (!el.closest('.nav') && !el.closest('#camOverlay') && !el.closest('#pdPreview')) el.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){} } }
 function render(){
   let c = $('#tutCard'); const s = STEPS[IDX];
   if (!c){ c = document.createElement('div'); c.id = 'tutCard'; document.body.appendChild(c); }
-  c.innerHTML = '<h4>'+s.t+'</h4><p>'+s.d+'</p><div class="dots">'+STEPS.slice(1).map((x,i)=>'<i class="'+(i<IDX?'on':'')+'"></i>').join('')+'</div>'
-    + '<div class="bt"><span class="st" id="tutSt"></span>'+(s.last?'':'<button class="sk" id="tutSk">ปิด</button>')
-    + '<button class="nx" id="tutNx"'+(s.info?'':' disabled')+'>'+(IDX===0?'เริ่มเลย ›':s.last?'เสร็จสิ้น':'ถัดไป ›')+'</button></div>';
-  $('#tutNx').onclick = () => { if (s.last){ close(true); return; } IDX++; ls.set('tutIdx', String(IDX)); render(); };
+  const lbl = IDX===0 ? 'เริ่ม ›' : s.last ? 'เสร็จ' : (s.skip ? 'ข้าม ›' : 'ถัดไป ›');
+  c.innerHTML = '<div class="r1"><h4 id="tutH">'+s.t+(MIN?' ▴':'')+'</h4><span class="st" id="tutSt"></span>'
+    + (s.last?'':'<button class="sk" id="tutSk">✕</button>')
+    + '<button class="nx" id="tutNx"'+(s.info||s.skip?'':' disabled')+'>'+lbl+'</button></div>'
+    + '<p>'+s.d+'</p><div class="bar"><i style="width:'+Math.round(IDX/(STEPS.length-1)*100)+'%"></i></div>';
+  c.classList.toggle('min', MIN);
+  $('#tutH').onclick = () => { USERMIN = !MIN; MIN = USERMIN; render(); };
+  $('#tutNx').onclick = () => { if (s.last){ close(true); return; } go(IDX+1); };
   const sk = $('#tutSk'); if (sk) sk.onclick = () => close(false);
   DONE = !!s.info;
 }
+function markOk(){ const n = $('#tutNx'), st = $('#tutSt'); if (n){ n.disabled = false; n.textContent = 'ถัดไป ›'; } if (st) st.textContent = '✔'; }
+function go(i){ IDX = i; ls.set('tutIdx', String(IDX)); const s = STEPS[IDX]; if (s.start) try{ s.start(); }catch(e){} render(); }
 async function tick(){
-  if (!OPEN) return; const s = STEPS[IDX];
+  if (!OPEN) return; const s = STEPS[IDX], c = $('#tutCard'); if (!c) return;
+  const pop = popupOpen(); c.classList.toggle('pop', pop);
+  const wantMin = pop || USERMIN; if (wantMin !== MIN){ MIN = wantMin; render(); if (DONE && !s.info) markOk(); }
   try { hl(DONE && !s.info ? null : (s.el ? s.el() : null)); } catch(e){ hl(null); }
-  if (s.ok && !DONE){ let ok = false; try { ok = await s.ok(); } catch(e){}
-    if (ok){ DONE = true; const n = $('#tutNx'), st = $('#tutSt'); if (n) n.disabled = false; if (st) st.textContent = '✔ ทำได้แล้ว!'; hl(null);
-      try { if (window.navigator.vibrate) navigator.vibrate(60); } catch(e){} } }
+  if (!pop){ try { const r = HL && HL.getBoundingClientRect(); c.classList.toggle('top', !!(r && r.top > window.innerHeight*0.5 && !HL.closest('.nav'))); } catch(e){} }
+  if (s.ok && !s.info && !DONE){ let ok = false; try { ok = await s.ok(); } catch(e){}
+    if (ok){ DONE = true; hl(null); if (MIN && !pop && !USERMIN){ MIN = false; render(); } markOk(); try { if (navigator.vibrate) navigator.vibrate(60); } catch(e){} } }
 }
-function open(from){ if (OPEN) return; OPEN = true; document.body.classList.add('tut-on'); IDX = from != null ? from : (+ls.get('tutIdx') || 0); if (IDX >= STEPS.length) IDX = 0; render(); $('#tutFab').style.display = 'none'; TICK = setInterval(tick, 700); tick(); }
-function close(finished){ OPEN = false; document.body.classList.remove('tut-on'); clearInterval(TICK); hl(null); const c = $('#tutCard'); if (c) c.remove(); $('#tutFab').style.display = 'block';
+function open(from){ if (OPEN) return; OPEN = true; document.body.classList.add('tut-on'); MIN = false; USERMIN = false;
+  const i = from != null ? from : (+ls.get('tutIdx') || 0); go(i >= STEPS.length ? 0 : i); $('#tutFab').style.display = 'none'; TICK = setInterval(tick, 600); tick(); }
+function close(finished){ OPEN = false; document.body.classList.remove('tut-on'); clearInterval(TICK); hl(null); const c = $('#tutCard'); if (c) c.remove(); const f = $('#tutFab'); if (f) f.style.display = 'block';
   if (finished){ ls.set('tutDone', '1'); ls.set('tutIdx', '0'); } }
 function mount(){
   if ($('#tutFab')) return;
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const f = document.createElement('button'); f.id = 'tutFab'; f.textContent = '🎓'; f.title = 'Tutorial'; f.onclick = () => open(+ls.get('tutIdx') || 0); document.body.appendChild(f);
   f.style.display = 'block';
-  if (!ls.get('tutDone')) setTimeout(() => open(), 1200);   /* เข้าสาขาฝึกครั้งแรก → เปิดให้อัตโนมัติ */
+  if (!ls.get('tutDone')) setTimeout(() => open(), 1200);
 }
 function unmount(){ if (OPEN) close(false); ['tutFab','tutCard'].forEach(id => { const e = document.getElementById(id); if (e) e.remove(); }); }
-/* แสดงเฉพาะสาขา TEST + หน้าเดิม (ไม่ใช่หน้าใหม่ ui2) + เข้าระบบแล้ว */
 setInterval(() => { try {
   const want = dep() === 'TEST' && window.DHLSync && window.DHLSync.ready && !(window.DHLUI2 && window.DHLUI2.on && window.DHLUI2.on());
   if (want) mount(); else unmount();

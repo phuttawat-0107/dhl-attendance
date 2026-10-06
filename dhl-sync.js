@@ -392,10 +392,34 @@ async function pullOnce(){
   }catch(e){ console.warn('pull',e); flagErr('ดึงข้อมูลจากคลาวด์ไม่สำเร็จ: '+e.message); }
 }
 
+/* ============ 🧪 TEST: รีเซ็ตข้อมูลฝึกจาก Manager (6 ต.ค. 2569) ============
+   Manager กด "ล้างข้อมูล TEST วันนี้" → เขียน depots/TEST.resetAt แล้วลบข้อมูลวันนี้บนคลาวด์
+   ทุกเครื่องที่อยู่สาขา TEST เห็นค่าใหม่ → ล้างข้อมูลในเครื่อง + รีโหลด (ไม่ส่งของเก่ากลับขึ้นไป)
+   สาขาจริงทุกสาขาไม่ผ่านโค้ดนี้เลย (เช็ค S.depot==='TEST' ก่อนทุกครั้ง) */
+let _trBusy=false;
+async function checkTestReset(){
+  if(S.depot!=='TEST') return false;
+  if(_trBusy) return true;
+  try{
+    const s=await getDoc(depRef('TEST'));
+    const r=s.exists()? (+s.data().resetAt||0) : 0, seen=+lsGet('dsTestReset')||0;
+    if(!r || r<=seen) return false;
+    _trBusy=true; S.ready=false;
+    const b=document.getElementById('dsBadge'); if(b){ b.style.background='#1a1a1a'; b.style.color='#FFCC00'; b.textContent='🧪 ล้างข้อมูลฝึก TEST ...'; }
+    await wipeLocalData();
+    try{ Object.keys(localStorage).filter(k=>k.indexOf('dsAbs_')===0).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+    lsSet('dsTestReset', String(r));
+    setTimeout(()=>location.reload(), 500);
+    return true;
+  }catch(e){ return false; }
+}
+
 /* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */
 /* เขียนแบบ field-level (dot path) — ไม่ทับข้อมูลของเครื่องอื่น และไม่ล้างด้วยค่าว่าง */
 async function pushAll(){
+  if(S.ready && S.busy){ S._pushAgain=true; return; }   /* 🐞 6 ต.ค.: กำลังส่งอยู่ → ส่งซ้ำทันทีที่เสร็จ (เดิมทิ้งไป) */
   if(!S.ready||S.busy) return;
+  if(S.depot==='TEST' && await checkTestReset()) return;   /* 🧪 */
   /* 🔒 กันข้อมูลข้ามสาขา: ถ้าข้อมูลในเครื่องเป็นของสาขาอื่น ห้ามส่งขึ้นเด็ดขาด */
   if(lsGet('dsDataDepot') && lsGet('dsDataDepot')!==S.depot){
     console.warn('[ds] ข้ามการส่ง — ข้อมูลในเครื่องเป็นของสาขา '+lsGet('dsDataDepot')); return;
@@ -468,14 +492,33 @@ async function pushAll(){
     }
 
     if(Object.keys(up).length){
-      try{ await runTransaction(dbF, async t=>{ const cs=await t.get(ref); const o=keepFirst(cs.exists()?(cs.data().checkins||{}):{}); const _cp=cs.exists()&&cs.data().pph&&cs.data().pph.pd; if(o['pph.pd'] && _cp && _cp.hasPhoto && !o['pph.pd'].hasPhoto && Number(_cp.ts)===Number(o['pph.pd'].ts)) o['pph.pd']=Object.assign({},o['pph.pd'],{hasPhoto:true}); if(Object.keys(o).length) t.update(ref,o); }); }
+      try{ await runTransaction(dbF, async t=>{ const cs=await t.get(ref); const o=pphPushFilter(keepFirst(cs.exists()?(cs.data().checkins||{}):{}), cs.exists()?cs.data().pph:null); const _cp=cs.exists()&&cs.data().pph&&cs.data().pph.pd; if(o['pph.pd'] && _cp && _cp.hasPhoto && !o['pph.pd'].hasPhoto && Number(_cp.ts)===Number(o['pph.pd'].ts)) o['pph.pd']=Object.assign({},o['pph.pd'],{hasPhoto:true}); if(Object.keys(o).length) t.update(ref,o); }); pphBaseCommit(); }
       catch(e){ console.warn('keepFirst tx → ส่งแบบเดิม',e); await updateDoc(ref,up); }
     }
     H.lastPush=Date.now(); H.saves++; H.err=''; H.ok=true;
     const eb=document.getElementById('dsErrBar'); if(eb) eb.remove();
   }catch(e){ console.warn('sync push',e); flagErr('ส่งข้อมูลขึ้นคลาวด์ไม่สำเร็จ: '+e.message); }
   S.busy=false;
+  if(S._pushAgain){ S._pushAgain=false; pushSoon(); }   /* 🐞 6 ต.ค. */
 }
+/* 🐞 6 ต.ค.: ตัวช่วย PPH (ดูข้อ 6–7) */
+const PPH_F=['staffN','sorterN','courierN','pNew','pOld','inboundTs','lastInboundTs'];
+function _peq(a,b){ return JSON.stringify(a==null?null:a)===JSON.stringify(b==null?null:b); }
+/* ส่งเฉพาะช่องที่เครื่องนี้กรอก/กดจริง (dirty) หรือช่องที่คลาวด์ยังไม่มี — ไม่เอาค่าเก่าในเครื่องไปทับของเครื่องอื่น */
+function pphPushFilter(o, cp){
+  const D=S._dirty||{}, sent={};
+  PPH_F.forEach(k=>{ const key='pph.'+k; if(!(key in o)) return; const cv=cp?cp[k]:undefined;
+    if(!D[k] && cv!=null){ delete o[key]; return; }
+    if(D[k]) sent[k]=D[k]; });
+  Object.keys(o).filter(x=>x.indexOf('pph.rp.')===0 && x.split('.').length===3).forEach(key=>{
+    const cid=key.split('.')[2], lv=o[key]||{}, c=(cp&&cp.rp&&cp.rp[cid])||{}; delete o[key];
+    ['fs','dep','fdel'].forEach(f=>{ if(lv[f]==null) return; const dk='rp.'+cid+'.'+f;
+      if(!D[dk] && c[f]!=null) return;
+      o['pph.rp.'+cid+'.'+f]=lv[f]; if(D[dk]) sent[dk]=D[dk]; }); });
+  S._pbNext=sent; return o; }
+/* ส่งสำเร็จ → ล้างเครื่องหมาย dirty ของช่องที่ส่งไป (ถ้าไม่ได้ถูกกดซ้ำระหว่างส่ง) */
+function pphBaseCommit(){ const sent=S._pbNext; S._pbNext=null; if(!sent) return; const D=S._dirty||{};
+  Object.keys(sent).forEach(k=>{ if(D[k]===sent[k]) delete D[k]; }); }
 let pushTimer=null;
 function pushSoon(){ clearTimeout(pushTimer); pushTimer=setTimeout(pushAll,700); }
 
@@ -484,6 +527,7 @@ function pushSoon(){ clearTimeout(pushTimer); pushTimer=setTimeout(pushAll,700);
    ทำครั้งเดียวหลังล็อกอิน (เงียบๆ ไม่รบกวนการทำงาน) */
 async function backfill(){
   if(!S.ready) return;
+  if(S.depot==='TEST') return;   /* 🧪 ข้อมูลฝึก ไม่กู้ย้อนหลัง */
   try{
     const today=tKey();
     for(let i=1;i<=7;i++){
@@ -574,8 +618,7 @@ async function runPhotoQ(){
         else if(rec){
           rec.photo=snap.data().d;
           const put=S._rawPutCheckin||window.putCheckin;
-          const wasMerging=S.merging; S.merging=true;
-          try{ await put(rec); }finally{ S.merging=wasMerging; }
+          await put(rec);   /* 🐞 6 ต.ค.: ไม่แตะ S.merging (เคยทำให้ค้าง) */
           got++; ok=true;
         }
       }
@@ -605,8 +648,7 @@ async function queuePdPull(date){
     const cur=await getPPH(date); if(!cur||!cur.pd||cur.pd.photo) return;
     cur.pd.photo=snap.data().d;
     const put=S._rawPutPPH||window.putPPH;
-    const was=S.merging; S.merging=true;
-    try{ await put(cur); }finally{ S.merging=was; }
+    await put(cur);   /* 🐞 6 ต.ค.: ไม่แตะ S.merging (เคยทำให้ค้าง) */
     toast('📷 โหลดรูป PD จากเครื่องอื่นแล้ว'); repaintSoon();
   }catch(e){ console.warn('pd pull',e); }
 }
@@ -687,7 +729,7 @@ function listenDay(){
   if(S.unsubDay) S.unsubDay();
   const date=tKey();
   S.unsubDay=onSnapshot(dayRef(S.depot,date), async snap=>{
-    if(snap.metadata.hasPendingWrites) return;      // การเขียนของเราเอง
+    if(snap.metadata.hasPendingWrites){ clearTimeout(S._psT); S._psT=setTimeout(async()=>{ try{ const s2=await getDoc(dayRef(S.depot,date)); if(s2.exists()) await mergeRemote(s2.data()); }catch(e){} }, 1500); return; }   /* 🐞 6 ต.ค. */      // การเขียนของเราเอง
     if(!snap.exists()){ await selfHeal(null); return; }   // 🛟 คลาวด์ว่าง → ส่งของเราขึ้นไปคืน
     await mergeRemote(snap.data());
     await selfHeal(snap.data());
@@ -696,6 +738,7 @@ function listenDay(){
 
 /* 🛟 SELF-HEAL: ถ้าคลาวด์มีข้อมูลน้อยกว่าในเครื่อง (ถูกลบ/หาย) → ส่งขึ้นไปคืนอัตโนมัติ */
 async function selfHeal(cloud){
+  if(S.depot==='TEST' && await checkTestReset()) return;   /* 🧪 */
   if(!S.ready||S.merging) return;
   try{
     const date=tKey();
@@ -791,7 +834,7 @@ function mergeCouriers(list){
 }
 
 async function mergeRemote(d){
-  if(S.merging) return;
+  if(S.merging){ S._pendMerge=d; return; }   /* 🐞 6 ต.ค.: ข้อมูลที่มาระหว่าง merge ไม่ทิ้ง */
   S.merging=true;                       // ⛔ กันลูป: ระหว่าง merge จะไม่ push กลับ
   try{
     const date=d.date||tKey();
@@ -841,21 +884,26 @@ async function mergeRemote(d){
     if(d.pph && window.getPPH){
       const cur = await getPPH(date) || { date };
       const r=d.pph;
-      const same = JSON.stringify([cur.staffN,cur.sorterN,cur.courierN,cur.pNew,cur.pOld,cur.inboundTs,cur.lastInboundTs,cur.rp])
-                === JSON.stringify([r.staffN,r.sorterN,r.courierN,r.pNew,r.pOld,r.inboundTs,r.lastInboundTs,r.rp]);
-      if(!same){
-        cur.staffN=r.staffN; cur.sorterN=r.sorterN; cur.courierN=r.courierN;
-        cur.pNew=r.pNew; cur.pOld=r.pOld; cur.inboundTs=r.inboundTs;
-        cur.lastInboundTs=r.lastInboundTs; cur.rp=r.rp||{};
-        if(r.pd){ cur.pd = cur.pd||{}; cur.pd.ts=r.pd.ts; cur.pd.manualEdit=!!r.pd.manualEdit; }
-        await putPp(cur); changed=true;
-      }
+      /* 🐞 6 ต.ค.: ช่องที่เครื่องนี้เพิ่งกรอก/กด แต่ยังไม่ได้ส่งขึ้น (dirty) → เก็บของเครื่องนี้ไว้ (เดี๋ยวส่งขึ้นเอง)
+         ช่องอื่นเอาค่าจากคลาวด์ (เดิม: เอาค่าคลาวด์ทับทั้งก้อน ทำให้ค่าที่เพิ่งกรอกหาย) */
+      const D=S._dirty||{}; let _ch=false;
+      PPH_F.forEach(k=>{ if(D[k]) return; if(!_peq(cur[k], r[k])){ cur[k]=r[k]; _ch=true; } });
+      const crp=r.rp||{}, lrp=cur.rp||{}, nrp={};
+      new Set([...Object.keys(crp),...Object.keys(lrp)]).forEach(cid=>{ const c=crp[cid]||{}, l=lrp[cid]||{}, o={};
+        ['fs','dep','fdel'].forEach(f=>{ const v = D['rp.'+cid+'.'+f] ? l[f] : (c[f]!=null ? c[f] : l[f]); if(v!=null) o[f]=v; });
+        if(Object.keys(o).length) nrp[cid]=o; });
+      if(!_peq(nrp,lrp)){ cur.rp=nrp; _ch=true; }
+      if(r.pd && (!cur.pd || cur.pd.ts!==r.pd.ts || (!!cur.pd.manualEdit)!==(!!r.pd.manualEdit))){ cur.pd = cur.pd||{}; cur.pd.ts=r.pd.ts; cur.pd.manualEdit=!!r.pd.manualEdit; _ch=true; }
+      if(_ch){ await putPp(cur); changed=true;
+        /* ให้ตัวแปร pphRec ของแอปเดิมเป็นค่าล่าสุดด้วย — กันกดปุ่ม PPH ต่อแล้วเอาค่าเก่าในหน่วยความจำไปทับ */
+        try{ const _pr=G('pphRec'); if(_pr && _pr.date===date) (0,eval)('pphRec='+JSON.stringify(cur)); }catch(e){} }
       /* 📷 รูป PD จากเครื่องอื่น */
       if(r.pd && r.pd.hasPhoto && !(cur.pd&&cur.pd.photo)) queuePdPull(date);
     }
     if(changed) repaintSoon();
   }catch(e){ console.warn('merge',e); }
-  finally{ S.merging=false; }
+  finally{ S.merging=false;
+    if(S._pendMerge){ const _n=S._pendMerge; S._pendMerge=null; setTimeout(()=>mergeRemote(_n),0); } }
 }
 
 /* วาดหน้าใหม่แบบหน่วง — กันกระตุกเวลาข้อมูลไหลเข้าถี่ๆ */
@@ -1329,6 +1377,15 @@ try{ tidyManage(); paintSetInfo(); }catch(e){}
 
 /* ============ WRAP ฟังก์ชันเดิม ============ */
 function wrap(){
+  /* 🐞 6 ต.ค.: ปุ่ม PPH โหลดค่าล่าสุดก่อนบันทึก (กันค่าเก่าทับค่าที่ซิงค์มาจากเครื่องอื่น) */
+  ['pphNum','pphStamp','rpStamp','pphSyncCourier'].forEach(fn=>{ const o=window[fn]; if(typeof o!=='function' || o.__ds) return;
+    const f=async function(){ try{ const k=tKey(), fr=window.getPPH? await getPPH(k) : null; const pr=G('pphRec');
+        if(fr && pr && pr.date===k) (0,eval)('pphRec='+JSON.stringify(fr)); }catch(e){}
+      const a=arguments, r=await o.apply(this, a);
+      try{ const D=S._dirty||(S._dirty={}), t=Date.now()+Math.random();
+        if(fn==='rpStamp') D['rp.'+a[0]+'.'+a[1]]=t; else if(fn==='pphSyncCourier') D.courierN=t; else D[a[0]]=t; }catch(e){}
+      return r; };
+    f.__ds=true; window[fn]=f; });
   /* พัก/ยกเลิกพัก — จดเวลาแล้วดันขึ้นคลาวด์ทันที */
   if(window.toggleActive && !window.toggleActive.__ds){
     const ot=window.toggleActive;

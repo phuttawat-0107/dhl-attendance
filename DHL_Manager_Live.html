@@ -451,6 +451,28 @@ async function login(){
   }catch(e){ err.textContent='เชื่อมต่อไม่ได้: '+e.message; }
 }
 
+/* ---------- 🧪 ล้างข้อมูลฝึก TEST (6 ต.ค. 2569) ---------- */
+window.__testReset = async () => {
+  if(!DEPOTS.includes('TEST')) return;
+  if(!confirm('ล้างข้อมูลฝึกของสาขา TEST วันนี้ทั้งหมด?\n(เช็คอิน · รูป · PD · PPH · ขาด/ลา)\n\nทุกเครื่องที่อยู่สาขา TEST จะล้างข้อมูลในเครื่องแล้วเริ่มใหม่เอง\nสาขาจริงไม่ถูกแตะ')) return;
+  const b=document.getElementById('tstReset'); if(b){ b.disabled=true; b.textContent='⏳ กำลังล้าง...'; }
+  try{
+    const k=todayKey();
+    await setDoc(doc(db,'depots','TEST'),{ resetAt:Date.now() },{ merge:true });   /* 1) บอกทุกเครื่องให้ล้าง (ต้องมาก่อนลบ) */
+    await deleteDoc(doc(db,'depots','TEST','days',k));                         /* 2) ข้อมูลวันนี้ */
+    const ps=await getDocs(query(collection(db,'depots','TEST','photos'), where('date','==',k)));
+    for(const d of ps.docs) await deleteDoc(d.ref);                              /* 3) รูปวันนี้ */
+    alert('✔ ล้างข้อมูลฝึก TEST แล้ว (รูป '+ps.size+' รูป)\nเครื่อง Staff จะรีเซ็ตเองภายในไม่กี่วินาที');
+  }catch(e){ alert('ล้างไม่สำเร็จ: '+e.message); }
+  if(b){ b.disabled=false; b.textContent='🧪 ล้างข้อมูล TEST วันนี้'; }
+};
+setInterval(()=>{ try{
+  if(!DEPOTS.includes('TEST') || document.getElementById('tstReset')) return;
+  const lg=document.getElementById('login'); if(lg && lg.style.display!=='none') return;
+  const b=document.createElement('button'); b.id='tstReset'; b.textContent='🧪 ล้างข้อมูล TEST วันนี้'; b.onclick=window.__testReset;
+  b.style.cssText='position:fixed;left:12px;bottom:12px;z-index:9000;border:0;border-radius:99px;padding:10px 14px;font-weight:800;font-size:13px;background:#1a1a1a;color:#FFCC00;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer;font-family:inherit';
+  document.body.appendChild(b); }catch(e){} }, 2000);
+
 /* ---------- START LISTENERS ---------- */
 function start(){
   unsubs.forEach(u=>u()); unsubs=[];

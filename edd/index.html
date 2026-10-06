@@ -48,7 +48,8 @@ nav button.on{color:var(--r);border-top:3px solid var(--r)}
 .toggle{display:flex;justify-content:space-between;align-items:center;padding:6px 0;gap:10px}
 .toggle input{width:auto;transform:scale(1.4)}
 .mode button{background:var(--bg);color:var(--tx)}.mode button.on{background:var(--k);color:#fff}
-.hint{font-size:12px;color:var(--mu);margin-top:6px}
+.hint{font-size:12px;color:var(--mu);margin-top:6px;white-space:pre-line}
+#dataInfo{white-space:pre-line}
 </style>
 </head>
 <body>
@@ -148,14 +149,19 @@ const TH_M=['มกรา','กุมภา','มีนา','เมษา','พ�
 const TH_MS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function ymd(y,m,d){if(y<100)y+=2000;if(y>2400)y-=543;const t=new Date(y,m,d);if(isNaN(t))return null;
   return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')}
-function parseDate(v){
+// ตรวจทั้งคอลัมน์ว่าวันที่แบบตัวเลขเป็น วัน/เดือน หรือ เดือน/วัน (กัน CSV จากเครื่องตั้งค่าแบบ US)
+function prepareDates(vals){let dmy=0,mdy=0;
+  for(const v of vals){if(typeof v!=='string')continue;const m=v.trim().match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);if(!m)continue;
+    if(+m[1]>12)dmy++;else if(+m[2]>12)mdy++}
+  return{order:mdy>dmy?'mdy':'dmy',dmy,mdy}}
+function parseDate(v,ctx){
   if(v==null||v===''||v==='-')return null;
   if(v instanceof Date&&!isNaN(v))return ymd(v.getFullYear(),v.getMonth(),v.getDate()+(v.getHours()>=12?1:0));
   if(typeof v==='number'){const d=new Date(Math.round((v-25569)*864e5));return ymd(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())}
   const s=String(v).trim();let m;
   if(m=s.match(/^(\d{1,2})[-\/ ]([A-Za-zก-๙.]+)[-\/ ](\d{2,4})/)){const mo=MON[m[2].toUpperCase().slice(0,3)]??MON[m[2]];if(mo!=null)return ymd(+m[3],mo,+m[1])} // 14-Feb-26
   if(m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))return ymd(+m[1],m[2]-1,+m[3]);
-  if(m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/))return ymd(+m[3],m[2]-1,+m[1]);
+  if(m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/))return ctx&&ctx.order==='mdy'?ymd(+m[3],m[1]-1,+m[2]):ymd(+m[3],m[2]-1,+m[1]);
   const t=new Date(s);return isNaN(t)?null:ymd(t.getFullYear(),t.getMonth(),t.getDate());
 }
 const dayDiff=(a,b)=>Math.round((new Date(a)-new Date(b))/864e5);
@@ -204,19 +210,36 @@ function buildIdx(){IDX={};for(const p in REC){IDX[p]=p;const a=alnum(p);if(a!==
 async function importData(){
   const ci=$('colId').value,ce=$('colEdd').value;
   const extra=headers.filter(h=>h!==ci&&h!==ce);
-  REC={};IDX={};let ok=0,bad=0;
+  REC={};IDX={};let ok=0,bad=0,sci=0,numId=0,numZero=0,dupId=0,noEdd=0;
+  const dctx=prepareDates(rawRows.map(r=>r[ce]));
   rawRows.forEach(r=>{
-    let raw=r[ci];if(typeof raw==='number')raw=raw.toLocaleString('fullwide',{useGrouping:false});
-    const p=norm(raw);if(p.length<4){bad++;return}
+    let raw=r[ci];
+    if(typeof raw==='string'&&/^\d(\.\d+)?E\+\d+$/i.test(raw.trim())){sci++;return} // Excel แปลงเป็น 7.03E+15 = เลขเสียแล้ว
+    if(typeof raw==='number')raw=raw.toLocaleString('fullwide',{useGrouping:false});
+    const p=norm(raw);
+    if(/^\d{15,}$/.test(p)){numId++;if(p.endsWith('0'))numZero++}
+    if(!/^[A-Z0-9][A-Z0-9-]{7,}$/.test(p)){bad++;return} // ข้ามแถวที่ไม่ใช่เลขพัสดุ เช่น "ตัวกรองที่ใช้: Depot..."
+    if(REC[p])dupId++;
     const info=extra.map(h=>String(r[h]??'').trim()).filter(v=>v&&v!=='-').join(' · ');
-    REC[p]={e:parseDate(r[ce]),i:info};ok++});
+    const e=parseDate(r[ce],dctx);if(!e)noEdd++;
+    REC[p]={e,i:info};ok++});
+  const warns=[];
+  if(sci)warns.push(`เลขพัสดุ ${sci} แถวถูก Excel แปลงเป็นแบบ 7.03E+15 (เลขเสีย) — ข้ามไป`);
+  if(numId>20&&numZero/numId>0.5)warns.push(`เลขพัสดุส่วนใหญ่ลงท้ายด้วย 0 — ไฟล์ถูก Excel ตัดหลักที่ 16 เสียแล้ว สแกนจะ "ไม่พบ" ให้ใช้ไฟล์ต้นฉบับที่ดาวน์โหลดมา (อย่าเปิดแล้วเซฟใน Excel)`);
+  if(ok&&noEdd/ok>0.05)warns.push(`${noEdd} รายการอ่านวันที่ EDD ไม่ได้`);
+  if(dupId)warns.push(`เลขพัสดุซ้ำในไฟล์ ${dupId} รายการ (ใช้แถวล่าสุด)`);
+  if(dctx.mdy>dctx.dmy)warns.push('ไฟล์ใช้วันที่แบบ เดือน/วัน/ปี — ระบบแปลงให้แล้ว');
   buildIdx();
   SET.map={id:ci,edd:ce};SET.importAt=new Date().toLocaleString('th-TH');SET.importDay=todayStr();
   SCANS=[];saveScans();S.set('edd2_set',SET);
   let okSave=true;try{await idbSet('rec',REC)}catch(e){okSave=false;alert('บันทึกข้อมูลไม่สำเร็จ: '+e)}
   if(okSave){
-    $('impInfo').textContent=`✔ นำเข้า ${ok.toLocaleString()} รายการ${bad?` (ข้าม ${bad} แถว)`:''} · ${SET.fileName||''} · ${SET.importAt}`;goTab('scan');
-    $('mapBox').style.display='none';$('file').value='';refresh();speak(`นำเข้าข้อมูล ${ok} รายการ`);
+    const td=todayStr();let cT=0,cO=0,cF=0;const ds=[];for(const k in REC){const e=REC[k].e;if(!e)continue;ds.push(e);const d=dayDiff(e,td);if(d<0)cO++;else if(d===0)cT++;else cF++}
+    ds.sort();SET.lastSummary=`EDD วันนี้ ${cT.toLocaleString()} · ล่วงหน้า ${cF.toLocaleString()} · เลยกำหนด ${cO.toLocaleString()}${ds.length?` · ช่วงวันที่ ${fullDate(ds[0])} – ${fullDate(ds[ds.length-1])}`:''}`;save();
+    $('impInfo').textContent=`✔ นำเข้า ${ok.toLocaleString()} รายการ${bad?` (ข้าม ${bad} แถวที่ไม่ใช่เลขพัสดุ)`:''} · ${SET.fileName||''} · ${SET.importAt}\n${SET.lastSummary}`;goTab('scan');
+    $('mapBox').style.display='none';$('file').value='';refresh();
+    if(warns.length){speak('คำเตือน ตรวจสอบไฟล์');alert('⚠ ตรวจสอบไฟล์ก่อนใช้งาน\n\n- '+warns.join('\n- ')+`\n\nนำเข้า ${ok} รายการ`)}
+    else speak(`นำเข้าข้อมูล ${ok} รายการ`);
   }
 }
 
@@ -243,7 +266,11 @@ const vib=p=>{if(SET.vib&&navigator.vibrate)navigator.vibrate(p)};
 
 /* ---------- Scan ---------- */
 let lastCode='',lastTime=0;
+// เครื่องยิงบาร์โค้ดแบบคีย์บอร์ด + มือถือเปิดแป้นภาษาไทย → ตัวเลขกลายเป็น ๅ/-ภถุึคตจ ; แปลงกลับเป็นเลข
+const TH_KEY={'ๅ':'1','/':'2','-':'3','ภ':'4','ถ':'5','ุ':'6','ึ':'7','ค':'8','ต':'9','จ':'0','+':'1','๑':'1','๒':'2','๓':'3','๔':'4','๕':'5','๖':'6','๗':'7','๘':'8','๙':'9','๐':'0'};
+function fixThaiKeys(c){c=String(c);if(!/[\u0E00-\u0E7F]/.test(c))return c;return c.replace(/[ๅ\/\-ภถุึคตจ+๑-๙๐]/g,ch=>TH_KEY[ch]??ch)}
 function handleScan(code){
+  code=fixThaiKeys(code);
   const raw=norm(code);if(!raw)return;
   const now=Date.now();if(raw===lastCode&&now-lastTime<2000)return;
   lastCode=raw;lastTime=now;
@@ -293,7 +320,7 @@ function renderStats(){
   <div class="st" style="--c:#D40511"><b>${over}</b><small>เลยกำหนด</small></div>
   <div class="st" style="--c:#FFCC00"><b>${td}</b><small>EDD วันนี้</small></div>
   <div class="st" style="--c:#1a73e8"><b>${found-over-td}</b><small>EDD ล่วงหน้า</small></div>`;
-  const di=$('dataInfo');if(di)di.textContent=total?`${SET.fileName||'ข้อมูล'} · ${total.toLocaleString()} รายการ · อัปเดต ${SET.importAt}`:'';
+  const di=$('dataInfo');if(di)di.textContent=total?`${SET.fileName||'ข้อมูล'} · ${total.toLocaleString()} รายการ · อัปเดต ${SET.importAt}${SET.lastSummary?'\n'+SET.lastSummary:''}`:'';
   const b=$('banner');
   if(!total){b.style.display='block';b.textContent='📥 ยังไม่มีข้อมูล — แตะเพื่อเลือกไฟล์ EDD (จาก LINE / อีเมล)'}
   else if(SET.importDay!==todayStr()){b.style.display='block';b.textContent='📥 ไฟล์ EDD ไม่ใช่ของวันนี้ — แตะเพื่อเลือกไฟล์ล่าสุด'}

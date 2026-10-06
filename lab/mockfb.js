@@ -87,7 +87,7 @@ export function onSnapshot(target, cb, err){
 /* auth */
 const AUTH={currentUser:null, subs:[]};
 export function getAuth(){ return AUTH; }
-export async function signInAnonymously(a){ await lat(); AUTH.currentUser={uid:'lab-'+DEV+'-'+Math.random().toString(36).slice(2,7), isAnonymous:true}; AUTH.subs.forEach(f=>setTimeout(()=>f(AUTH.currentUser),0)); return {user:AUTH.currentUser}; }
+export async function signInAnonymously(a){ await lat(); let u=null; try{ u=localStorage.getItem('labUid'); }catch(e){} if(!u){ u='lab-'+DEV+'-'+Math.random().toString(36).slice(2,7); try{ localStorage.setItem('labUid',u); }catch(e){} } AUTH.currentUser={uid:u, isAnonymous:true};   /* เหมือนของจริง: uid คงเดิมหลังรีโหลด */ AUTH.subs.forEach(f=>setTimeout(()=>f(AUTH.currentUser),0)); return {user:AUTH.currentUser}; }
 export function onAuthStateChanged(a, f){ AUTH.subs.push(f); if(AUTH.currentUser) setTimeout(()=>f(AUTH.currentUser),0); return ()=>{}; }
 `; };
 

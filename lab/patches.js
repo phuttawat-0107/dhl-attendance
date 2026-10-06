@@ -1,7 +1,7 @@
 /* ใช้ร่วมกันทั้งในแล็บทดสอบและตอนอัปโหลดจริง — แก้ไฟล์จริงแบบแทนข้อความ (ต้องเจอครบตามจำนวน ไม่งั้นหยุด) */
 window.__PATCHES = {
   'dhl-ui2.js': [
-    ["const UI2 = ['TEST'];", "const UI2 = /[?&]ui2=1/.test(location.search) ? ['TEST'] : [];   /* 6 ต.ค.: TEST ใช้หน้าเดิมเพื่อฝึก Staff · ทดสอบหน้าใหม่ต่อได้ด้วย &ui2=1 */", 1]
+    ["const UI2 = ['TEST'];", "const UI2 = /[?&]ui2=1/.test(location.search) ? ['TEST'] : [];   /* 6 ต.ค.: TEST ใช้หน้าเดิมเพื่อฝึก Staff · ทดสอบหน้าใหม่ต่อได้ด้วย &ui2=1 */", 1, 'test']
   ],
   'dhl-sync.js': [
     /* 0) 🐞 แก้บั๊กซิงค์ค้าง (6 ต.ค. 2569 — เจอจากแล็บทดสอบ 3 เครื่อง)
@@ -10,13 +10,62 @@ window.__PATCHES = {
           แก้: ตัวดึงรูปใช้ put ตัวดิบอยู่แล้ว (ไม่ส่งขึ้นคลาวด์) จึงไม่ต้องแตะ S.merging
                + snapshot ที่มาระหว่าง merge ไม่ทิ้ง เก็บไว้ทำต่อทันทีหลังเสร็จ */
     ["const wasMerging=S.merging; S.merging=true;\n          try{ await put(rec); }finally{ S.merging=wasMerging; }",
-     "await put(rec);   /* 🐞 6 ต.ค.: ไม่แตะ S.merging (เคยทำให้ค้าง) */", 1],
+     "await put(rec);   /* 🐞 6 ต.ค.: ไม่แตะ S.merging (เคยทำให้ค้าง) */", 1, 'fix'],
     ["const was=S.merging; S.merging=true;\n    try{ await put(cur); }finally{ S.merging=was; }",
-     "await put(cur);   /* 🐞 6 ต.ค.: ไม่แตะ S.merging (เคยทำให้ค้าง) */", 1],
+     "await put(cur);   /* 🐞 6 ต.ค.: ไม่แตะ S.merging (เคยทำให้ค้าง) */", 1, 'fix'],
     ["async function mergeRemote(d){\n  if(S.merging) return;\n  S.merging=true;",
-     "async function mergeRemote(d){\n  if(S.merging){ S._pendMerge=d; return; }   /* 🐞 6 ต.ค.: ข้อมูลที่มาระหว่าง merge ไม่ทิ้ง */\n  S.merging=true;", 1],
+     "async function mergeRemote(d){\n  if(S.merging){ S._pendMerge=d; return; }   /* 🐞 6 ต.ค.: ข้อมูลที่มาระหว่าง merge ไม่ทิ้ง */\n  S.merging=true;", 1, 'fix'],
     ["finally{ S.merging=false; }\n}",
-     "finally{ S.merging=false;\n    if(S._pendMerge){ const _n=S._pendMerge; S._pendMerge=null; setTimeout(()=>mergeRemote(_n),0); } }\n}", 1],
+     "finally{ S.merging=false;\n    if(S._pendMerge){ const _n=S._pendMerge; S._pendMerge=null; setTimeout(()=>mergeRemote(_n),0); } }\n}", 1, 'fix'],
+    /* 5) 🐞 snapshot ที่มาพร้อมการเขียนของเราเอง (hasPendingWrites) อาจรวมข้อมูลจากเครื่องอื่นมาด้วย
+          เดิมทิ้งไปเลย → เครื่องนี้ไม่เห็นข้อมูลเครื่องอื่นจนกว่าจะมีการเปลี่ยนครั้งถัดไป
+          แก้: ดึงสถานะล่าสุดจากคลาวด์แล้วรวมอีกครั้งหลัง 1.5 วิ (รวมหลายครั้งเป็นครั้งเดียว) */
+    ["    if(snap.metadata.hasPendingWrites) return;",
+     "    if(snap.metadata.hasPendingWrites){ clearTimeout(S._psT); S._psT=setTimeout(async()=>{ try{ const s2=await getDoc(dayRef(S.depot,date)); if(s2.exists()) await mergeRemote(s2.data()); }catch(e){} }, 1500); return; }   /* 🐞 6 ต.ค. */", 1, 'fix'],
+    /* 6) 🐞 PPH: รวมแบบ 3 ทาง (ในเครื่อง / คลาวด์ / ค่าที่ซิงค์ล่าสุด) — เดิมเอาค่าคลาวด์ทับทั้งก้อน
+          ทำให้ 2 เครื่องแก้คนละช่องพร้อมกันแล้วหาย และค่าที่เพิ่งกรอกยังไม่ทันส่งถูกทับ */
+    ["      const same = JSON.stringify([cur.staffN,cur.sorterN,cur.courierN,cur.pNew,cur.pOld,cur.inboundTs,cur.lastInboundTs,cur.rp])\n                === JSON.stringify([r.staffN,r.sorterN,r.courierN,r.pNew,r.pOld,r.inboundTs,r.lastInboundTs,r.rp]);\n      if(!same){\n        cur.staffN=r.staffN; cur.sorterN=r.sorterN; cur.courierN=r.courierN;\n        cur.pNew=r.pNew; cur.pOld=r.pOld; cur.inboundTs=r.inboundTs;\n        cur.lastInboundTs=r.lastInboundTs; cur.rp=r.rp||{};\n        if(r.pd){ cur.pd = cur.pd||{}; cur.pd.ts=r.pd.ts; cur.pd.manualEdit=!!r.pd.manualEdit; }\n        await putPp(cur); changed=true;\n      }",
+     "      /* 🐞 6 ต.ค.: รวมแบบ 3 ทาง — ช่องไหนเครื่องนี้เพิ่งแก้ (ต่างจากค่าที่ซิงค์ล่าสุด) และคลาวด์ยังไม่เปลี่ยน → เก็บของเครื่องนี้ไว้ส่งขึ้น */\n" +
+     "      const B=S._pb||(S._pb={f:{},rp:{}}); let _ch=false;\n" +
+     "      PPH_F.forEach(k=>{ const lv=cur[k], cv=r[k], had=(k in B.f), bv=B.f[k];\n" +
+     "        const localEdited = had && !_peq(lv,bv);\n" +
+     "        if(!localEdited || !_peq(cv,bv)){ if(!_peq(lv,cv)){ cur[k]=cv; _ch=true; } }\n" +
+     "        B.f[k]=cv; });\n" +
+     "      const crp=r.rp||{}, lrp=cur.rp||{}, nrp={};\n" +
+     "      new Set([...Object.keys(crp),...Object.keys(lrp)]).forEach(cid=>{ const c=crp[cid]||{}, l=lrp[cid]||{}, hadB=(cid in B.rp), b=B.rp[cid]||{}, o={};\n" +
+     "        ['fs','dep','fdel'].forEach(f=>{ const le = hadB? !_peq(l[f],b[f]) : (l[f]!=null && c[f]==null);\n" +
+     "          const v = (le && _peq(c[f],b[f])) ? l[f] : (c[f]!=null? c[f] : (le? l[f] : null));\n" +
+     "          if(v!=null) o[f]=v; });\n" +
+     "        if(Object.keys(o).length) nrp[cid]=o;\n" +
+     "        B.rp[cid]={fs:c.fs,dep:c.dep,fdel:c.fdel}; });\n" +
+     "      if(!_peq(nrp,lrp)){ cur.rp=nrp; _ch=true; }\n" +
+     "      if(r.pd && (!cur.pd || cur.pd.ts!==r.pd.ts || (!!cur.pd.manualEdit)!==(!!r.pd.manualEdit))){ cur.pd = cur.pd||{}; cur.pd.ts=r.pd.ts; cur.pd.manualEdit=!!r.pd.manualEdit; _ch=true; }\n" +
+     "      if(_ch){ await putPp(cur); changed=true; }", 1, 'fix'],
+    /* 7) 🐞 ตอนส่งขึ้นคลาวด์: ส่งเฉพาะช่อง PPH ที่เครื่องนี้แก้จริง (ไม่เอาค่าเก่าในเครื่องไปทับค่าใหม่ของเครื่องอื่น)
+          และ Route prep ส่งรายช่อง (FS / ออกรถ / ส่งชิ้นแรก) แทนการทับทั้งคน */
+    ["const o=keepFirst(cs.exists()?(cs.data().checkins||{}):{});",
+     "const o=pphPushFilter(keepFirst(cs.exists()?(cs.data().checkins||{}):{}), cs.exists()?cs.data().pph:null);", 1, 'fix'],
+    ["if(Object.keys(o).length) t.update(ref,o); }); }\n      catch(e){",
+     "if(Object.keys(o).length) t.update(ref,o); }); pphBaseCommit(); }\n      catch(e){", 1, 'fix'],
+    ["let pushTimer=null;",
+     "/* 🐞 6 ต.ค.: ตัวช่วย PPH (ดูข้อ 6–7) */\n" +
+     "const PPH_F=['staffN','sorterN','courierN','pNew','pOld','inboundTs','lastInboundTs'];\n" +
+     "function _peq(a,b){ return JSON.stringify(a==null?null:a)===JSON.stringify(b==null?null:b); }\n" +
+     "function pphPushFilter(o, cp){\n" +
+     "  const B=S._pb||(S._pb={f:{},rp:{}}), n={f:{},rp:{}};\n" +
+     "  PPH_F.forEach(k=>{ const key='pph.'+k; if(!(key in o)) return;\n" +
+     "    const lv=o[key], had=(k in B.f), cv=cp?cp[k]:undefined;\n" +
+     "    if(had && _peq(lv,B.f[k]) && cv!=null){ delete o[key]; return; }   /* เครื่องนี้ไม่ได้แก้ → ไม่ทับคลาวด์ */\n" +
+     "    n.f[k]=lv; });\n" +
+     "  Object.keys(o).filter(x=>x.indexOf('pph.rp.')===0 && x.split('.').length===3).forEach(key=>{\n" +
+     "    const cid=key.split('.')[2], lv=o[key]||{}, b=B.rp[cid], c=(cp&&cp.rp&&cp.rp[cid])||{}; delete o[key];\n" +
+     "    ['fs','dep','fdel'].forEach(f=>{ if(lv[f]==null) return; const edited = b? !_peq(lv[f],b[f]) : true;\n" +
+     "      if(!edited && c[f]!=null) return;\n" +
+     "      o['pph.rp.'+cid+'.'+f]=lv[f]; (n.rp[cid]=n.rp[cid]||{})[f]=lv[f]; }); });\n" +
+     "  S._pbNext=n; return o; }\n" +
+     "function pphBaseCommit(){ const n=S._pbNext; S._pbNext=null; if(!n) return; const B=S._pb||(S._pb={f:{},rp:{}});\n" +
+     "  Object.assign(B.f, n.f); Object.keys(n.rp).forEach(cid=>{ B.rp[cid]=Object.assign({}, B.rp[cid]||{}, n.rp[cid]); }); }\n" +
+     "let pushTimer=null;", 1, 'fix'],
     /* 1) ตัวตรวจรีเซ็ตข้อมูลฝึก (เฉพาะสาขา TEST) — วางไว้ก่อน pushAll */
     ["/* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */",
      "/* ============ 🧪 TEST: รีเซ็ตข้อมูลฝึกจาก Manager (6 ต.ค. 2569) ============\n" +
@@ -40,20 +89,21 @@ window.__PATCHES = {
      "    return true;\n" +
      "  }catch(e){ return false; }\n" +
      "}\n\n" +
-     "/* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */", 1],
+     "/* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */", 1, 'test'],
     /* 2) ก่อนส่งขึ้นคลาวด์ทุกครั้ง (เฉพาะ TEST) ตรวจรีเซ็ตก่อน */
     ["async function pushAll(){\n  if(!S.ready||S.busy) return;",
-     "async function pushAll(){\n  if(!S.ready||S.busy) return;\n  if(S.depot==='TEST' && await checkTestReset()) return;   /* 🧪 */", 1],
+     "async function pushAll(){\n  if(!S.ready||S.busy) return;\n  if(S.depot==='TEST' && await checkTestReset()) return;   /* 🧪 */", 1, 'test'],
     /* 3) TEST ไม่ต้องกู้ข้อมูลย้อนหลัง */
     ["async function backfill(){\n  if(!S.ready) return;",
-     "async function backfill(){\n  if(!S.ready) return;\n  if(S.depot==='TEST') return;   /* 🧪 ข้อมูลฝึก ไม่กู้ย้อนหลัง */", 1],
+     "async function backfill(){\n  if(!S.ready) return;\n  if(S.depot==='TEST') return;   /* 🧪 ข้อมูลฝึก ไม่กู้ย้อนหลัง */", 1, 'test'],
     /* 4) คลาวด์ว่าง/น้อยกว่า (self-heal) — TEST เช็ครีเซ็ตก่อน */
     ["/* 🛟 SELF-HEAL: ถ้าคลาวด์มีข้อมูลน้อยกว่าในเครื่อง (ถูกลบ/หาย) → ส่งขึ้นไปคืนอัตโนมัติ */\nasync function selfHeal(cloud){",
-     "/* 🛟 SELF-HEAL: ถ้าคลาวด์มีข้อมูลน้อยกว่าในเครื่อง (ถูกลบ/หาย) → ส่งขึ้นไปคืนอัตโนมัติ */\nasync function selfHeal(cloud){\n  if(S.depot==='TEST' && await checkTestReset()) return;   /* 🧪 */", 1]
+     "/* 🛟 SELF-HEAL: ถ้าคลาวด์มีข้อมูลน้อยกว่าในเครื่อง (ถูกลบ/หาย) → ส่งขึ้นไปคืนอัตโนมัติ */\nasync function selfHeal(cloud){\n  if(S.depot==='TEST' && await checkTestReset()) return;   /* 🧪 */", 1, 'test']
   ]
 };
-window.__applyPatch = (name, text) => {
-  for (const [a, b, n] of (window.__PATCHES[name] || [])) {
+window.__applyPatch = (name, text, tags) => {
+  for (const [a, b, n, tag] of (window.__PATCHES[name] || [])) {
+    if (tags && !tags.includes(tag)) continue;
     const c = text.split(a).length - 1;
     if (c !== n) throw new Error(name + ': พบ ' + c + ' ครั้ง (ต้อง ' + n + ') → ' + a.slice(0, 60));
     text = text.split(a).join(b);

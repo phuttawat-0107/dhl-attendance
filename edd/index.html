@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DHL EDD Sorter</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FFCC00">
 <style>
 :root{--y:#FFCC00;--r:#D40511;--k:#1a1a1a;--bg:#f4f4f4;--card:#fff;--tx:#1a1a1a;--mu:#666;--ln:#e3e3e3;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -49,6 +51,8 @@ nav button.on{color:var(--r);border-top:3px solid var(--r)}
 .toggle input{width:auto;transform:scale(1.4)}
 .mode button{background:var(--bg);color:var(--tx)}.mode button.on{background:var(--k);color:#fff}
 .hint{font-size:12px;color:var(--mu);margin-top:6px;white-space:pre-line}
+.ok{color:#1e8e3e;font-weight:700}.bad{color:var(--r);font-weight:700}
+#qrBox svg{width:220px;height:220px;background:#fff;padding:6px;border-radius:10px}
 #dataInfo{white-space:pre-line}
 </style>
 </head>
@@ -60,7 +64,7 @@ nav button.on{color:var(--r);border-top:3px solid var(--r)}
 
 <main>
 <section class="page on" id="pg-scan">
-  <div id="banner" onclick="$('file').click()"></div>
+  <div id="banner" onclick="bannerTap()"></div>
   <div id="result"><div class="lbl" style="color:var(--mu)">พร้อมสแกน</div><div class="trk" id="dataInfo"></div></div>
   <div class="card">
     <div class="row mode"><button id="mScanner" class="on" onclick="setMode('scanner')">🔫 เครื่องยิง/พิมพ์</button><button id="mCam" onclick="setMode('camera')">📷 กล้องมือถือ</button></div>
@@ -75,6 +79,12 @@ nav button.on{color:var(--r);border-top:3px solid var(--r)}
 </section>
 
 <section class="page" id="pg-data">
+  <div class="card" id="chCard" style="display:none">
+    <h3>รับข้อมูลอัตโนมัติจาก Manager</h3>
+    <div id="chState" class="hint"></div>
+    <div class="row mgr" style="margin-top:8px"><button onclick="pullCloud(true)">🔄 ดึงข้อมูลตอนนี้</button><button class="btn2" onclick="leaveChannel()">เลิกเชื่อมสาขา</button></div>
+    <button class="staffonly" style="width:100%;margin-top:8px;display:none" onclick="pullCloud(true)">🔄 ดึงข้อมูลตอนนี้</button>
+  </div>
   <div class="card">
     <h3>นำเข้าไฟล์ EDD ประจำวัน (Excel / CSV)</h3>
     <input type="file" id="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
@@ -95,6 +105,24 @@ nav button.on{color:var(--r);border-top:3px solid var(--r)}
 </section>
 
 <section class="page" id="pg-set">
+  <div class="card red" id="syncCard">
+    <h3>ส่งข้อมูลให้ Staff อัตโนมัติ (Manager)</h3>
+    <div id="mgrLogin">
+      <div class="hint">เข้าสู่ระบบครั้งเดียวต่อเครื่อง · หลังจากนั้นทุกไฟล์ที่นำเข้าจะส่งให้มือถือ Staff ของสาขานั้นเอง</div>
+      <label>อีเมล Manager</label><input id="mgrEmail" type="email" autocomplete="username">
+      <label>รหัสผ่าน (อย่างน้อย 6 ตัว)</label><input id="mgrPass" type="password" autocomplete="current-password">
+      <div class="row" style="margin-top:10px"><button onclick="mgrSignIn(false)">เข้าสู่ระบบ</button><button class="btn2" onclick="mgrSignIn(true)">สมัครครั้งแรก</button></div>
+    </div>
+    <div id="mgrPanel" style="display:none">
+      <div class="hint" id="mgrWho"></div>
+      <label>สาขาที่จะส่งข้อมูล</label>
+      <div class="row"><select id="chSel" onchange="SET.mgrCh=this.value;save();renderSync()"></select><button class="btn2" style="flex:0;white-space:nowrap" onclick="addDepot()">+ เพิ่มสาขา</button></div>
+      <div id="qrBox" style="text-align:center;margin-top:12px"></div>
+      <div class="hint" id="qrHint"></div>
+      <div class="row" style="margin-top:8px"><button class="btn2" onclick="copyLink()">คัดลอกลิงก์ Staff</button><button class="btn2" onclick="mgrSignOut()">ออกจากระบบ</button></div>
+    </div>
+    <button id="installBtn" style="display:none;width:100%;margin-top:10px" onclick="doInstall()">📲 ติดตั้งแอปลงมือถือ (แชร์ไฟล์จาก LINE เข้าแอปได้)</button>
+  </div>
   <div class="card">
     <h3>เสียงตอบรับ</h3>
     <div class="toggle"><span>เปิดเสียงพูด</span><input type="checkbox" id="voiceOn"></div>
@@ -125,6 +153,7 @@ nav button.on{color:var(--r);border-top:3px solid var(--r)}
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 /* ---------- Storage ---------- */
 const S={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
@@ -184,8 +213,10 @@ function voiceText(e){
 /* ---------- Import ---------- */
 const norm=s=>String(s??'').trim().toUpperCase().replace(/\s+/g,'');
 const alnum=s=>norm(s).replace(/[^A-Z0-9]/g,'');
-$('file').onchange=e=>{
-  const f=e.target.files[0];if(!f)return;SET.fileName=f.name;
+let fileDepot=null;
+$('file').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f)};
+function loadFile(f){
+  SET.fileName=f.name;
   const rd=new FileReader();
   rd.onload=ev=>{
     try{
@@ -200,12 +231,15 @@ $('file').onchange=e=>{
       $('colId').value=(SET.map&&headers.includes(SET.map.id))?SET.map.id:(find(/^id$|track|awb|shipment|parcel|barcode|เลข/)||headers[0]);
       $('colEdd').value=(SET.map&&headers.includes(SET.map.edd))?SET.map.edd:(find(/edd|expect|due|กำหนด/)||headers[1]||headers[0]);
       $('impInfo').textContent=`อ่านได้ ${rawRows.length.toLocaleString()} แถว (ชีต "${wb.SheetNames[0]}")`;
-      if(SET.staff&&SET.map&&headers.includes(SET.map.id)&&headers.includes(SET.map.edd))importData();
-      else $('mapBox').style.display='block';
+      // รหัสสาขาจากบรรทัดท้ายไฟล์ Power BI เช่น "ตัวกรองที่ใช้: Depot เป็น THKTN1"
+      fileDepot=null;for(const r of rawRows){for(const v of Object.values(r)){const m=String(v).match(/Depot\s*(?:เป็น|is|=)\s*([A-Z0-9]{2,12})/i);if(m){fileDepot=m[1].toUpperCase();break}}if(fileDepot)break}
+      const sure=find(/^id$|track|awb|shipment|parcel|barcode|เลข/)&&find(/edd|expect|due|กำหนด/);
+      if((SET.staff&&SET.map&&headers.includes(SET.map.id)&&headers.includes(SET.map.edd))||sure)importData();
+      else{$('mapBox').style.display='block';goTab('data')}
     }catch(err){$('impInfo').textContent='อ่านไฟล์ไม่ได้: '+err.message}
   };
   rd.readAsArrayBuffer(f);
-};
+}
 function buildIdx(){IDX={};for(const p in REC){IDX[p]=p;const a=alnum(p);if(a!==p)IDX[a]=p}}
 async function importData(){
   const ci=$('colId').value,ce=$('colEdd').value;
@@ -240,6 +274,14 @@ async function importData(){
     $('mapBox').style.display='none';$('file').value='';refresh();
     if(warns.length){speak('คำเตือน ตรวจสอบไฟล์');alert('⚠ ตรวจสอบไฟล์ก่อนใช้งาน\n\n- '+warns.join('\n- ')+`\n\nนำเข้า ${ok} รายการ`)}
     else speak(`นำเข้าข้อมูล ${ok} รายการ`);
+    if(AUTH&&SET.mgrCh&&fbReady()){
+      if(warns.length&&!confirm('ไฟล์มีคำเตือน — ยังต้องการส่งให้ Staff ไหม?')){$('impInfo').textContent+='\n⏸ ยังไม่ได้ส่งให้ Staff';return}
+      $('impInfo').textContent+='\n⏳ กำลังส่งให้ Staff…';
+      try{const d=await uploadToCloud(fileDepot);
+        if(d&&d!=='cancel'){$('impInfo').textContent=$('impInfo').textContent.replace('⏳ กำลังส่งให้ Staff…',`✅ ส่งให้ Staff สาขา ${d} แล้ว`);speak(`ส่งให้สาขา ${d} แล้ว`);SET.lastUpload={d,at:new Date().toLocaleString('th-TH'),n:ok};save();renderSync()}
+        else $('impInfo').textContent=$('impInfo').textContent.replace('⏳ กำลังส่งให้ Staff…','⏸ ยกเลิกการส่ง')}
+      catch(e){$('impInfo').textContent=$('impInfo').textContent.replace('⏳ กำลังส่งให้ Staff…','❌ ส่งไม่สำเร็จ: '+e.message);speak('ส่งข้อมูลไม่สำเร็จ');alert('❌ ส่งให้ Staff ไม่สำเร็จ\n'+e.message)}
+    }
   }
 }
 
@@ -322,8 +364,10 @@ function renderStats(){
   <div class="st" style="--c:#1a73e8"><b>${found-over-td}</b><small>EDD ล่วงหน้า</small></div>`;
   const di=$('dataInfo');if(di)di.textContent=total?`${SET.fileName||'ข้อมูล'} · ${total.toLocaleString()} รายการ · อัปเดต ${SET.importAt}${SET.lastSummary?'\n'+SET.lastSummary:''}`:'';
   const b=$('banner');
-  if(!total){b.style.display='block';b.textContent='📥 ยังไม่มีข้อมูล — แตะเพื่อเลือกไฟล์ EDD (จาก LINE / อีเมล)'}
-  else if(SET.importDay!==todayStr()){b.style.display='block';b.textContent='📥 ไฟล์ EDD ไม่ใช่ของวันนี้ — แตะเพื่อเลือกไฟล์ล่าสุด'}
+  const viaCh=!!(SET.channel&&fbReady());
+  if(SET.syncMsg&&viaCh){b.style.display='block';b.textContent=SET.syncMsg+' — แตะเพื่อลองใหม่'}
+  else if(!total){b.style.display='block';b.textContent=viaCh?'⏳ รอ Manager ส่งข้อมูล — แตะเพื่อตรวจอีกครั้ง':'📥 ยังไม่มีข้อมูล — แตะเพื่อเลือกไฟล์ EDD (จาก LINE / อีเมล)'}
+  else if(SET.importDay!==todayStr()){b.style.display='block';b.textContent=viaCh?'⏳ ข้อมูลยังไม่ใช่ของวันนี้ รอ Manager ส่ง — แตะเพื่อตรวจอีกครั้ง':'📥 ไฟล์ EDD ไม่ใช่ของวันนี้ — แตะเพื่อเลือกไฟล์ล่าสุด'}
   else b.style.display='none';
   $('hdrDate').textContent=fullDate(todayStr());
 }
@@ -370,6 +414,118 @@ async function exportXlsx(){
   else XLSX.writeFile(wb,fn);
 }
 
+/* ---------- ส่งข้อมูลผ่านระบบกลาง (Firebase REST — ไม่ใช้ SDK) ---------- */
+const FB={apiKey:'AIzaSyChOzwSg87KewusYrFvKONb2NB5BylQmQE',projectId:'dhl-edd-sorter'}; // Firebase web key = public identifier; access is enforced by Firestore rules
+let FBH={auth:'https://identitytoolkit.googleapis.com',token:'https://securetoken.googleapis.com',fs:'https://firestore.googleapis.com'};
+const APP_URL='https://phuttawat-0107.github.io/dhl-attendance/edd/';
+const fbReady=()=>!!FB.apiKey&&!FB.apiKey.startsWith('__');
+const CH_RE=/^[A-Z0-9]{2,12}-[a-z0-9]{16}$/;
+const docUrl=id=>`${FBH.fs}/v1/projects/${FB.projectId}/databases/(default)/documents/edd/${id}?key=${FB.apiKey}`;
+let AUTH=S.get('edd2_auth',null);
+// ลิงก์/QR สาขา: ...?ch=THKTN1-xxxxxxxxxxxxxxxx → จำไว้ในเครื่อง
+(()=>{try{const u=new URL(location.href),ch=u.searchParams.get('ch');
+  if(ch&&CH_RE.test(ch)){SET.channel=ch;SET.syncTime=null;S.set('edd2_set',SET);u.searchParams.delete('ch');history.replaceState(null,'',u.pathname+u.search)}}catch(e){}})();
+function authErr(m){m=String(m||'');
+  if(/EMAIL_EXISTS/.test(m))return'อีเมลนี้สมัครแล้ว ให้กด "เข้าสู่ระบบ"';
+  if(/EMAIL_NOT_FOUND|INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD/.test(m))return'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+  if(/WEAK_PASSWORD/.test(m))return'รหัสผ่านต้องอย่างน้อย 6 ตัว';
+  if(/INVALID_EMAIL/.test(m))return'รูปแบบอีเมลไม่ถูกต้อง';
+  if(/TOO_MANY_ATTEMPTS/.test(m))return'ลองผิดหลายครั้ง รอสักครู่แล้วลองใหม่';
+  return m||'เข้าสู่ระบบไม่สำเร็จ'}
+async function mgrSignIn(signup){
+  if(!fbReady())return alert('ระบบกลางยังไม่ได้ตั้งค่า');
+  const email=$('mgrEmail').value.trim(),password=$('mgrPass').value;if(!email||!password)return alert('ใส่อีเมลและรหัสผ่าน');
+  try{const r=await fetch(`${FBH.auth}/v1/accounts:${signup?'signUp':'signInWithPassword'}?key=${FB.apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})});
+    const j=await r.json();if(!r.ok)throw new Error(authErr(j.error&&j.error.message));
+    AUTH={uid:j.localId,email:j.email,refresh:j.refreshToken,id:j.idToken,exp:Date.now()+(+j.expiresIn-60)*1000};S.set('edd2_auth',AUTH);$('mgrPass').value='';renderSync();
+    if(signup)alert('สมัครแล้ว ✅\nส่ง "รหัส Manager" ที่แสดงในหน้านี้ให้ผู้ดูแลระบบ เพื่อเปิดสิทธิ์ส่งข้อมูล')}
+  catch(e){alert(e.message==='Failed to fetch'?'เชื่อมต่ออินเทอร์เน็ตไม่ได้':e.message)}}
+function mgrSignOut(){if(!confirm('ออกจากระบบ Manager บนเครื่องนี้?'))return;AUTH=null;S.set('edd2_auth',null);renderSync()}
+async function idToken(){
+  if(!AUTH)throw new Error('ยังไม่ได้เข้าสู่ระบบ Manager');if(Date.now()<AUTH.exp)return AUTH.id;
+  const r=await fetch(`${FBH.token}/v1/token?key=${FB.apiKey}`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(AUTH.refresh)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){if(r.status===400){AUTH=null;S.set('edd2_auth',null);renderSync()}throw new Error('กรุณาเข้าสู่ระบบ Manager ใหม่')}
+  AUTH.id=j.id_token;AUTH.refresh=j.refresh_token;AUTH.exp=Date.now()+(+j.expires_in-60)*1000;S.set('edd2_auth',AUTH);return AUTH.id}
+function addDepot(){
+  const d=(prompt('รหัสสาขา (Depot) เช่น THKTN1')||'').trim().toUpperCase();if(!d)return;
+  if(!/^[A-Z0-9]{2,12}$/.test(d))return alert('รหัสสาขาใช้ได้เฉพาะ A-Z และ 0-9 (2-12 ตัว)');
+  SET.chans=SET.chans||{};
+  if(!SET.chans[d]){const a=new Uint8Array(16);crypto.getRandomValues(a);SET.chans[d]=Array.from(a,x=>'abcdefghijklmnopqrstuvwxyz0123456789'[x%36]).join('')}
+  SET.mgrCh=d;save();renderSync()}
+const staffLink=d=>APP_URL+'?ch='+d+'-'+SET.chans[d];
+function copyLink(){const d=SET.mgrCh;if(!d)return alert('เพิ่มสาขาก่อน');const l=staffLink(d);
+  (navigator.clipboard?navigator.clipboard.writeText(l):Promise.reject()).then(()=>alert('คัดลอกลิงก์แล้ว — ส่งให้ Staff สาขา '+d+' ในกลุ่ม LINE ได้เลย')).catch(()=>prompt('คัดลอกลิงก์นี้',l))}
+async function uploadToCloud(dep){
+  if(!fbReady()||!AUTH||!SET.mgrCh)return null;
+  let d=SET.mgrCh;
+  if(dep&&dep!==d){
+    if(SET.chans&&SET.chans[dep]){if(!confirm(`ไฟล์นี้เป็นของสาขา ${dep}\nแต่ตอนนี้เลือกส่งให้สาขา ${d}\n\nกด OK = ส่งให้สาขา ${dep} (ตามไฟล์)\nกด ยกเลิก = ไม่ส่ง`))return'cancel';d=dep;SET.mgrCh=d;save()}
+    else if(!confirm(`⚠ ไฟล์นี้เป็นของสาขา ${dep}\nแต่จะส่งให้ Staff สาขา ${d}\n\nยืนยันส่ง?`))return'cancel'}
+  const lines=[];for(const k in REC){const r=REC[k];lines.push(k+'\t'+(r.e||'')+'\t'+(r.i||'').replace(/[\t\n]/g,' '))}
+  const data=lines.join('\n');if(data.length>900000)throw new Error('ไฟล์ใหญ่เกินไปสำหรับส่งอัตโนมัติ ('+lines.length+' รายการ)');
+  const tok=await idToken();
+  const body={fields:{depot:{stringValue:d},data:{stringValue:data},count:{integerValue:String(lines.length)},day:{stringValue:todayStr()},
+    file:{stringValue:(SET.fileName||'').slice(0,200)},summary:{stringValue:(SET.lastSummary||'').slice(0,500)},by:{stringValue:AUTH.uid},at:{timestampValue:new Date().toISOString()}}};
+  const r=await fetch(docUrl(d+'-'+SET.chans[d]),{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify(body)});
+  if(!r.ok){const j=await r.json().catch(()=>({}));
+    throw new Error(r.status===403?'บัญชีนี้ยังไม่ได้รับสิทธิ์ส่งข้อมูล (แจ้งรหัส Manager ให้ผู้ดูแลระบบ)':(j.error&&j.error.message)||('HTTP '+r.status))}
+  return d}
+let pulling=false;
+async function pullCloud(manual){
+  if(!fbReady()||!SET.channel||pulling)return;pulling=true;
+  try{
+    const r=await fetch(docUrl(SET.channel),{cache:'no-store'});
+    if(r.status===404){SET.syncMsg=Object.keys(REC).length?'':'⏳ รอ Manager ส่งข้อมูล';if(manual)speak('ยังไม่มีข้อมูลจาก Manager');return}
+    if(r.status===403){SET.syncMsg='⚠ ลิงก์สาขาไม่ถูกต้อง ขอ QR ใหม่จาก Manager';return}
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json(),f=j.fields||{},sv=k=>(f[k]&&f[k].stringValue)||'';
+    if(j.updateTime!==SET.syncTime||!Object.keys(REC).length){
+      const rec={};for(const line of sv('data').split('\n')){if(!line)continue;const[id,e,i]=line.split('\t');if(id)rec[id]={e:e||null,i:i||''}}
+      const newDay=sv('day')!==SET.importDay;
+      REC=rec;buildIdx();await idbSet('rec',REC);
+      SET.syncTime=j.updateTime;SET.fileName=sv('file');SET.importDay=sv('day')||null;SET.lastSummary=sv('summary');SET.importAt=new Date(j.updateTime).toLocaleString('th-TH');
+      if(newDay){SCANS=[];saveScans();lastCode=''}
+      speak(`รับข้อมูล${newDay?'วันนี้':'ใหม่'} ${Object.keys(REC).length} รายการ`);
+    }else if(manual)speak(`ข้อมูลล่าสุดแล้ว ${Object.keys(REC).length} รายการ`);
+    SET.syncMsg='';SET.syncCheck=new Date().toLocaleTimeString('th-TH');
+  }catch(e){SET.syncMsg=Object.keys(REC).length?'':'⚠ เชื่อมต่อระบบไม่ได้';if(manual)alert('ดึงข้อมูลไม่สำเร็จ: '+(e.message==='Failed to fetch'?'ไม่มีอินเทอร์เน็ต':e.message))}
+  finally{pulling=false;save();refresh();renderSync()}}
+function leaveChannel(){if(!confirm('เลิกรับข้อมูลอัตโนมัติจากสาขานี้?'))return;SET.channel=null;SET.syncTime=null;SET.syncMsg='';save();refresh();renderSync()}
+function bannerTap(){if(SET.channel&&fbReady())return pullCloud(true);$('file').click()}
+function renderSync(){
+  const cc=$('chCard');
+  if(SET.channel&&fbReady()){cc.style.display='';const dep=SET.channel.split('-')[0];
+    $('chState').innerHTML=`สาขา <b>${dep}</b> · <span class="ok">เชื่อมแล้ว ✓</span>\nข้อมูล: ${SET.importAt||'-'} (${Object.keys(REC).length.toLocaleString()} รายการ)\nตรวจล่าสุด: ${SET.syncCheck||'-'}${SET.syncMsg?'\n<span class="bad">'+SET.syncMsg+'</span>':''}`}
+  else cc.style.display='none';
+  const sc=$('syncCard');if(!fbReady()){sc.style.display='none';return}sc.style.display='';
+  $('mgrLogin').style.display=AUTH?'none':'';$('mgrPanel').style.display=AUTH?'':'none';
+  if(!AUTH)return;
+  $('mgrWho').innerHTML=`เข้าสู่ระบบ: <b>${AUTH.email}</b>\nรหัส Manager: <b style="user-select:all">${AUTH.uid}</b>${SET.lastUpload?`\nส่งล่าสุด: สาขา ${SET.lastUpload.d} · ${SET.lastUpload.n.toLocaleString()} รายการ · ${SET.lastUpload.at}`:''}`;
+  const ch=SET.chans||{},ds=Object.keys(ch);
+  $('chSel').innerHTML=ds.length?ds.map(d=>`<option ${d===SET.mgrCh?'selected':''}>${d}</option>`).join(''):'<option value="">— เพิ่มสาขาก่อน —</option>';
+  if(SET.mgrCh&&ch[SET.mgrCh]){
+    const l=staffLink(SET.mgrCh);let svg='';
+    try{const q=qrcode(0,'M');q.addData(l);q.make();svg=q.createSvgTag({cellSize:5,margin:2,scalable:true})}catch(e){svg='<div class="hint">(สร้าง QR ไม่ได้ ใช้ปุ่มคัดลอกลิงก์แทน)</div>'}
+    $('qrBox').innerHTML=svg;
+    $('qrHint').textContent=`QR สาขา ${SET.mgrCh}: ให้ Staff เปิดกล้องมือถือสแกน 1 ครั้ง → เครื่องนั้นจะรับข้อมูลสาขานี้อัตโนมัติทุกวัน`;
+  }else{$('qrBox').innerHTML='';$('qrHint').textContent='กด "+ เพิ่มสาขา" แล้วใส่รหัส Depot เช่น THKTN1'}}
+// ตรวจข้อมูลใหม่: เมื่อกลับมาเปิดแอป และทุก 5 นาที
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullCloud(false)});
+setInterval(()=>{if(document.visibilityState==='visible')pullCloud(false)},300000);
+
+/* ---------- รับไฟล์ที่ "แชร์" มาจาก LINE / Gmail (Android) ---------- */
+if('serviceWorker' in navigator&&location.protocol==='https:'&&location.hostname.endsWith('github.io'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+async function takeShared(){
+  let u;try{u=new URL(location.href)}catch(e){return}if(!u.searchParams.has('shared'))return;
+  u.searchParams.delete('shared');history.replaceState(null,'',u.pathname+u.search);
+  try{const c=await caches.open('edd-share');const r=await c.match('shared-file');if(!r)return alert('ไม่พบไฟล์ที่แชร์มา ลองแชร์ใหม่อีกครั้ง');
+    const name=decodeURIComponent(r.headers.get('x-name')||'shared.xlsx');const b=await r.blob();await c.delete('shared-file');
+    goTab('scan');loadFile(new File([b],name))}catch(e){alert('รับไฟล์ที่แชร์ไม่ได้: '+e.message)}}
+let installEvt=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;const b=$('installBtn');if(b)b.style.display=''});
+async function doInstall(){if(!installEvt)return alert('เปิดเมนู ⋮ ของ Chrome → "ติดตั้งแอป" หรือ "เพิ่มลงในหน้าจอหลัก"');installEvt.prompt();await installEvt.userChoice;installEvt=null;$('installBtn').style.display='none'}
+
 /* ---------- Nav / Staff ---------- */
 function goTab(p){
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.p===p));
@@ -378,7 +534,7 @@ function goTab(p){
   if(p==='data')renderSum();
 }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>goTab(b.dataset.p));
-function applyStaff(){$('navSet').style.display=SET.staff?'none':'';document.querySelectorAll('.mgr').forEach(e=>e.style.display=SET.staff?'none':'')}
+function applyStaff(){$('navSet').style.display=SET.staff?'none':'';document.querySelectorAll('.mgr').forEach(e=>e.style.display=SET.staff?'none':'');document.querySelectorAll('.staffonly').forEach(e=>e.style.display=SET.staff?'':'none')}
 let taps=0,tapT;$('logo').onclick=()=>{if(!SET.staff)return;taps++;clearTimeout(tapT);tapT=setTimeout(()=>taps=0,1500);
   if(taps>=5){taps=0;const p=prompt('ใส่ PIN Manager');if(p===null)return;
     if(p===SET.pin){SET.staff=false;save();applyStaff();renderSettings();goTab('set')}else alert('PIN ไม่ถูกต้อง')}};
@@ -392,7 +548,9 @@ function refresh(){renderStats();renderLog();renderSum()}
   try{REC=(await idbGet('rec'))||{};SCANS=(await idbGet('scans'))||[]}catch(e){alert('เปิดที่เก็บข้อมูลไม่ได้: '+e)}
   if(SET.scanDay&&SET.scanDay!==todayStr()&&SCANS.length){SCANS=[];saveScans()} // วันใหม่ → เริ่มนับใหม่
   SET.scanDay=todayStr();buildIdx();
-  save();renderSettings();applyStaff();refresh();$('scanInput').focus();
+  save();renderSettings();applyStaff();refresh();renderSync();$('scanInput').focus();
+  await takeShared();
+  pullCloud(false);
 })();
 </script>
 </body>

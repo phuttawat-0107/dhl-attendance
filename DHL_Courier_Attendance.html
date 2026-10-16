@@ -941,7 +941,16 @@ async function rpStamp(cid,k){
   pphRec.rp = pphRec.rp||{}; pphRec.rp[cid] = pphRec.rp[cid]||{};
   /* 2026.10.01 — กันเวลาสลับลำดับ: FS ≤ ออกรถ (DEP) ≤ ส่งชิ้นแรก (เจอ DEP ก่อน FS ในข้อมูลจริง) */
   const q=pphRec.rp[cid], ORD=['fs','dep','fdel'], NM={fs:'FS',dep:'ออกรถ',fdel:'ส่งชิ้นแรก'};
-  let v; if(!q[k]) v=Date.now(); else { v=editTs(q[k]); if(v===undefined) return; }
+  let v; if(!q[k]){ v=Date.now();
+    /* 2026.10.16 — กด DEP ก่อน FS (กดผิดลำดับ) → ไม่บล็อกแล้ว: ให้ใส่เวลา FS จริง หรือพิมพ์ - เพื่อล้างเวลาที่กดผิด */
+    const _an=ORD.includes(k)? ORD.slice(ORD.indexOf(k)+1).find(x=>q[x] && +q[x]<v) : null;
+    if(_an){
+      const t=prompt('⚠ '+NM[_an]+' ถูกกดไว้แล้วเวลา '+fmtTime(q[_an])+'\nใส่เวลา '+NM[k]+' ที่ทำจริง (HH:MM) ไม่หลัง '+fmtTime(q[_an])+'\n\nหรือพิมพ์ - เพื่อล้างเวลา '+NM[_an]+' ที่กดผิด แล้วบันทึก '+NM[k]+' เป็นเวลาตอนนี้', fmtTime(q[_an]));
+      if(t===null) return; const s=t.trim();
+      if(s==='-'||s==='ลบ'){ ORD.slice(ORD.indexOf(k)+1).forEach(x=>{ if(q[x]){ q[x]=null; try{ const S=window.DHLSync; if(S){ const D=S._dirty||(S._dirty={}); D['rp.'+cid+'.'+x]=Date.now()+Math.random(); } }catch(e){} } }); }
+      else { const m=s.match(/^(\d{1,2})[:.](\d{2})$/); if(!m||+m[1]>23||+m[2]>59){ flash('รูปแบบเวลาไม่ถูกต้อง ใช้ HH:MM'); return; }
+        const d=new Date(); d.setHours(+m[1],+m[2],0,0); v=d.getTime(); } } }
+  else { v=editTs(q[k]); if(v===undefined) return; }
   if(v!=null && ORD.includes(k)){ const i=ORD.indexOf(k);
     const bp=ORD.slice(0,i).find(x=>q[x] && +q[x]>v); if(bp){ flash('⚠ เวลา '+NM[k]+' ต้องไม่ก่อน '+NM[bp]+' ('+fmtTime(q[bp])+') — ตรวจลำดับการกด'); return; }
     const an=ORD.slice(i+1).find(x=>q[x] && +q[x]<v); if(an){ flash('⚠ เวลา '+NM[k]+' ต้องไม่หลัง '+NM[an]+' ('+fmtTime(q[an])+') — ตรวจลำดับการกด'); return; } }

@@ -145,7 +145,7 @@ async function injectUI(){
   document.body.appendChild(cm);
 
   /* สาขา TEST จะโผล่เฉพาะเมื่อเปิดลิงก์ด้วย ?test=1 — Staff ทั่วไปไม่เห็น */
-  let deps=['PHI','BPE','PWT','PKS','DST','BPL','PWN','KTN'];
+  let deps=['PHI','BPE','DST','BPL','PWN','KTN'];   /* 23 ต.ค. 2569: เอา PWT, PKS ออก (เปลี่ยนผู้ดูแล) */
   /* ทีมจากลิงก์ ?t=XXX — แต่ละทีมเห็นเฉพาะสาขาของตัวเอง */
   const tm=(location.search.match(/[?&]t=([A-Za-z0-9_]+)/)||[])[1];
   if(tm){

@@ -449,6 +449,36 @@ async function checkTestReset(){
 
 /* ============ PUSH: ส่งข้อมูลวันนี้ขึ้นคลาวด์ ============ */
 /* เขียนแบบ field-level (dot path) — ไม่ทับข้อมูลของเครื่องอื่น และไม่ล้างด้วยค่าว่าง */
+/* 🐞 31 ต.ค. 2569: ส่งเฉพาะรายชื่อ Courier (วันที่ยังไม่มีเช็คอิน) — รวมกับคลาวด์ก่อนเสมอ ไม่ลบใคร (ลบได้ทางปุ่มลบเท่านั้น) */
+async function pushCouriersOnly(){
+  const rm=new Set((S.removed||[]).map(Number));
+  const loc=getCouriers().filter(c=>c && !rm.has(Number(c.id)))
+    .map(c=>({ id:c.id, code:c.code, name:c.name, vendor:c.vendor||'', type:c.type||'', active:(c.active!==false) }));
+  if(!loc.length) return false;
+  const snap=await getDoc(depRef(S.depot)); const cloud=(snap.exists()&&snap.data().couriers)||[];
+  const by={}; cloud.forEach(c=>{ const i=Number(c&&c.id); if(c && !rm.has(i)) by[i]=c; });
+  let diff=false;
+  loc.forEach(c=>{ const o=by[Number(c.id)]; if(!o || o.active!==c.active || o.name!==c.name || o.code!==c.code || (o.vendor||'')!==c.vendor || (o.type||'')!==c.type){ by[Number(c.id)]=c; diff=true; } });
+  if(!diff) return false;
+  const list=Object.values(by).sort((a,b)=>String(a.code||'').localeCompare(String(b.code||'')));
+  await setDoc(depRef(S.depot),{ couriers:list, couriersAt:Date.now() },{merge:true});
+  return true;
+}
+/* 🐞 31 ต.ค. 2569: ฟังรายชื่อ Courier ของสาขาแบบสด — เครื่องอื่นเพิ่มคน เครื่องนี้เห็นทันที (ไม่ต้องรอเช็คอิน/เปิดแอปใหม่) */
+let _cwDep=null, _cwUnsub=null;
+setInterval(function(){
+  if(!S.ready || !S.depot || _cwDep===S.depot) return;
+  try{ if(_cwUnsub) _cwUnsub(); }catch(e){}
+  _cwDep=S.depot;
+  try{ _cwUnsub=onSnapshot(depRef(S.depot), function(s){
+    if(!s.exists() || (s.metadata && s.metadata.hasPendingWrites) || !S.ready) return;
+    const d=s.data();
+    if(Array.isArray(d.removedIds)) S.removed=d.removedIds.map(Number);
+    S._cpMerge=true;
+    try{ const a=Array.isArray(d.couriers)? mergeCouriers(d.couriers) : false; const b=purgeRemovedLocal(); if(a||b){ try{ if(window.renderCheckin) renderCheckin(); }catch(e){} repaintSoon(); } }
+    finally{ S._cpMerge=false; }
+  }, function(e){ console.warn('[ds] watch couriers',e); _cwDep=null; }); }catch(e){ _cwDep=null; }
+}, 3000);
 async function pushAll(){
   if(S.ready && S.busy){ S._pushAgain=true; return; }   /* 🐞 6 ต.ค.: กำลังส่งอยู่ → ส่งซ้ำทันทีที่เสร็จ (เดิมทิ้งไป) */
   if(!S.ready||S.busy) return;
@@ -475,7 +505,7 @@ async function pushAll(){
     const hasPph = pph && ((+pph.pNew||0)+(+pph.pOld||0) > 0 || pph.inboundTs || pph.lastInboundTs
                     || (pph.pd&&pph.pd.ts) || Object.keys(pph.rp||{}).length);
     /* ⛔ ไม่มีอะไรจะส่ง = ไม่แตะคลาวด์เลย (กันเครื่องเปล่าเขียนทับข้อมูลสาขา) */
-    if(!recs.length && !hasPph){ S.busy=false; return; }
+    if(!recs.length && !hasPph){ try{ await pushCouriersOnly(); }catch(e){ console.warn('[ds] couriers only',e); } S.busy=false; return; }   /* 🐞 31 ต.ค.: ยังไม่มีเช็คอิน → ส่งรายชื่อ Courier ขึ้นก่อน (สาขาใหม่) */
 
     const ref=dayRef(S.depot,date);
     await setDoc(ref,{ depot:S.depot, date, by:S.staff, updatedAt:Date.now() },{ merge:true });
@@ -1410,6 +1440,12 @@ try{ tidyManage(); paintSetInfo(); }catch(e){}
 
 /* ============ WRAP ฟังก์ชันเดิม ============ */
 function wrap(){
+  /* 🐞 31 ต.ค. 2569: เพิ่ม/แก้/พักพนักงาน → ส่งรายชื่อขึ้นคลาวด์ภายใน ~1 วิ (เดิมรอ 3 นาที หรือรอเช็คอินคนแรก) */
+  if(window.saveCouriers && !window.saveCouriers.__ds){ const _o=window.saveCouriers;
+    const _f=function(){ const r=_o.apply(this,arguments);
+      if(!S.merging && !S._cpMerge){ clearTimeout(S._cpT); S._cpT=setTimeout(function(){ try{ if(S.ready) pushAll(); }catch(e){} },1200); }
+      return r; };
+    _f.__ds=1; window.saveCouriers=_f; }
   /* 🐞 6 ต.ค.: ปุ่ม PPH โหลดค่าล่าสุดก่อนบันทึก (กันค่าเก่าทับค่าที่ซิงค์มาจากเครื่องอื่น) */
   ['pphNum','pphStamp','rpStamp','pphSyncCourier'].forEach(fn=>{ const o=window[fn]; if(typeof o!=='function' || o.__ds) return;
     const f=async function(){ try{ const k=tKey(), fr=window.getPPH? await getPPH(k) : null; const pr=G('pphRec');

@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 const UX_VER = '2026.10.01-a';
-const TEAM = ['PHI','BPE','DST','BPL','PWN','KTN','TEST'];   /* เปิดเฉพาะทีม BKK (+ สาขาทดสอบ TEST) */
+const TEAM = ['PHI','BPE','DST','BPL','PWN','KTN','TEST','SPS','LPO','MRI','LKB'];   /* 31 ต.ค. 2569: + ทีม BKK4 (คุณ Furkon) */   /* เปิดเฉพาะทีม BKK (+ สาขาทดสอบ TEST) */
 const G = n => { try { return (0,eval)(n); } catch(e){ return undefined; } };
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

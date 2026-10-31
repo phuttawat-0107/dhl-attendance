@@ -798,7 +798,7 @@ function purgeForeignCouriers(cloudList){
   /* 🛡 ตัดเฉพาะคนที่ "รหัสขึ้นต้นด้วยชื่อสาขาอื่น" เท่านั้น
      คนที่รหัสเป็นของสาขานี้ หรือรหัสไม่มีรูปแบบชัดเจน จะไม่ถูกแตะ
      (กันไม่ให้ลบพนักงานจริงที่ Staff เพิ่งเพิ่มแล้วยังไม่ทันซิงค์ขึ้นคลาวด์) */
-  const OTHERS=['PHI','BPE','PWT','PKS','DST','BPL','PWN','KTN','TST','TEST'].filter(p=>p!==S.depot && p!==(S.depot==='TEST'?'TST':''));
+  const OTHERS=['PHI','BPE','PWT','PKS','DST','BPL','PWN','KTN','SPS','LPO','MRI','LKB','TST','TEST'].filter(p=>p!==S.depot && p!==(S.depot==='TEST'?'TST':''));
   const isOther=c=>{
     const code=String(c.code||'').toUpperCase();
     if(!code) return false;

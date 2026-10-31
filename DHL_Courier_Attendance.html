@@ -305,6 +305,93 @@ button,a,input,select,textarea,.btn,.nav button,.mini{touch-action:manipulation;
 button[onclick*="quickLog"],#modeQuick{display:none!important}
 #modeCam{width:100%!important}
 </style>
+<style id="themes2">
+/* ===== ธีมชุดใหม่ (31 ต.ค. 2569) · classic · clean · dark · big — ครอบคลุมทุกหน้าจอ ===== */
+#modeCard{display:none!important}            /* แถบ "โหมดลงเวลา" — ไม่ใช้แล้ว (บังคับถ่ายรูปทุกครั้ง) */
+#ciCard{display:none!important}              /* การ์ดความคืบหน้าซ้ำกับแถบสรุป % ด้านล่าง */
+#clockCard{padding:10px 14px!important}
+#clockCard .bigclock .t{font-size:44px!important;line-height:1.05!important}
+#clockCard .bigclock .m{font-size:13px!important;margin-top:2px!important}
+.nav button{color:#6b6b6b}
+/* 📱 สัดส่วนหน้าจอมือถือ (320–430px) */
+.row-c .nm{white-space:normal!important;text-overflow:clip!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;line-height:1.25}
+.row-c .info{min-width:0}
+#view-insight input,#view-insight select{min-width:0;max-width:100%;box-sizing:border-box}
+#view-insight div[style*="flex:1"]{min-width:0}
+@media (max-width:400px){ .row-c{gap:8px} .row-c .btn-y{padding:0 11px!important;font-size:15px!important;min-width:0!important} .row-c .dsAbsAdd{padding:0 6px!important;font-size:12.5px!important} .row-c .nm{font-size:15.5px} }
+#pdCard div[style*="gap:10px;align-items:center"]{flex-wrap:wrap}
+#pdCard div[style*="gap:10px;align-items:center"] img{flex:0 0 auto;max-width:42%}
+#pdCard div[style*="flex-direction:column;gap:6px"]{margin-left:auto}
+@media (max-width:400px){ .nav button{white-space:normal!important;line-height:1.05!important;overflow:visible!important;font-size:9.5px!important;padding-left:1px!important;padding-right:1px!important;word-break:keep-all} }
+@media (max-width:340px){ .nav button{font-size:8.8px!important} #clockCard .bigclock .t{font-size:38px!important} .btn{padding-left:10px;padding-right:10px} }
+#dsSetInfo span{color:#6f6757!important}
+.tl .nd:not(.done):not(.cur) .dot{color:#4a4a4a}
+/* ---------- CLEAN : ขาวสะอาด ---------- */
+body[data-theme="clean"]{background:#f4f5f7!important}
+body[data-theme="clean"] .topbar,body[data-theme="clean"] .nav{background:#fff;box-shadow:0 1px 0 #e6e8ec}
+body[data-theme="clean"] .card,body[data-theme="clean"] .kpi,body[data-theme="clean"] .row-c{background:#fff;border:1px solid #e6e8ec;box-shadow:none}
+body[data-theme="clean"] input,body[data-theme="clean"] select,body[data-theme="clean"] textarea,body[data-theme="clean"] #ciSearch{background:#f7f8fa;border:1px solid #e1e4e8}
+body[data-theme="clean"] .btn-o{background:#fff;border:1px solid #dfe2e6}
+body[data-theme="clean"] #dsSum{background:#fff8e0!important}
+/* ---------- DARK : กลางคืน ถนอมสายตา ---------- */
+body[data-theme="dark"]{background:#111214!important;color:#ececec}
+body[data-theme="dark"] #bigMsg{color:#c4c4c9!important}
+body[data-theme="dark"] .tl .nd:not(.done):not(.cur) .dot{background:#3a3b41!important}
+body[data-theme="dark"] .tl .nd:not(.done):not(.cur) .dot{color:#e0e0e4}
+body[data-theme="dark"] .topbar,body[data-theme="dark"] .nav{background:#1b1c1f!important;box-shadow:0 1px 0 #2a2b2f!important}
+body[data-theme="dark"] .topbar .meta,body[data-theme="dark"] .topbar b,body[data-theme="dark"] .topbar span{color:#ececec}
+body[data-theme="dark"] .nav button{color:#a8a8ae}
+body[data-theme="dark"] .nav button.on,body[data-theme="dark"] .nav button.active{color:#1a1a1a}
+body[data-theme="dark"] .card,body[data-theme="dark"] .kpi,body[data-theme="dark"] .row-c,body[data-theme="dark"] .tlcard,body[data-theme="dark"] #setupOverlay{background:#1d1e22!important;border-color:#2c2d32!important;box-shadow:none!important;color:#ececec}
+body[data-theme="dark"] .card *,body[data-theme="dark"] .kpi *,body[data-theme="dark"] .row-c *{border-color:#33343a}
+body[data-theme="dark"] h1,body[data-theme="dark"] h2,body[data-theme="dark"] h3,body[data-theme="dark"] .nm,body[data-theme="dark"] .t{color:#f4f4f4}
+body[data-theme="dark"] .small,body[data-theme="dark"] .sub,body[data-theme="dark"] label{color:#b3b3b8!important}
+body[data-theme="dark"] .kpi.green{background:#15261a!important} body[data-theme="dark"] .kpi.red{background:#2a1719!important}
+body[data-theme="dark"] input,body[data-theme="dark"] select,body[data-theme="dark"] textarea,body[data-theme="dark"] #ciSearch{background:#26272c!important;color:#f1f1f1!important;border-color:#393a40!important}
+body[data-theme="dark"] input::placeholder{color:#8d8d93}
+body[data-theme="dark"] .btn-o{background:#26272c!important;color:#ececec!important;border-color:#3a3b41!important}
+body[data-theme="dark"] .progress-wrap{background:#2c2d32!important}
+body[data-theme="dark"] #dsSum{background:#262110!important;color:#ffd75e!important}
+body[data-theme="dark"] #dsSum *{color:inherit}
+body[data-theme="dark"] #dsPhoto{background:#26272c!important;color:#d6d6d6!important;border-color:#3a3b41!important}
+body[data-theme="dark"] .dsHdr.todo{background:#2e1a1c!important;color:#ff9aa0!important}
+body[data-theme="dark"] .dsHdr.done{background:#24252a!important;color:#cfcfd4!important}
+body[data-theme="dark"] .dsAbsAdd{background:#2a1a1c!important;color:#ff9aa0!important;border-color:#4a2a2d!important}
+body[data-theme="dark"] .hint{background:#2a2614!important;color:#ececec!important}
+body[data-theme="dark"] #dsSetInfo{background:#24252a!important;color:#bdbdc2!important}
+body[data-theme="dark"] #dsSetInfo *,body[data-theme="dark"] #dsSetInfo span{color:#bdbdc2!important}
+body[data-theme="dark"] [style*="2e7d32" i],body[data-theme="dark"] [style*="1b5e20" i],body[data-theme="dark"] [style*="color:var(--g)"],body[data-theme="dark"] .ontime{color:#7ad38a!important}
+body[data-theme="dark"] [style*="d40511" i],body[data-theme="dark"] [style*="c62828" i],body[data-theme="dark"] [style*="color:var(--r)"],body[data-theme="dark"] .late{color:#ff8a8a!important}
+body[data-theme="dark"] .chip.late{background:#3a1c1f!important} body[data-theme="dark"] .chip.ontime{background:#17301d!important}
+body[data-theme="dark"] .modal > *,body[data-theme="dark"] #dsCom .sheet,body[data-theme="dark"] #dsAbsBox,body[data-theme="dark"] #uxPop{background:#1d1e22!important;color:#ececec!important}
+body[data-theme="dark"] [style*="color:#5"],body[data-theme="dark"] [style*="color:#6"],body[data-theme="dark"] [style*="color:#7"],body[data-theme="dark"] [style*="color:#8"],body[data-theme="dark"] [style*="color:#9"],body[data-theme="dark"] [style*="color:#3"],body[data-theme="dark"] [style*="color:#4"],body[data-theme="dark"] [style*="color:#2"],body[data-theme="dark"] [style*="color:#1"],body[data-theme="dark"] [style*="color: #"]{color:#c9c9ce!important}
+body[data-theme="dark"] [style*="background:#f"],body[data-theme="dark"] [style*="background:#e"],body[data-theme="dark"] [style*="background:#fff"]{background:#25262b!important}
+body[data-theme="dark"] .tgt{color:#ff7b7b!important} body[data-theme="dark"] .vt{color:#d6d6da!important} body[data-theme="dark"] .kpi .l{color:#b8b8bd!important}
+body[data-theme="dark"] .btn-y,body[data-theme="dark"] .btn-y *{color:#1a1a1a!important}
+body[data-theme="dark"] .btn-r,body[data-theme="dark"] .btn-r *{color:#fff!important}
+/* ---------- BIG : ตัวใหญ่ อ่านง่าย ---------- */
+body[data-theme="big"]{font-size:17px}
+body[data-theme="big"] .row-c .nm,body[data-theme="big"] .nm{font-size:19px!important}
+body[data-theme="big"] .small,body[data-theme="big"] .sub{font-size:14.5px!important;color:#3d3d3d!important}
+body[data-theme="big"] .btn{font-size:17px!important;min-height:52px!important}
+body[data-theme="big"] h2{font-size:21px!important}
+body[data-theme="big"] .nav button{color:#333}
+body[data-theme="big"] input,body[data-theme="big"] select{font-size:18px!important;min-height:52px}
+/* ---------- ตัวเลือกธีมแบบการ์ด ---------- */
+.thGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.thCard{border:2px solid #e8e2d4;border-radius:16px;padding:10px;background:#fff;cursor:pointer;text-align:left;font-family:inherit;position:relative}
+.thCard.on{border-color:#1a1a1a;box-shadow:0 0 0 3px #FFCC00}
+.thCard .pv{height:58px;border-radius:10px;padding:7px;display:flex;flex-direction:column;gap:5px;overflow:hidden}
+.thCard .pv i{display:block;height:9px;border-radius:5px}
+.thCard .pv i.b{height:15px;border-radius:7px;width:62%}
+.thCard b{display:block;font-size:14px;margin-top:8px;color:#1a1a1a}
+.thCard span{display:block;font-size:11.5px;color:#6b6457;line-height:1.35;margin-top:1px}
+.thCard .ck{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;background:#1a1a1a;color:#FFCC00;font-size:13px;font-weight:800;display:none;align-items:center;justify-content:center}
+.thCard.on .ck{display:flex}
+body[data-theme="dark"] .thCard{background:#1d1e22!important;border-color:#33343a}
+body[data-theme="dark"] .thCard b{color:#f2f2f2} body[data-theme="dark"] .thCard span{color:#b3b3b8!important}
+body[data-theme="dark"] .thCard.on{border-color:#FFCC00}
+</style>
 </head>
 <body>
 
@@ -325,7 +412,7 @@ button[onclick*="quickLog"],#modeQuick{display:none!important}
       <div class="m" id="bigMsg">เวลาเข้างาน 07:00 น.</div>
     </div>
   </div>
-  <div class="card" style="padding:10px 14px;">
+  <div class="card" id="modeCard" style="padding:10px 14px;">
     <div class="small" style="margin-bottom:6px;font-weight:700;">โหมดลงเวลา</div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-y btn-block" id="modeCam" onclick="setMode('cam')">📷 ถ่ายทันที</button>
@@ -333,7 +420,7 @@ button[onclick*="quickLog"],#modeQuick{display:none!important}
     </div>
     <div class="small" id="modeHint" style="margin-top:6px;"></div>
   </div>
-  <div class="card">
+  <div class="card" id="ciCard">
     <h2>เช็คอินเข้างานวันนี้ <span class="small" id="ciDate"></span></h2>
     <div class="small">Staff เป็นผู้ถ่ายภาพและบันทึกเวลา</div>
     <div class="progress-wrap"><div class="progress-bar" id="ciProg" style="width:0%"></div></div>
@@ -2240,15 +2327,15 @@ function admTap(){
 
 /* ===== UI THEMES ===== */
 const UI_THEMES=[
-  ['classic','⭐ Classic'],
-  ['soft','☁️ Soft'],
-  ['glass','💎 Glass'],
-  ['bold','🟨 Bold Pop'],
-  ['night','🌙 Night Ops'],
-  ['material','🌼 Friendly'],
+  ['classic','DHL Classic','โทนครีม-เหลือง มาตรฐาน',['#f5f2ec','#ffffff','#FFCC00','#1a1a1a']],
+  ['clean','Clean','ขาวสะอาด ตาไม่ล้า',['#f4f5f7','#ffffff','#e6e8ec','#1a1a1a']],
+  ['dark','Night','พื้นมืด ใช้ตอนเช้ามืด',['#111214','#1d1e22','#FFCC00','#ececec']],
+  ['big','ตัวใหญ่','ตัวหนังสือ/ปุ่มใหญ่ อ่านง่าย',['#f5f2ec','#ffffff','#FFCC00','#000000']],
 ];
+const THEME_MAP={soft:'clean',glass:'clean',material:'classic',bold:'classic',night:'dark'};
 function applyTheme(t){
-  t = t || 'classic';
+  t = THEME_MAP[t] || t || 'classic';
+  if(!UI_THEMES.some(x=>x[0]===t)) t='classic';
   if(t==='classic'){ delete document.body.dataset.theme; }
   else { document.body.dataset.theme = t; }
   try{ localStorage.setItem('uiTheme', t); }catch(e){}
@@ -2257,9 +2344,12 @@ function applyTheme(t){
 function renderThemeRow(){
   const el = document.getElementById('themeRow');
   if(!el) return;
-  let cur='classic'; try{ cur = localStorage.getItem('uiTheme') || 'classic'; }catch(e){}
-  el.innerHTML = UI_THEMES.map(([k,n])=>
-    `<button class="btn ${k===cur?'btn-y':'btn-o'}" style="min-height:40px;padding:8px 12px;font-size:13px;" onclick="applyTheme('${k}')">${n}</button>`
+  let cur='classic'; try{ cur = THEME_MAP[localStorage.getItem('uiTheme')] || localStorage.getItem('uiTheme') || 'classic'; }catch(e){}
+  el.className='thGrid'; el.removeAttribute('style');
+  el.innerHTML = UI_THEMES.map(([k,n,dsc,c])=>
+    '<button class="thCard'+(k===cur?' on':'')+'" onclick="applyTheme(\''+k+'\')">'
+    +'<div class="pv" style="background:'+c[0]+'"><i class="b" style="background:'+c[2]+'"></i><i style="background:'+c[1]+'"></i><i style="background:'+c[1]+';width:80%"></i></div>'
+    +'<b>'+n+'</b><span>'+dsc+'</span><div class="ck">✓</div></button>'
   ).join('');
 }
 

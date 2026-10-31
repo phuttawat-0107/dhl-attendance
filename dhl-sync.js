@@ -272,7 +272,8 @@ function startHeartbeat(){
       try{ nLocal=(await getByDate(tKey())).length; }catch(e){}
       await setDoc(ref,{ uid:S.uid, at:Date.now(),
         ver:H.ver, lastPush:H.lastPush, lastPull:H.lastPull,
-        err:H.err||'', errAt:H.errAt||0, nLocal, taps:H.taps, saves:H.saves },{merge:true});
+        err:H.err||'', errAt:H.errAt||0, nLocal, taps:H.taps, saves:H.saves,
+        nCour:(getCouriers()||[]).filter(c=>c&&c.active!==false).length, cpush:H.cpush||0, owner:lsGet('dsDataDepot')||'' },{merge:true});   /* 🩺 1 พ.ย.: รายงานจำนวน Courier ในเครื่อง + เวลาส่งรายชื่อล่าสุด */
     }catch(e){}
   };
   beat(); S._hb=setInterval(beat,240000);
@@ -462,6 +463,7 @@ async function pushCouriersOnly(){
   if(!diff) return false;
   const list=Object.values(by).sort((a,b)=>String(a.code||'').localeCompare(String(b.code||'')));
   await setDoc(depRef(S.depot),{ couriers:list, couriersAt:Date.now() },{merge:true});
+  H.cpush=Date.now();
   return true;
 }
 /* 🐞 31 ต.ค. 2569: ฟังรายชื่อ Courier ของสาขาแบบสด — เครื่องอื่นเพิ่มคน เครื่องนี้เห็นทันที (ไม่ต้องรอเช็คอิน/เปิดแอปใหม่) */
@@ -505,7 +507,7 @@ async function pushAll(){
     const hasPph = pph && ((+pph.pNew||0)+(+pph.pOld||0) > 0 || pph.inboundTs || pph.lastInboundTs
                     || (pph.pd&&pph.pd.ts) || Object.keys(pph.rp||{}).length);
     /* ⛔ ไม่มีอะไรจะส่ง = ไม่แตะคลาวด์เลย (กันเครื่องเปล่าเขียนทับข้อมูลสาขา) */
-    if(!recs.length && !hasPph){ try{ await pushCouriersOnly(); }catch(e){ console.warn('[ds] couriers only',e); } S.busy=false; return; }   /* 🐞 31 ต.ค.: ยังไม่มีเช็คอิน → ส่งรายชื่อ Courier ขึ้นก่อน (สาขาใหม่) */
+    if(!recs.length && !hasPph){ try{ await pushCouriersOnly(); }catch(e){ console.warn('[ds] couriers only',e); try{ flagErr('ส่งรายชื่อ Courier ไม่สำเร็จ: '+e.message); }catch(_){} } S.busy=false; return; }   /* 🐞 31 ต.ค.: ยังไม่มีเช็คอิน → ส่งรายชื่อ Courier ขึ้นก่อน (สาขาใหม่) */
 
     const ref=dayRef(S.depot,date);
     await setDoc(ref,{ depot:S.depot, date, by:S.staff, updatedAt:Date.now() },{ merge:true });
@@ -551,7 +553,7 @@ async function pushAll(){
       }catch(e){ console.warn('merge couriers',e); }
       up['couriers']=couriers;
       /* เก็บ master list ไว้ที่สาขาด้วย — Manager ใช้เป็นตัวสำรองถ้าวันไหนไม่มี */
-      try{ await setDoc(depRef(S.depot),{ couriers, couriersAt:Date.now() },{merge:true}); }catch(e){}
+      try{ await setDoc(depRef(S.depot),{ couriers, couriersAt:Date.now() },{merge:true}); H.cpush=Date.now(); }catch(e){}
     }
 
     if(Object.keys(up).length){
@@ -1236,7 +1238,8 @@ window.dsResync=async ()=>{
 /* ปุ่มออกจากระบบในหน้า "จัดการ" + แตะแถบสถานะ */
 function mountLogout(){
   const badge=document.getElementById('dsBadge');
-  if(badge && S.ready) badge.onclick=()=>window.dsLogout();
+  /* 🐞 1 พ.ย. 2569: แตะแถบสถานะไม่ออกจากระบบแล้ว (แถบลอยทับปุ่มเช็คอิน → เคยเผลอกดออก) · ออกได้ที่แท็บ 👥 จัดการ เท่านั้น */
+  if(badge){ if(S.ready){ badge.onclick=null; badge.style.pointerEvents='none'; badge.style.opacity='.9'; } else { badge.style.pointerEvents=''; badge.style.opacity=''; } }
   const mv=document.getElementById('view-manage');
   if(mv && !document.getElementById('dsLogoutCard')){
     const div=document.createElement('div');
